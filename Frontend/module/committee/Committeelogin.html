@@ -11,7 +11,7 @@
 <body class="min-h-screen bg-black text-white font-sans antialiased flex flex-col">
   <header
     class="fixed top-0 left-0 right-0 z-50 w-full bg-[#8f0000] border-b border-[#710000]/50 py-5 px-3 flex items-center gap-3 shadow-md">
-    <a href="../signin.html" class="text-[#efefef] hover:opacity-80 transition">
+    <a href="../../signin.html" class="text-[#efefef] hover:opacity-80 transition">
       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="38" viewBox="0 0 24 24" fill="none" stroke="white"
         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="m12 19-7-7 7-7"></path>
@@ -38,28 +38,22 @@
             d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
         </svg>
       </div>
-      <h1 class="text-[25px] font-bold text-[#efefef] font-serif mb-8">Sign-up</h1>
-      <form class="w-full flex flex-col gap-6">
+      <h1 class="text-[25px] font-bold text-[#efefef] font-serif mb-8">Log-in</h1>
+      <form id="loginForm" class="w-full flex flex-col gap-6">
         <div class="w-full">
-          <input type="text" placeholder="Name"
+          <input type="email" id="email" autocomplete="username" placeholder="Email" required
             class="w-full bg-transparent border-b border-[#efefef]/70 py-2 px-1 text-[#efefef] placeholder-[#efefef] focus:outline-none focus:border-[#efefef] text-[15px] transition" />
         </div>
         <div class="w-full">
           <input type="password" placeholder="Password"
             class="w-full bg-transparent border-b border-[#efefef]/70 py-2 px-1 text-[#efefef] placeholder-[#efefef] focus:outline-none focus:border-[#efefef] text-[15px] transition" />
         </div>
-        <a href="Committee.html"
-          class="block text-center w-full mt-4 bg-gradient-to-r from-[#710000] to-[#8f0000] hover:from-[#710000] hover:to-[#8f0000] text-[#efefef] font-medium py-3 rounded-xl border border-[#efefef]/20 shadow-lg transition active:scale-95">
-          Log-in
-        </a>
+        <input type="password" id="password" autocomplete="current-password" placeholder="Password" required class="w-full bg-transparent border-b py-2 px-1" /><button type="submit" class="w-full mt-4 bg-[#8f0000] text-white py-3 rounded-xl">Log-in</button>
       </form>
     </div>
   </main>
-  <script src="../../Backend/modules/sheared/guard.js"></script>
-  <script>
-    // Enforces logged in user and requires 'committee' role
-    requireAuth(["committee"]);
-  </script>
+  
+<script src="../sheared/auth.js?v=20261002-2" data-mode="login" data-role="committee"></script>
 </body>
 
 </html>

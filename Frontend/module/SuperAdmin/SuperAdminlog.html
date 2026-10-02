@@ -29,11 +29,11 @@
       <h1 class="text-[25px] font-bold text-[#efefef] font-serif mb-8">Log-in</h1>
       <form id="loginForm" class="w-full flex flex-col gap-6">
         <div class="w-full">
-          <input type="email" id="email" placeholder="Email" required
+          <input type="email" id="email" autocomplete="username" placeholder="Email" required
             class="w-full bg-transparent border-b border-[#efefef]/70 py-2 px-1 text-[#efefef] placeholder-[#efefef] focus:outline-none focus:border-[#efefef] text-[15px] transition" />
         </div>
         <div class="w-full">
-          <input type="password" id="password" placeholder="Password" required
+          <input type="password" id="password" autocomplete="current-password" placeholder="Password" required
             class="w-full bg-transparent border-b border-[#efefef]/70 py-2 px-1 text-[#efefef] placeholder-[#efefef] focus:outline-none focus:border-[#efefef] text-[15px] transition" />
         </div>
         <button type="submit"
@@ -43,10 +43,7 @@
       </form>
     </div>
   </main>
-<script src="../../Backend/modules/sheared/guard.js"></script>
-<script>
-  // Enforces logged in user and requires 'super_admin' role
-  requireAuth(["super_admin"]);
-</script>
+
+<script src="../sheared/auth.js?v=20261002-2" data-mode="login" data-role="super_admin"></script>
 </body>
 </html>
