@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ballot Scanner - MSEUF-CI Election System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-serif-title { font-family: 'Cinzel', serif; }
+        .font-mono-id { font-family: 'Space Mono', monospace; }
+
+        #video, #captureCanvas, #resultCanvas { background: #111; }
+
+        .reticle {
+            position: absolute;
+            inset: 5% 10%;
+            margin: auto;
+            pointer-events: none;
+        }
+        .reticle-corner {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-color: #fff;
+        }
+        .rc-tl { top: 0; left: 0; border-top: 4px solid; border-left: 4px solid; }
+        .rc-tr { top: 0; right: 0; border-top: 4px solid; border-right: 4px solid; }
+        .rc-bl { bottom: 0; left: 0; border-bottom: 4px solid; border-left: 4px solid; }
+        .rc-br { bottom: 0; right: 0; border-bottom: 4px solid; border-right: 4px solid; }
+
+        .tab-btn.active { background: #8f0000; color: #fff; }
+        .tab-btn { color: #8f0000; }
+
+        .spinner {
+            border: 3px solid rgba(143,0,0,0.15);
+            border-top-color: #8f0000;
+            border-radius: 9999px;
+            width: 36px; height: 36px;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .drop-active { border-color: #8f0000 !important; background: #fdf2f2; }
+    </style>
+</head>
+<body class="bg-[#5a0a0a] min-h-screen text-gray-900 antialiased flex flex-col overflow-y-auto">
+
+    <!-- STANDARDIZED HEADER -->
+    <header class="sticky top-0 z-50 w-full bg-[#8f0000] border-b border-red-900/50 py-4 px-3 sm:px-8 flex items-center justify-between shadow-md shrink-0">
+        <div class="flex items-center gap-3">
+           <a href="Committee.html" class="text-white hover:opacity-80 transition shrink-0" aria-label="Back to Committee Dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m12 19-7-7 7-7"></path>
+                    <path d="M19 12H5"></path>
+                </svg>
+            </a>
+
+            <div class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 overflow-hidden rounded-full">
+                <img src="image/logo.png" alt="User Profile" class="w-full h-full object-cover">
+            </div>
+
+            <div class="flex flex-col">
+                <h2 class="text-lg sm:text-[23px] font-serif font-bold text-white leading-none">Ballot Scanner</h2>
+            </div>
+        </div>
+
+        <span id="ballotConfigBadge" class="hidden sm:flex items-center gap-1.5 text-[#efefef]/90 text-xs font-mono-id bg-black/20 border border-white/20 px-3.5 py-1.5 rounded-full mr-1"></span>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="w-full max-w-5xl mx-auto px-2 sm:px-8 pt-3 sm:pt-6 flex flex-col items-center justify-start flex-1 pb-16 space-y-4 sm:space-y-6">
+
+        <div id="noConfigNotice" class="hidden w-full bg-[#efefef] border border-amber-300 rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
+            <i data-lucide="file-warning" class="w-12 h-12 text-amber-600 mx-auto"></i>
+            <p class="text-sm sm:text-base text-gray-800 font-medium">No ballot configuration was found in this browser. Create and save a ballot first.</p>
+            <button onclick="window.location.href='ballot_editor.html'" class="bg-[#8f0000] hover:bg-[#710000] text-white text-sm font-bold px-6 py-3 rounded-xl transition active:scale-95 shadow-md">
+                Go to Ballot Creator
+            </button>
+        </div>
+
+        <div id="scannerApp" class="w-full hidden space-y-4 sm:space-y-6 flex flex-col items-center">
+
+            <!-- Source tabs -->
+            <div class="w-full bg-[#efefef] rounded-xl sm:rounded-2xl shadow-md border border-gray-300 p-1.5 flex gap-1.5">
+                <button id="tabCameraBtn" onclick="switchTab('camera')" class="tab-btn flex-1 flex items-center justify-center gap-2 text-sm sm:text-base font-bold py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition">
+                    <i data-lucide="camera" class="w-4 h-4 sm:w-5 sm:h-5"></i> Live Camera
+                </button>
+                <button id="tabUploadBtn" onclick="switchTab('upload')" class="tab-btn flex-1 flex items-center justify-center gap-2 text-sm sm:text-base font-bold py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition">
+                    <i data-lucide="upload" class="w-4 h-4 sm:w-5 sm:h-5"></i> Upload Image
+                </button>
+            </div>
+
+            <!-- CAMERA PANE -->
+            <div id="cameraPane" class="hidden w-full bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-2.5 sm:p-8 space-y-4 sm:space-y-6">
+                <div class="relative w-full aspect-[3/4] sm:aspect-[16/10] max-h-[70vh] bg-black rounded-xl sm:rounded-2xl overflow-hidden shadow-inner border border-gray-400">
+                    <video id="video" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                    <div class="reticle">
+                        <div class="reticle-corner rc-tl"></div>
+                        <div class="reticle-corner rc-tr"></div>
+                        <div class="reticle-corner rc-bl"></div>
+                        <div class="reticle-corner rc-br"></div>
+                    </div>
+                    <div id="cameraStatus" class="absolute bottom-2.5 left-2.5 right-2.5 text-center text-xs sm:text-sm text-white/95 bg-black/60 backdrop-blur-md rounded-lg py-2 px-3 shadow">
+                        Align the ballot within the edges, then capture.
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-4 pt-1">
+                    <button onclick="startCamera()" id="startCameraBtn" class="flex-1 bg-white hover:bg-gray-100 text-gray-800 text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-md border border-gray-300 active:scale-95">
+                        <i data-lucide="video" class="w-4 h-4 sm:w-5 sm:h-5 text-[#8f0000]"></i> Start Camera
+                    </button>
+                    <button onclick="captureFrame()" id="captureBtn" disabled class="flex-1 bg-[#8f0000] hover:bg-[#710000] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-md active:scale-95">
+                        <i data-lucide="scan-line" class="w-4 h-4 sm:w-5 sm:h-5"></i> Capture
+                    </button>
+                </div>
+            </div>
+
+            <!-- UPLOAD PANE -->
+            <div id="uploadPane" class="hidden w-full bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-3 sm:p-8 space-y-4 sm:space-y-6">
+                <div id="dropZone" class="border-2 border-dashed border-gray-400 bg-white/60 hover:bg-white rounded-xl sm:rounded-2xl p-8 sm:p-12 text-center transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                    <i data-lucide="image-plus" class="w-10 h-10 sm:w-12 sm:h-12 text-gray-500 mx-auto mb-2 sm:mb-3"></i>
+                    <p class="text-sm sm:text-base text-gray-800 font-semibold">Drag &amp; drop a ballot image here, or tap to browse</p>
+                    <p class="text-xs text-gray-500 mt-1">Supports JPG and PNG</p>
+                    <input id="fileInput" type="file" accept="image/jpeg,image/png,image/jpg" class="hidden" onchange="handleFileInput(event)" />
+                </div>
+                <div id="uploadPreviewWrap" class="hidden space-y-4">
+                    <img id="uploadPreviewImg" class="w-full max-h-[460px] object-contain rounded-xl border border-gray-300 bg-black/5" />
+                    <button onclick="processUploadedImage()" class="w-full bg-[#8f0000] hover:bg-[#710000] text-white text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-lg active:scale-95">
+                        <i data-lucide="cpu" class="w-5 h-5"></i> Process Image
+                    </button>
+                </div>
+            </div>
+
+            <!-- PROCESSING -->
+            <div id="processingPane" class="hidden w-full bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-8 sm:p-12 flex flex-col items-center gap-3 sm:gap-4">
+                <div class="spinner"></div>
+                <p class="text-sm sm:text-base text-gray-700 font-semibold">Analyzing ballot marks…</p>
+            </div>
+
+            <!-- DETECTION WARNING -->
+            <div id="detectionWarning" class="hidden w-full bg-red-50 border border-red-300 rounded-2xl sm:rounded-3xl p-5 sm:p-6 text-center space-y-3 sm:space-y-4 shadow-xl">
+                <i data-lucide="alert-triangle" class="w-8 h-8 sm:w-10 sm:h-10 text-red-600 mx-auto"></i>
+                <p id="detectionWarningText" class="text-xs sm:text-base text-red-800 font-medium"></p>
+                <button onclick="resetScanner()" class="bg-[#8f0000] hover:bg-[#710000] text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-lg sm:rounded-xl transition active:scale-95 shadow">
+                    Try Again
+                </button>
+            </div>
+
+            <!-- RESULTS -->
+            <div id="resultsPane" class="hidden w-full space-y-4 sm:space-y-6">
+                <div class="bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-3 sm:p-6 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-serif-title font-bold text-sm sm:text-lg text-[#8f0000] flex items-center gap-1.5">
+                            <i data-lucide="scan-eye" class="w-4 h-4 sm:w-5 sm:h-5"></i> Detected Marks
+                        </h2>
+                        <span class="text-[11px] sm:text-xs text-gray-600 font-medium">Green = valid · Red = overvote</span>
+                    </div>
+                    <canvas id="resultCanvas" class="w-full rounded-xl border border-gray-300 shadow-sm"></canvas>
+                </div>
+
+                <div class="bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-4 sm:p-8 space-y-4">
+                    <h2 class="font-serif-title font-bold text-sm sm:text-lg text-[#8f0000] flex items-center gap-2">
+                        <i data-lucide="list-checks" class="w-4 h-4 sm:w-5 sm:h-5"></i> Vote Summary
+                    </h2>
+                    <div id="resultsList" class="space-y-2 sm:space-y-3"></div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button onclick="resetScanner()" class="flex-1 bg-white hover:bg-gray-100 text-gray-800 text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 border border-gray-300 shadow-md active:scale-95">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4 sm:w-5 sm:h-5 text-[#8f0000]"></i> Rescan / Retry
+                    </button>
+                    <button onclick="confirmSubmit()" class="flex-1 bg-[#8f0000] hover:bg-[#710000] text-white text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-lg active:scale-95">
+                        <i data-lucide="check-circle" class="w-4 h-4 sm:w-5 sm:h-5"></i> Confirm &amp; Submit Votes
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <canvas id="captureCanvas" class="hidden"></canvas>
+    
+    <div id="toast" class="fixed bottom-5 right-5 z-50 hidden max-w-xs bg-[#8f0000] text-[#efefef] text-sm font-medium px-4 py-3 rounded-xl shadow-2xl transition-opacity duration-300 border border-white/20"></div>
+
+    <script>
+        const BALLOT_CONFIG_KEY = 'ballot_config';
+        const RESULTS_KEY = 'election_results';
+        const MAX_PROCESS_DIM = 1400;
+
+        const DARK_LUMINANCE = 95;
+        const FILL_RATIO_THRESHOLD = 0.65;
+        const CORNER_SEARCH_FRACTION = 0.22;
+        const CORNER_MIN_DARKNESS = 150;
+
+        const LAYOUT = {
+            headerFrac: 0.17,
+            barcodeFrac: 0.08,
+            footerFrac: 0.05,
+            colGutterFrac: 0.5,
+            bubbleInsetFrac: 0.045,
+            bubbleSampleFrac: 0.013
+        };
+
+        let config = null;
+        let stream = null;
+        let currentTab = 'camera';
+        let lastResults = null;
+        let lastSourceCanvas = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadConfig();
+
+            const params = new URLSearchParams(window.location.search);
+            const requestedMode = params.get('mode');
+            switchTab(requestedMode === 'upload' ? 'upload' : 'camera');
+
+            setupDropZone();
+        });
+
+        window.addEventListener('beforeunload', stopCamera);
+
+        function goBackToCommittee() {
+            stopCamera();
+            window.location.href = 'committee.html';
+        }
+
+        function loadConfig() {
+            try {
+                const raw = localStorage.getItem(BALLOT_CONFIG_KEY);
+                config = raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                console.warn('Could not parse ballot_config', e);
+                config = null;
+            }
+
+            const noConfig = document.getElementById('noConfigNotice');
+            const app = document.getElementById('scannerApp');
+
+            if (!config || !Array.isArray(config.positions) || config.positions.length === 0) {
+                noConfig.classList.remove('hidden');
+                app.classList.add('hidden');
+                return;
+            }
+
+            noConfig.classList.add('hidden');
+            app.classList.remove('hidden');
+
+            const yr = (config.academicYear || '----').replace(/\D/g, '').slice(0, 4) || '2026';
+            const badge = document.getElementById('ballotConfigBadge');
+            badge.textContent = `MSEUFCI-${yr}`;
+            badge.classList.remove('hidden');
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tabCameraBtn').classList.toggle('active', tab === 'camera');
+            document.getElementById('tabUploadBtn').classList.toggle('active', tab === 'upload');
+            document.getElementById('cameraPane').classList.toggle('hidden', tab !== 'camera');
+            document.getElementById('uploadPane').classList.toggle('hidden', tab !== 'upload');
+
+            hideAllResultPanes();
+
+            if (tab !== 'camera') stopCamera();
+        }
+
+        async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showToast('Camera access is not supported in this browser.', 'error');
+                return;
+            }
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' },
+                    audio: false
+                });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                document.getElementById('captureBtn').disabled = false;
+                document.getElementById('cameraStatus').textContent = 'Align the ballot within the edges, then capture.';
+            } catch (e) {
+                console.warn('Camera error', e);
+                showToast('Could not access the camera. Check permissions or use Upload instead.', 'error');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+            document.getElementById('captureBtn').disabled = true;
+        }
+
+        function captureFrame() {
+            const video = document.getElementById('video');
+            if (!video.videoWidth) {
+                showToast('Camera feed not ready yet.', 'error');
+                return;
+            }
+            const canvas = document.getElementById('captureCanvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            runPipelineFromCanvas(canvas);
+        }
+
+        function setupDropZone() {
+            const zone = document.getElementById('dropZone');
+            ['dragenter', 'dragover'].forEach(evt =>
+                zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('drop-active'); })
+            );
+            ['dragleave', 'drop'].forEach(evt =>
+                zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('drop-active'); })
+            );
+            zone.addEventListener('drop', (e) => {
+                const file = e.dataTransfer.files && e.dataTransfer.files[0];
+                if (file) loadImageFile(file);
+            });
+        }
+
+        function handleFileInput(e) {
+            const file = e.target.files && e.target.files[0];
+            if (file) loadImageFile(file);
+        }
+
+        let pendingUploadImg = null;
+        function loadImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast('Please choose an image file.', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    pendingUploadImg = img;
+                    document.getElementById('uploadPreviewImg').src = e.target.result;
+                    document.getElementById('uploadPreviewWrap').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function processUploadedImage() {
+            if (!pendingUploadImg) return;
+            const canvas = document.getElementById('captureCanvas');
+            canvas.width = pendingUploadImg.naturalWidth;
+            canvas.height = pendingUploadImg.naturalHeight;
+            canvas.getContext('2d').drawImage(pendingUploadImg, 0, 0);
+            runPipelineFromCanvas(canvas);
+        }
+
+        function hideAllResultPanes() {
+            document.getElementById('processingPane').classList.add('hidden');
+            document.getElementById('detectionWarning').classList.add('hidden');
+            document.getElementById('resultsPane').classList.add('hidden');
+        }
+
+        // ============================================================
+        // Pipeline with Dynamic Height Verification
+        // ============================================================
+        function runPipelineFromCanvas(sourceCanvas) {
+            hideAllResultPanes();
+            document.getElementById('processingPane').classList.remove('hidden');
+
+            setTimeout(() => {
+                try {
+                    const processed = downscaleToCanvas(sourceCanvas, MAX_PROCESS_DIM);
+                    lastSourceCanvas = processed;
+
+                    const ctx = processed.getContext('2d');
+                    const imageData = ctx.getImageData(0, 0, processed.width, processed.height);
+
+                    // GATE 1: Timing Marks
+                    const corners = detectCornerMarks(imageData, processed.width, processed.height);
+                    if (!corners) {
+                        showWarning('Could not detect all four corner alignment marks. Try better lighting and keep the ballot within the edges.');
+                        return;
+                    }
+
+                    // GATE 2: Dynamic Height Verification (Tinatanggap ang kahit anong haba basta portrait)
+                    const widthTop = Math.hypot(corners.tr.x - corners.tl.x, corners.tr.y - corners.tl.y);
+                    const widthBottom = Math.hypot(corners.br.x - corners.bl.x, corners.br.y - corners.bl.y);
+                    const heightLeft = Math.hypot(corners.bl.x - corners.tl.x, corners.bl.y - corners.tl.y);
+                    const heightRight = Math.hypot(corners.br.x - corners.tr.y, corners.br.y - corners.tr.y);
+
+                    const avgW = (widthTop + widthBottom) / 2;
+                    const avgH = (heightLeft + heightRight) / 2;
+                    const aspectRatio = avgH / avgW;
+
+                    if (aspectRatio < 1.0 || Math.abs(widthTop - widthBottom) / avgW > 0.40) {
+                        showWarning('Please align the official MSEUF-CI Ballot upright and within the edges.');
+                        return;
+                    }
+
+                    const rect = {
+                        x0: Math.min(corners.tl.x, corners.bl.x),
+                        y0: Math.min(corners.tl.y, corners.tr.y),
+                        x1: Math.max(corners.tr.x, corners.br.x),
+                        y1: Math.max(corners.bl.y, corners.br.y)
+                    };
+
+                    // GATE 3: Paper Whiteness
+                    const rw = rect.x1 - rect.x0;
+                    const rh = rect.y1 - rect.y0;
+                    const centerLuminance = avgLuminance(imageData, processed.width, Math.round(rect.x0 + rw * 0.25), Math.round(rect.y0 + rh * 0.25), Math.round(rw * 0.5), Math.round(rh * 0.5));
+                    
+                    if (centerLuminance < 140) {
+                        showWarning('The scanned surface is too dark or not a ballot document. Please scan in a well-lit area.');
+                        return;
+                    }
+
+                    // GATE 4: Barcode Strip Area
+                    if (!verifyBarcodePattern(imageData, processed.width, rect)) {
+                        showWarning('No ballot barcode pattern detected. Please make sure the official MSEUF-CI Ballot header is visible.');
+                        return;
+                    }
+
+                    // All Gates Passed
+                    const layout = buildLayoutRegions(config, rect);
+                    const results = runOmr(imageData, processed.width, layout);
+
+                    lastResults = results;
+                    renderResultCanvas(processed, layout, results);
+                    renderResultsList(results);
+
+                    document.getElementById('processingPane').classList.add('hidden');
+                    document.getElementById('resultsPane').classList.remove('hidden');
+                    lucide.createIcons();
+                } catch (err) {
+                    console.error(err);
+                    showWarning('Something went wrong while analyzing this image. Please try again.');
+                }
+            }, 50);
+        }
+
+        function showWarning(text) {
+            document.getElementById('processingPane').classList.add('hidden');
+            document.getElementById('detectionWarningText').textContent = text;
+            document.getElementById('detectionWarning').classList.remove('hidden');
+        }
+
+        function verifyBarcodePattern(imageData, imgWidth, rect) {
+            const rw = rect.x1 - rect.x0;
+            const rh = rect.y1 - rect.y0;
+            const testY = Math.round(rect.y0 + rh * (LAYOUT.headerFrac + LAYOUT.barcodeFrac * 0.5));
+            const startX = Math.round(rect.x0 + rw * 0.15);
+            const endX = Math.round(rect.x1 - rw * 0.15);
+
+            let transitions = 0;
+            let lastState = false;
+            const data = imageData.data;
+
+            for (let x = startX; x < endX; x++) {
+                const i = (testY * imgWidth + x) * 4;
+                const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                const isDark = lum < 120;
+
+                if (isDark !== lastState) {
+                    transitions++;
+                    lastState = isDark;
+                }
+            }
+            return transitions >= 8;
+        }
+
+        function downscaleToCanvas(sourceCanvas, maxDim) {
+            const { width, height } = sourceCanvas;
+            const scale = Math.min(1, maxDim / Math.max(width, height));
+            const out = document.createElement('canvas');
+            out.width = Math.round(width * scale);
+            out.height = Math.round(height * scale);
+            out.getContext('2d').drawImage(sourceCanvas, 0, 0, out.width, out.height);
+            return out;
+        }
+
+        function detectCornerMarks(imageData, width, height) {
+            const win = Math.max(6, Math.round(Math.min(width, height) * 0.012));
+            const stride = Math.max(2, Math.round(win / 2));
+
+            const searchW = Math.round(width * CORNER_SEARCH_FRACTION);
+            const searchH = Math.round(height * CORNER_SEARCH_FRACTION);
+
+            const regions = {
+                tl: { x0: 0, y0: 0, x1: searchW, y1: searchH },
+                tr: { x0: width - searchW, y0: 0, x1: width, y1: searchH },
+                bl: { x0: 0, y0: height - searchH, x1: searchW, y1: height },
+                br: { x0: width - searchW, y0: height - searchH, x1: width, y1: height }
+            };
+
+            const found = {};
+            for (const key in regions) {
+                const r = regions[key];
+                let best = null;
+                for (let y = r.y0; y < r.y1 - win; y += stride) {
+                    for (let x = r.x0; x < r.x1 - win; x += stride) {
+                        const avg = avgLuminance(imageData, width, x, y, win, win);
+                        if (!best || avg < best.avg) best = { x: x + win / 2, y: y + win / 2, avg };
+                    }
+                }
+                if (!best || best.avg > CORNER_MIN_DARKNESS) return null;
+                found[key] = best;
+            }
+            return found;
+        }
+
+        function avgLuminance(imageData, imgWidth, x0, y0, w, h) {
+            const data = imageData.data;
+            let sum = 0, count = 0;
+            const maxX = Math.min(imageData.width, x0 + w);
+            const maxY = Math.min(imageData.height, y0 + h);
+
+            for (let y = Math.max(0, y0); y < maxY; y++) {
+                let rowStart = (y * imgWidth + Math.max(0, x0)) * 4;
+                for (let x = Math.max(0, x0); x < maxX; x++) {
+                    const i = rowStart + (x - Math.max(0, x0)) * 4;
+                    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                    count++;
+                }
+            }
+            return count ? sum / count : 255;
+        }
+
+        function buildLayoutRegions(cfg, rect) {
+            const rw = rect.x1 - rect.x0;
+            const rh = rect.y1 - rect.y0;
+
+            const headerH = rh * LAYOUT.headerFrac;
+            const barcodeH = rh * LAYOUT.barcodeFrac;
+            const footerH = rh * LAYOUT.footerFrac;
+            const positionsTop = rect.y0 + headerH + barcodeH;
+            const positionsH = rh - headerH - barcodeH - footerH;
+
+            const rowsPerPosition = cfg.positions.map(p => Math.max(1, Math.ceil(p.candidates.length / 2)));
+            const weights = cfg.positions.map((p, i) => 1 + rowsPerPosition[i]);
+            const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+            let cursorY = positionsTop;
+            const positions = [];
+
+            cfg.positions.forEach((position, i) => {
+                const blockH = positionsH * (weights[i] / totalWeight);
+                const titleH = blockH * (1 / weights[i]);
+                const rows = rowsPerPosition[i];
+                const rowH = (blockH - titleH) / rows;
+
+                const candidates = position.candidates.map((candidate, ci) => {
+                    const col = ci % 2;
+                    const row = Math.floor(ci / 2);
+                    const colLeft = rect.x0 + (col === 0 ? 0 : rw * LAYOUT.colGutterFrac);
+                    const bubbleX = colLeft + rw * LAYOUT.bubbleInsetFrac;
+                    const bubbleY = cursorY + titleH + rowH * (row + 0.5);
+                    return { candidate, x: bubbleX, y: bubbleY };
+                });
+
+                positions.push({ position, candidates, blockTop: cursorY, blockH });
+                cursorY += blockH;
+            });
+
+            return { rect, positions, sampleRadius: Math.max(4, rw * LAYOUT.bubbleSampleFrac) };
+        }
+
+        function runOmr(imageData, imgWidth, layout) {
+            return layout.positions.map(({ position, candidates }) => {
+                const scored = candidates.map(c => {
+                    const ratio = darkRatioInRegion(imageData, imgWidth, c.x, c.y, layout.sampleRadius);
+                    return { ...c, filled: ratio > FILL_RATIO_THRESHOLD, ratio };
+                });
+
+                const filled = scored.filter(c => c.filled);
+                const max = position.maxChoices || 1;
+                let status;
+                if (filled.length === 0) status = 'blank';
+                else if (filled.length > max) status = 'overvote';
+                else status = 'valid';
+
+                return { position, scored, filled, status };
+            });
+        }
+
+        function darkRatioInRegion(imageData, imgWidth, cx, cy, radius) {
+            const data = imageData.data;
+            const x0 = Math.max(0, Math.round(cx - radius));
+            const y0 = Math.max(0, Math.round(cy - radius));
+            const x1 = Math.min(imageData.width, Math.round(cx + radius));
+            const y1 = Math.min(imageData.height, Math.round(cy + radius));
+
+            let dark = 0, total = 0;
+            for (let y = y0; y < y1; y++) {
+                let rowStart = (y * imgWidth + x0) * 4;
+                for (let x = x0; x < x1; x++) {
+                    const i = rowStart + (x - x0) * 4;
+                    const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                    if (lum < DARK_LUMINANCE) dark++;
+                    total++;
+                }
+            }
+            return total ? dark / total : 0;
+        }
+
+        function renderResultCanvas(sourceCanvas, layout, results) {
+            const canvas = document.getElementById('resultCanvas');
+            canvas.width = sourceCanvas.width;
+            canvas.height = sourceCanvas.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(sourceCanvas, 0, 0);
+
+            const ringR = layout.sampleRadius * 1.6;
+
+            results.forEach(({ position, scored, status }) => {
+                scored.forEach(c => {
+                    if (!c.filled) return;
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2);
+                    ctx.lineWidth = Math.max(2, ringR * 0.18);
+                    ctx.strokeStyle = status === 'overvote' ? '#dc2626' : '#16a34a';
+                    ctx.stroke();
+                });
+            });
+        }
+
+        function renderResultsList(results) {
+            const container = document.getElementById('resultsList');
+            container.innerHTML = results.map(({ position, filled, status }) => {
+                const badge = {
+                    valid: '<span class="text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">Valid</span>',
+                    overvote: '<span class="text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-800 px-2 py-0.5 rounded-full border border-red-300">Overvote</span>',
+                    blank: '<span class="text-[10px] font-bold uppercase tracking-wide bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full border border-gray-300">Blank</span>'
+                }[status];
+
+                const names = filled.length
+                    ? filled.map(c => escapeHtml(c.candidate.name)).join(', ')
+                    : '<span class="text-gray-400 italic">No selection detected</span>';
+
+                const border = status === 'overvote' ? 'border-red-300 bg-red-50' : status === 'valid' ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 bg-white';
+
+                return `
+                    <div class="border ${border} rounded-xl px-3.5 py-2.5 sm:py-3 flex items-start justify-between gap-3 shadow-sm">
+                        <div>
+                            <p class="text-xs font-bold text-gray-900 font-serif">${escapeHtml(position.name)}</p>
+                            <p class="text-xs text-gray-700 mt-0.5 font-medium">${names}</p>
+                            ${status === 'overvote' ? `<p class="text-[10px] text-red-700 mt-0.5 font-semibold">Selected more than the allowed ${position.maxChoices}.</p>` : ''}
+                        </div>
+                        ${badge}
+                    </div>`;
+            }).join('');
+        }
+
+        function confirmSubmit() {
+            if (!lastResults) return;
+
+            let tally;
+            try {
+                tally = JSON.parse(localStorage.getItem(RESULTS_KEY) || 'null');
+            } catch (e) {
+                tally = null;
+            }
+            if (!tally || !tally.positions) tally = initTally(config);
+
+            lastResults.forEach(({ position }) => {
+                if (!tally.positions[position.id]) {
+                    tally.positions[position.id] = {
+                        name: position.name, maxChoices: position.maxChoices,
+                        overvotes: 0, blanks: 0, candidates: {}
+                    };
+                }
+                position.candidates.forEach(c => {
+                    if (!tally.positions[position.id].candidates[c.id]) {
+                        tally.positions[position.id].candidates[c.id] = { name: c.name, votes: 0 };
+                    }
+                });
+            });
+
+            lastResults.forEach(({ position, filled, status }) => {
+                const posTally = tally.positions[position.id];
+                if (status === 'valid') {
+                    filled.forEach(c => { posTally.candidates[c.candidate.id].votes += 1; });
+                } else if (status === 'overvote') {
+                    posTally.overvotes += 1;
+                } else {
+                    posTally.blanks += 1;
+                }
+            });
+
+            tally.totalScanned = (tally.totalScanned || 0) + 1;
+            tally.lastUpdated = new Date().toISOString();
+
+            localStorage.setItem(RESULTS_KEY, JSON.stringify(tally));
+            showToast('Votes submitted and added to the tally.', 'success');
+            resetScanner();
+        }
+
+        function initTally(cfg) {
+            const positions = {};
+            cfg.positions.forEach(p => {
+                const candidates = {};
+                p.candidates.forEach(c => { candidates[c.id] = { name: c.name, votes: 0 }; });
+                positions[p.id] = { name: p.name, maxChoices: p.maxChoices, overvotes: 0, blanks: 0, candidates };
+            });
+            return { totalScanned: 0, positions };
+        }
+
+        function resetScanner() {
+            lastResults = null;
+            lastSourceCanvas = null;
+            pendingUploadImg = null;
+            document.getElementById('uploadPreviewWrap').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+            hideAllResultPanes();
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        let toastTimer = null;
+        function showToast(message, type = 'success') {
+            const el = document.getElementById('toast');
+            el.textContent = message;
+            el.classList.remove('hidden', 'bg-[#8f0000]', 'bg-red-800');
+            el.classList.add(type === 'error' ? 'bg-red-800' : 'bg-[#8f0000]');
+            el.style.opacity = '1';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                el.style.opacity = '0';
+                setTimeout(() => el.classList.add('hidden'), 300);
+            }, 2800);
+        }
+    </script>
+</body>
+</html>

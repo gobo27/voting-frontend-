@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ballot Creator &amp; Editor - MSEUF-CI Election System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-serif-title { font-family: 'Cinzel', serif; }
+        .font-mono-id { font-family: 'Space Mono', monospace; }
+
+        /* Screen Preview */
+        .ballot-card {
+            position: relative;
+            width: 100%;
+            background: #ffffff;
+            box-sizing: border-box;
+        }
+
+        .timing-mark {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #000000;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            z-index: 20;
+        }
+        .tm-tl { top: 8px; left: 8px; }
+        .tm-tr { top: 8px; right: 8px; }
+        .tm-bl { bottom: 8px; left: 8px; }
+        .tm-br { bottom: 8px; right: 8px; }
+
+        .barcode-bars {
+            height: 28px;
+            background-image: repeating-linear-gradient(
+                90deg,
+                #111 0px, #111 2px,
+                transparent 2px, transparent 4px,
+                #111 4px, #111 5px,
+                transparent 5px, transparent 9px,
+                #111 9px, #111 12px,
+                transparent 12px, transparent 14px
+            );
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .omr-bubble {
+            width: 16px;
+            height: 16px;
+            border-radius: 9999px;
+            border: 1.8px solid #1f1f1f;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .omr-bubble.filled {
+            background-color: #1f1f1f;
+        }
+
+        @media (min-width: 1024px) {
+            .preview-col { position: sticky; top: 5.5rem; }
+        }
+
+        /* --- PRINT STYLES --- */
+        #printContainer {
+            display: none;
+        }
+
+        @media print {
+            @page {
+                size: auto;
+                margin: 4mm 6mm;
+            }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                box-sizing: border-box !important;
+            }
+            html, body {
+                width: 100vw !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                overflow: hidden !important;
+            }
+            body * { visibility: hidden; }
+
+            #printContainer, #printContainer * {
+                visibility: visible !important;
+            }
+            #printContainer {
+                display: flex !important;
+                position: fixed !important;
+                inset: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                padding: 2mm 3mm !important;
+                margin: 0 !important;
+                flex-direction: column !important;
+                justify-content: space-evenly !important;
+                align-items: center !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                overflow: hidden !important;
+            }
+
+            .print-ballot-sheet {
+                position: relative !important;
+                width: 98% !important;
+                max-width: 820px !important;
+                padding: 10mm 12mm 7mm 12mm !important;
+                background: #ffffff !important;
+                box-sizing: border-box !important;
+                flex: 0 1 auto !important;
+            }
+
+            .print-ballot-sheet .tm-tl { top: 3mm !important; left: 3mm !important; }
+            .print-ballot-sheet .tm-tr { top: 3mm !important; right: 3mm !important; }
+            .print-ballot-sheet .tm-bl { bottom: 3mm !important; left: 3mm !important; }
+            .print-ballot-sheet .tm-br { bottom: 3mm !important; right: 3mm !important; }
+
+            .cut-divider {
+                width: 98% !important;
+                border-top: 1.5px dashed #999999 !important;
+                position: relative !important;
+                margin: 4mm 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            .cut-divider::after {
+                content: "✂ CUT HERE";
+                background: #ffffff;
+                padding: 0 10px;
+                font-size: 8px;
+                color: #777777;
+                font-weight: bold;
+                letter-spacing: 0.1em;
+                position: absolute;
+            }
+
+            #toast { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-[#e3dddd] min-h-screen text-gray-900 antialiased flex flex-col overflow-y-auto">
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-50 w-full bg-[#8f0000] border-b border-red-900/50 py-4 px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+            <a href="Committee.html" class="text-white hover:opacity-80 transition shrink-0" aria-label="Back to Committee Dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m12 19-7-7 7-7"></path>
+                    <path d="M19 12H5"></path>
+                </svg>
+            </a>
+
+            <div class="flex flex-col min-w-0">
+                <h2 class="text-base sm:text-[23px] font-serif font-bold text-white leading-none truncate">Ballot Creator &amp; Editor</h2>
+                <p class="text-[11px] sm:text-[13px] text-gray-200/90 font-light mt-1 font-serif truncate">Secure Role-based Authentication</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            <button onclick="saveBallot()"
+                class="bg-[#710000] hover:bg-[#5a0000] border border-white/20 text-[#efefef] px-3 sm:px-4 py-2 rounded-full flex items-center gap-1.5 text-xs sm:text-sm font-serif font-semibold transition shadow active:scale-95">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span class="hidden md:inline">Save &amp; Store Ballot</span>
+                <span class="md:hidden">Save</span>
+            </button>
+            <button onclick="printBallot()"
+                class="bg-[#efefef] hover:bg-white text-[#8f0000] px-3 sm:px-5 py-2 rounded-full flex items-center gap-1.5 text-xs sm:text-sm font-serif font-bold transition shadow active:scale-95">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                <span>Print Ballot</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="w-full max-w-[1440px] mx-auto p-4 sm:p-6 md:p-8 pt-6 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-start">
+
+        <!-- ============ LEFT: BUILDER ============ -->
+        <section class="space-y-6">
+            <div id="electionDetails" class="bg-[#efefef] rounded-2xl shadow-xl border border-white/50 p-6 sm:p-8 space-y-5">
+                <div class="flex items-center gap-3 text-[#8f0000] pb-1 border-b border-gray-300">
+                    <i data-lucide="file-text" class="w-8 h-8 shrink-0"></i>
+                    <h2 class="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-gray-950">Election Details</h2>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Election Title</label>
+                    <input id="titleInput" type="text" placeholder="e.g. MSEUF-CI Student Council Election 2026"
+                        class="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8f0000] text-gray-900 shadow-sm" />
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Academic Year</label>
+                    <input id="yearInput" type="text" placeholder="e.g. 2026-2027"
+                        class="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8f0000] text-gray-900 shadow-sm" />
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Instructions</label>
+                    <textarea id="instructionsInput" rows="2" placeholder="e.g. Shade the circle beside your chosen candidate completely."
+                        class="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8f0000] resize-none text-gray-900 shadow-sm"></textarea>
+                </div>
+            </div>
+
+            <div class="bg-[#efefef] rounded-2xl shadow-xl border border-white/50 p-6 sm:p-8 space-y-5">
+                <div class="flex items-center justify-between gap-3 pb-1 border-b border-gray-300">
+                    <div class="flex items-center gap-3 text-[#8f0000]">
+                        <i data-lucide="users" class="w-8 h-8 shrink-0"></i>
+                        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-gray-950">Positions &amp; Candidates</h2>
+                    </div>
+                    <button onclick="addPosition()"
+                        class="bg-[#8f0000] hover:bg-[#710000] text-white text-xs sm:text-sm font-bold px-3.5 sm:px-4 py-2 rounded-lg flex items-center gap-1.5 transition shadow active:scale-95">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Add Position</span>
+                    </button>
+                </div>
+
+                <div id="positionsBuilder" class="space-y-4 pt-1"></div>
+            </div>
+        </section>
+
+        <!-- ============ RIGHT: LIVE PREVIEW ============ -->
+        <section class="preview-col space-y-3">
+            <div class="flex items-center justify-between px-1">
+                <div class="flex items-center gap-2 text-gray-700">
+                    <i data-lucide="eye" class="w-5 h-5 text-[#8f0000]"></i>
+                    <span class="text-xs sm:text-sm font-bold uppercase tracking-wide">Live Ballot Preview</span>
+                </div>
+                <span id="layoutBadge" class="text-[11px] sm:text-xs text-emerald-800 bg-emerald-100 font-semibold px-2 py-0.5 rounded-full border border-emerald-300">
+                    Auto: 2 Ballots per Sheet
+                </span>
+            </div>
+
+            <div id="ballotPreview" class="ballot-card w-full max-w-[640px] mx-auto rounded-xl shadow-2xl border border-gray-400 p-6 sm:p-8">
+                <!-- 4 Corner Timing Marks -->
+                <div class="timing-mark tm-tl"></div>
+                <div class="timing-mark tm-tr"></div>
+                <div class="timing-mark tm-bl"></div>
+                <div class="timing-mark tm-br"></div>
+
+                <!-- Header -->
+                <div class="flex items-start justify-between gap-3 pb-2.5 border-b-2 border-gray-900 shrink-0">
+                    <div class="w-11 h-11 rounded-full bg-[#8f0000] flex items-center justify-center text-white shrink-0 shadow-sm">
+                        <i data-lucide="shield" class="w-5 h-5"></i>
+                    </div>
+
+                    <div class="flex-1 text-center px-2">
+                        <p id="previewTitle" class="text-base sm:text-lg font-bold tracking-tight font-serif leading-tight text-gray-950">Election Title</p>
+                        <p id="previewYear" class="text-[11px] text-gray-600 font-semibold tracking-wide mt-0.5">A.Y. </p>
+                        <p id="previewInstructions" class="text-[10px] text-gray-500 mt-1 italic leading-snug"></p>
+                    </div>
+
+                    
+                </div>
+
+                <!-- Barcode Area -->
+                <div class="pt-2 pb-1.5 shrink-0">
+                    <div class="barcode-bars w-full"></div>
+                    <p id="previewBallotId" class="font-mono-id text-[10px] text-center tracking-widest mt-1 text-gray-800">BALLOT ID</p>
+                </div>
+
+                <!-- Positions Container -->
+                <div id="ballotPositions" class="pt-1.5 space-y-3"></div>
+
+                <!-- Footer -->
+                <div id="ballotFooter" class="pt-3 border-t border-dashed border-gray-300">
+                    <p class="text-[9px] text-gray-400 text-center">
+                        Official MSEUF-CI Ballot  do not fold, staple, or mark outside the bubbles.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- CONTAINER DEDICADO PARA SA PAG-PRINT -->
+    <div id="printContainer"></div>
+
+    <div id="toast" class="fixed bottom-5 right-5 z-50 hidden max-w-xs bg-[#8f0000] text-[#efefef] text-sm font-medium px-4 py-3 rounded-xl shadow-2xl transition-opacity duration-300 border border-white/20"></div>
+
+    <script>
+    const STORAGE_KEY = 'ballot_config';
+    let idCounter = 0;
+    const genId = () => 'id-' + (++idCounter) + '-' + Date.now().toString(36);
+
+    const demoSelections = {};
+    let activeElectionId = 1; // Set default or pull from query param e.g., ?election_id=1
+
+    let state = {
+        templateId: null,
+        ballotId: '',
+        title: 'MSEUF-CI Student Council Election 2026',
+        academicYear: '2026-2027',
+        instructions: 'Shade the circle beside your chosen candidate completely using a black or blue pen.',
+        positions: []
+    };
+
+    function generateBallotId() {
+        const match = (state.academicYear || '').match(/\b(19\d{2}|20\d{2})\b/);
+        const yr = match ? match[0] : '2026';
+        return `MSEUFCI-${yr}`;
+    }
+
+    // --- FETCH ELECTION DATA FROM BACKEND ---
+    async function fetchElectionData() {
+        try {
+            // Get URL parameter if provided: ?election_id=X
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('election_id')) {
+                activeElectionId = urlParams.get('election_id');
+            }
+
+            // Fetch active positions and candidates from backend
+            const res = await fetch(`/api/positions/election/${activeElectionId}`);
+            if (!res.ok) throw new Error('Could not fetch election data');
+
+            const data = await res.json();
+            if (data.positions && data.positions.length > 0) {
+                state.positions = data.positions.map(p => ({
+                    id: p.position_id,
+                    name: p.position_name,
+                    maxChoices: p.max_choices || 1,
+                    candidates: (p.candidates || []).map(c => ({
+                        id: c.candidate_id,
+                        name: c.name
+                    }))
+                }));
+            }
+        } catch (err) {
+            console.warn('Backend API fetch skipped or failed. Using fallback template state:', err);
+            loadLocalFallback();
+        } finally {
+            state.ballotId = generateBallotId();
+            renderBuilder();
+            renderPreview();
+        }
+    }
+
+    function loadLocalFallback() {
+        state.positions = [
+            {
+                id: genId(), name: 'President', maxChoices: 1,
+                candidates: [{ id: genId(), name: 'Maria Santos' }, { id: genId(), name: 'Juan Dela Cruz' }]
+            },
+            {
+                id: genId(), name: 'Vice-President', maxChoices: 1,
+                candidates: [{ id: genId(), name: 'Pedro Reyes' }, { id: genId(), name: 'Ana Lim' }]
+            }
+        ];
+    }
+
+    // --- SAVE BALLOT TO BACKEND ---
+    async function saveBallot() {
+        if (!state.positions.length) {
+            showToast('Add at least one position before saving.', 'error');
+            return;
+        }
+
+        const emptyPosition = state.positions.find(p => p.candidates.length === 0);
+        if (emptyPosition) {
+            showToast(`"${emptyPosition.name}" has no candidates yet.`, 'error');
+            return;
+        }
+
+        try {
+            showToast('Saving ballot template...', 'success');
+
+            // 1. Create Ballot Template in backend database via POST /api/ballots/templates
+            const templateRes = await fetch('/api/ballots/templates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    election_id: activeElectionId,
+                    template_name: state.title,
+                    paper_size: 'A4'
+                })
+            });
+
+            const templateData = await templateRes.json();
+            if (!templateRes.ok) {
+                throw new Error(templateData.message || 'Failed to create template');
+            }
+
+            const templateId = templateData.template.template_id;
+            state.templateId = templateId;
+
+            // 2. Map coordinates for candidates (used for OMR reading)
+            for (const pos of state.positions) {
+                for (let i = 0; i < pos.candidates.length; i++) {
+                    const candidate = pos.candidates[i];
+                    if (candidate.id && typeof candidate.id === 'number') {
+                        await fetch(`/api/ballots/templates/${templateId}/coordinates`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                candidate_id: candidate.id,
+                                bubble_code: `B_${pos.id}_${i}`,
+                                x_pos: 100 + (i * 20),
+                                y_pos: 150 + (i * 20),
+                                width: 16,
+                                height: 16
+                            })
+                        });
+                    }
+                }
+            }
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            showToast('Ballot template successfully saved to database!', 'success');
+
+        } catch (err) {
+            console.error('Save error:', err);
+            showToast(err.message || 'Error saving to database.', 'error');
+        }
+    }
+
+    function canFitTwoBallots() {
+        let totalRows = 0;
+        state.positions.forEach(p => {
+            totalRows += 1 + Math.ceil(p.candidates.length / 2);
+        });
+        return totalRows <= 8;
+    }
+
+    function preparePrintSheets() {
+        const container = document.getElementById('printContainer');
+        const previewHTML = document.getElementById('ballotPreview').innerHTML;
+
+        if (canFitTwoBallots()) {
+            container.innerHTML = `
+                <div class="print-ballot-sheet">${previewHTML}</div>
+                <div class="cut-divider"></div>
+                <div class="print-ballot-sheet">${previewHTML}</div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="print-ballot-sheet" style="padding: 16mm 14mm !important; margin: auto !important;">${previewHTML}</div>
+            `;
+        }
+    }
+
+    function printBallot() {
+        if (!state.positions.length) {
+            showToast('Add at least one position before printing.', 'error');
+            return;
+        }
+        preparePrintSheets();
+        window.print();
+    }
+
+    let toastTimer = null;
+    function showToast(message, type = 'success') {
+        const el = document.getElementById('toast');
+        el.textContent = message;
+        el.classList.remove('hidden', 'bg-[#8f0000]', 'bg-red-800');
+        el.classList.add(type === 'error' ? 'bg-red-800' : 'bg-[#8f0000]');
+        el.style.opacity = '1';
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            el.style.opacity = '0';
+            setTimeout(() => el.classList.add('hidden'), 300);
+        }, 2600);
+    }
+
+    function addPosition() {
+        state.positions.push({
+            id: genId(),
+            name: 'New Position',
+            maxChoices: 1,
+            candidates: [{ id: genId(), name: 'Candidate Name' }]
+        });
+        renderBuilder();
+        renderPreview();
+    }
+
+    function removePosition(posId) {
+        state.positions = state.positions.filter(p => p.id !== posId);
+        delete demoSelections[posId];
+        renderBuilder();
+        renderPreview();
+    }
+
+    function addCandidate(posId) {
+        const position = state.positions.find(p => p.id === posId);
+        if (!position) return;
+        position.candidates.push({ id: genId(), name: 'New Candidate' });
+        renderBuilder();
+        renderPreview();
+    }
+
+    function removeCandidate(posId, candId) {
+        const position = state.positions.find(p => p.id === posId);
+        if (!position) return;
+        position.candidates = position.candidates.filter(c => c.id !== candId);
+        renderBuilder();
+        renderPreview();
+    }
+
+    function toggleBubble(posId, candId) {
+        const position = state.positions.find(p => p.id === posId);
+        if (!position) return;
+        if (!demoSelections[posId]) demoSelections[posId] = new Set();
+        const set = demoSelections[posId];
+
+        if (set.has(candId)) {
+            set.delete(candId);
+        } else {
+            const max = position.maxChoices || 1;
+            if (set.size >= max) {
+                showToast(`You can only select up to ${max} for ${position.name}.`, 'error');
+                return;
+            }
+            set.add(candId);
+        }
+        renderPreview();
+    }
+
+    function renderBuilder() {
+        const container = document.getElementById('positionsBuilder');
+
+        if (!state.positions.length) {
+            container.innerHTML = `
+                <div class="text-center text-sm text-gray-500 border-2 border-dashed border-gray-300 rounded-xl py-8">
+                    No positions yet. Click "Add Position" to start building the ballot.
+                </div>`;
+            lucide.createIcons();
+            return;
+        }
+
+        container.innerHTML = state.positions.map((position) => `
+            <div data-position-id="${position.id}" class="border border-gray-300 rounded-xl p-4 space-y-3 bg-white/80 shadow-sm">
+                <div class="flex items-start gap-2">
+                    <input type="text" value="${escapeAttr(position.name)}"
+                        class="position-name-input flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#8f0000] text-gray-900"
+                        placeholder="Position name" />
+                    <button onclick="removePosition('${position.id}')"
+                        class="text-gray-400 hover:text-red-600 transition p-2" aria-label="Remove position">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <span>Select up to</span>
+                    <input type="number" min="1" value="${position.maxChoices}"
+                        class="position-max-input w-16 bg-white border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#8f0000] text-gray-900" />
+                    <span>candidate(s)</span>
+                </div>
+
+                <div class="space-y-2">
+                    ${position.candidates.map((candidate) => `
+                        <div data-candidate-id="${candidate.id}" class="flex items-center gap-2">
+                            <input type="text" value="${escapeAttr(candidate.name)}"
+                                class="candidate-name-input flex-1 bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#8f0000] text-gray-900"
+                                placeholder="Candidate name" />
+                            <button onclick="removeCandidate('${position.id}', '${candidate.id}')"
+                                class="text-gray-400 hover:text-red-600 transition p-1.5" aria-label="Remove candidate">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <button onclick="addCandidate('${position.id}')"
+                    class="text-[#8f0000] hover:text-[#710000] text-xs font-bold flex items-center gap-1.5 pt-1 transition">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    <span>Add Candidate</span>
+                </button>
+            </div>
+        `).join('');
+
+        lucide.createIcons();
+    }
+
+    document.getElementById('positionsBuilder').addEventListener('input', (e) => {
+        const posEl = e.target.closest('[data-position-id]');
+        if (!posEl) return;
+        const position = state.positions.find(p => p.id === posEl.dataset.positionId);
+        if (!position) return;
+
+        if (e.target.matches('.position-name-input')) {
+            position.name = e.target.value;
+        } else if (e.target.matches('.position-max-input')) {
+            position.maxChoices = Math.max(1, parseInt(e.target.value, 10) || 1);
+        } else if (e.target.matches('.candidate-name-input')) {
+            const candEl = e.target.closest('[data-candidate-id]');
+            const candidate = position.candidates.find(c => c.id === candEl.dataset.candidateId);
+            if (candidate) candidate.name = e.target.value;
+        }
+        renderPreview();
+    });
+
+    document.getElementById('electionDetails').addEventListener('input', (e) => {
+        if (e.target.id === 'titleInput') state.title = e.target.value;
+        if (e.target.id === 'yearInput') {
+            state.academicYear = e.target.value;
+            state.ballotId = generateBallotId();
+        }
+        if (e.target.id === 'instructionsInput') state.instructions = e.target.value;
+        renderPreview();
+    });
+
+    function renderPreview() {
+        document.getElementById('previewTitle').textContent = state.title || 'Election Title';
+        document.getElementById('previewYear').textContent = `A.Y. ${state.academicYear || '—'}`;
+        document.getElementById('previewInstructions').textContent = state.instructions || '';
+        document.getElementById('previewBallotId').textContent = state.ballotId || 'BALLOT ID PENDING';
+
+        const badge = document.getElementById('layoutBadge');
+        if (canFitTwoBallots()) {
+            badge.textContent = 'Auto: 2 Ballots per Sheet (Cost Saver)';
+            badge.className = 'text-[11px] sm:text-xs text-emerald-800 bg-emerald-100 font-semibold px-2 py-0.5 rounded-full border border-emerald-300';
+        } else {
+            badge.textContent = 'Auto: 1 Full-Page Ballot';
+            badge.className = 'text-[11px] sm:text-xs text-blue-800 bg-blue-100 font-semibold px-2 py-0.5 rounded-full border border-blue-300';
+        }
+
+        const container = document.getElementById('ballotPositions');
+
+        if (!state.positions.length) {
+            container.innerHTML = `<p class="text-xs text-gray-400 text-center py-6">Add a position to see it appear here.</p>`;
+            return;
+        }
+
+        container.innerHTML = state.positions.map((position) => `
+            <div class="w-full">
+                <div class="flex items-baseline justify-between border-b border-gray-800 pb-0.5 mb-1">
+                    <h3 class="font-serif-title font-bold text-xs sm:text-sm text-gray-900 uppercase tracking-tight">${escapeHtml(position.name || 'Untitled Position')}</h3>
+                    <span class="text-[9px] text-gray-500 uppercase tracking-wide">Select up to ${position.maxChoices}</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                    ${position.candidates.map((candidate) => {
+                        const isFilled = demoSelections[position.id]?.has(candidate.id);
+                        return `
+                            <div class="flex items-center gap-2">
+                                <div onclick="toggleBubble('${position.id}', '${candidate.id}')"
+                                    class="omr-bubble${isFilled ? ' filled' : ''}"
+                                    role="button" aria-label="Mark ${escapeAttr(candidate.name)}"></div>
+                                <span class="text-[11px] sm:text-xs text-gray-800 leading-tight">${escapeHtml(candidate.name || 'Unnamed Candidate')}</span>
+                            </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `).join('');
+
+        lucide.createIcons();
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escapeAttr(str) {
+        return escapeHtml(str).replace(/"/g, '&quot;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('titleInput').value = state.title;
+        document.getElementById('yearInput').value = state.academicYear;
+        document.getElementById('instructionsInput').value = state.instructions;
+        fetchElectionData();
+    });
+</script>
+</body>
+</html>

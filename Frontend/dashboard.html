@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Results - MSEUF Election System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen w-full bg-[#e3dddd] text-gray-800 font-sans antialiased flex flex-col">
+
+  <header class="sticky top-0 z-50 w-full bg-[#700000] border-b border-red-950/50 py-5 px-3 flex items-center gap-3 shadow-md">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a href="index.html" class="text-white hover:opacity-80 transition" aria-label="Back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 19-7-7 7-7"></path>
+          <path d="M19 12H5"></path>
+        </svg>
+      </a>
+
+      <div class="w-11 h-11 shrink-0 overflow-hidden rounded-full">
+        <img src="image/logo.png" alt="User Profile" class="w-full h-full object-cover">
+      </div>
+
+      <h2 class="text-lg sm:text-[22px] font-serif font-bold text-white leading-none">Live Dashboard</h2>
+    </div>
+  </header>
+  
+  <main class="w-full flex-1 px-6 pt-4 pb-8 md:px-12 md:pt-5 md:pb-10 flex flex-col gap-4">
+
+    <div id="statusBanner"
+      class="w-full rounded-xl px-4 py-2.5 font-serif font-semibold text-sm sm:text-base flex items-center gap-2 shadow-sm border transition-colors">
+      <span id="statusIcon">🔒</span>
+      <span id="statusBannerText">Voting in Progress (Names Hidden)</span>
+    </div>
+ 
+    <div class="flex items-center justify-between gap-4 border-b border-gray-300 pb-2.5">
+      <div class="flex items-center gap-3">
+        <h2 class="text-[25px] sm:text-[20px] font-serif font-bold text-gray-950 leading-none">Live Results</h2>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label for="sortSelect" class="font-serif font-semibold text-gray-800 text-[20px] sm:text-[15px] leading-none">Sort By:</label>
+        <div class="relative flex items-center">
+          <select id="sortSelect" onchange="renderLiveResults()" class="appearance-none bg-[#d5cece] hover:bg-[#c9c1c1] border border-red-900/40 text-gray-900 font-serif font-medium text-sm sm:text-base rounded-xl py-1 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-red-800 cursor-pointer shadow-sm">
+            <option value="default">Default (Ballot Order)</option>
+            <option value="high-low">Highest to Lowest</option>
+            <option value="low-high">Lowest to Highest</option>
+          </select>
+          <div class="pointer-events-none absolute right-2 flex items-center text-red-900">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="resultsContainer" class="flex flex-col gap-6 w-full">
+      </div>
+
+  </main>
+
+  <script>
+    const STORAGE_KEYS = {
+      status: 'election_status',   // 'OPEN' | 'PAUSED' | 'CLOSED'
+      masked: 'names_masked',      // 'true' | 'false'
+      ballot: 'ballot_config',     // Configuration mula sa ballot creator
+      results: 'election_results'  // Naipong boto mula sa ballot scanner
+    };
+    const MASK_CHAR = '••••••••';
+
+    function getElectionStatus() {
+      return localStorage.getItem(STORAGE_KEYS.status) || 'OPEN';
+    }
+
+    function getNamesMasked() {
+      const v = localStorage.getItem(STORAGE_KEYS.masked);
+      return v === null ? true : v === 'true'; // Naka-mask by default
+    }
+
+    function isRevealed() {
+      if (getElectionStatus() === 'CLOSED') return true;
+      return !getNamesMasked();
+    }
+
+    function renderLiveResults() {
+      let config = null;
+      let tally = null;
+
+      try {
+        config = JSON.parse(localStorage.getItem(STORAGE_KEYS.ballot));
+        tally = JSON.parse(localStorage.getItem(STORAGE_KEYS.results));
+      } catch (e) {
+        console.warn('Error reading ballot configuration/results', e);
+      }
+
+      const container = document.getElementById('resultsContainer');
+      const sortMode = document.getElementById('sortSelect').value;
+      const revealed = isRevealed();
+
+      // Kung walang configuration na nahanap
+      if (!config || !Array.isArray(config.positions) || config.positions.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center bg-white/50 border border-gray-300 rounded-2xl">
+            <p class="font-serif font-bold text-gray-700 text-lg">No Ballot Data Found</p>
+            <p class="text-sm text-gray-500 mt-1">Please create and save a ballot first in the Ballot Creator.</p>
+          </div>
+        `;
+        applyBannerState();
+        return;
+      }
+
+      // Buuin ang bawat posisyon at kandidato mula sa ballot config
+      container.innerHTML = config.positions.map(position => {
+        const posTally = (tally && tally.positions && tally.positions[position.id]) ? tally.positions[position.id] : null;
+
+        // I-map ang bawat kandidato sa kanilang botong nakuha
+        let candidates = position.candidates.map(candidate => {
+          const votes = (posTally && posTally.candidates && posTally.candidates[candidate.id])
+            ? posTally.candidates[candidate.id].votes
+            : 0;
+          return {
+            id: candidate.id,
+            name: candidate.name,
+            votes: votes
+          };
+        });
+
+        // Kabuuang boto sa posisyong ito para sa porsyento
+        const totalVotesInPosition = candidates.reduce((acc, curr) => acc + curr.votes, 0);
+
+        // Pag-uuri (Sorting)
+        if (sortMode === 'high-low') {
+          candidates.sort((a, b) => b.votes - a.votes);
+        } else if (sortMode === 'low-high') {
+          candidates.sort((a, b) => a.votes - b.votes);
+        }
+
+        const candidateRowsHTML = candidates.map((candidate, idx) => {
+          const percent = totalVotesInPosition > 0 
+            ? Math.round((candidate.votes / totalVotesInPosition) * 100) 
+            : 0;
+
+          return `
+            <div class="candidate-row flex flex-col w-full ${idx > 0 ? 'mt-2.5' : ''}" 
+                 data-candidate-id="${escapeHtml(candidate.id)}" 
+                 data-candidate-name="${escapeHtml(candidate.name)}">
+              <div class="flex justify-between items-center text-xs sm:text-sm font-serif font-semibold text-gray-700 leading-none mb-1">
+                <span class="candidate-name">${revealed ? escapeHtml(candidate.name) : MASK_CHAR}</span>
+                <span class="candidate-percent font-sans">${percent}% (${candidate.votes.toLocaleString()} votes)</span>
+              </div>
+              <div class="w-full bg-gray-400/60 h-3 sm:h-3.5 rounded-full overflow-hidden shadow-inner">
+                <div class="candidate-bar bg-red-600 h-full rounded-full transition-all duration-500 ease-out" 
+                     style="width: ${percent}%;"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="position-section flex flex-col gap-2 w-full" data-position="${escapeHtml(position.name)}">
+            <div class="border-l-4 border-red-800 pl-2.5 flex items-baseline justify-between">
+              <h3 class="text-[22px] sm:text-[19px] font-serif font-bold text-gray-900 leading-tight">${escapeHtml(position.name)}</h3>
+              <span class="text-xs text-gray-500 font-serif">Select up to ${position.maxChoices}</span>
+            </div>
+
+            <div class="candidates-list flex flex-col pl-3 w-full">
+              ${candidateRowsHTML}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      applyBannerState();
+    }
+
+    function applyBannerState() {
+      const status = getElectionStatus();
+      const revealed = isRevealed();
+
+      const banner = document.getElementById('statusBanner');
+      const bannerText = document.getElementById('statusBannerText');
+      const statusIcon = document.getElementById('statusIcon');
+
+      banner.classList.remove(
+        'bg-emerald-100', 'text-emerald-900', 'border-emerald-400',
+        'bg-amber-100', 'text-amber-900', 'border-amber-400',
+        'bg-gray-200', 'text-gray-800', 'border-gray-400'
+      );
+
+      if (status === 'CLOSED') {
+        bannerText.textContent = 'Election Ended — Official Results Revealed';
+        statusIcon.textContent = '✅';
+        banner.classList.add('bg-emerald-100', 'text-emerald-900', 'border-emerald-400');
+      } else if (revealed) {
+        bannerText.textContent = 'Voting in Progress — Names Revealed (Preview)';
+        statusIcon.textContent = '👁️';
+        banner.classList.add('bg-amber-100', 'text-amber-900', 'border-amber-400');
+      } else {
+        bannerText.textContent = 'Voting in Progress (Names Hidden)';
+        statusIcon.textContent = '🔒';
+        banner.classList.add('bg-gray-200', 'text-gray-800', 'border-gray-400');
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Naka-sync sa ibang tabs/windows kapag may na-scan o binago sa ballot/admin
+    window.addEventListener('storage', (event) => {
+      if (
+        event.key === STORAGE_KEYS.status || 
+        event.key === STORAGE_KEYS.masked ||
+        event.key === STORAGE_KEYS.ballot ||
+        event.key === STORAGE_KEYS.results
+      ) {
+        renderLiveResults();
+      }
+    });
+
+    // Auto-poll tuwing 2 segundo para real-time updates
+    setInterval(renderLiveResults, 2000);
+
+    document.addEventListener('DOMContentLoaded', renderLiveResults);
+  </script>
+</body>
+</html>

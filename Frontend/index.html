@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSEUF-CI Election System</title>
+  <link href="./dist/output.css" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-black text-[#efefef] font-sans antialiased">
+
+  <div class="relative min-h-screen w-full grid grid-cols-1 md:grid-cols-2 overflow-hidden">
+    
+    <!-- BACKGROUND IMAGE -->
+    <img 
+      src="image/bg.jpg" 
+      alt="Background" 
+      class="absolute inset-0 w-full h-full object-cover -z-10"
+    />
+
+    <!-- KALIWANG BAHAGI (Red Overlay Panel) -->
+    <div class="bg-[#800000]/90 md:bg-[#800000]/95 p-8 md:p-14 flex flex-col justify-center items-center md:items-start text-center md:text-left shadow-2xl z-10">
+      <div class="w-36 sm:w-44 md:w-52 mb-6">
+        <img 
+          src="image/logo.png" 
+          alt="School Logo" 
+          class="w-full h-auto object-contain drop-shadow-xl"
+        />
+      </div>
+
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold leading-snug tracking-wide text-[#efefef] font-serif drop-shadow-md max-w-lg">
+        Web Based School Election System with Digital Image Based Processing and Real-Time Analytical Report
+      </h1>
+    </div>
+
+    <!-- KANANG BAHAGI (Ito ang fix para sa buttons) -->
+    <div class="p-8 md:p-16 flex flex-col justify-end items-center md:items-start z-10 pb-16 md:pb-24">
+      
+      <!-- Container ng Buttons para siguradong pareho ang lapad -->
+      <div class="flex flex-col gap-6 w-full max-w-[240px]">
+        
+        <!-- Sign In Button -->
+        <a 
+          href="signin.html" 
+          class="w-80 bg-[#800000] hover:bg-[#600000] text-white font-medium text-lg py-3 px-6 rounded-xl border border-white/20 shadow-xl transition text-center block"
+        >
+          <span class="font-serif">Sign In</span>
+        </a>
+
+        <!-- Live Dashboard Button -->
+        <a 
+          href="dashboard.html" 
+          class="w-80 bg-[#800000] hover:bg-[#600000] text-white font-medium text-lg py-3 px-6 rounded-xl border border-white/20 shadow-xl transition text-center block"
+        >
+          <span class="font-serif">Live Dash Board</span>
+        </a>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>

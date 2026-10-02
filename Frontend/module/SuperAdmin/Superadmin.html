@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin Dashboard - Manage Voters</title>
+  <link rel="stylesheet" href="../dist/output.css">
+</head>
+<body class="bg-gray-100 font-sans antialiased w-full overflow-x-hidden min-h-screen flex flex-col">
+
+  <!-- HEADER -->
+  <header class="fixed top-0 left-0 right-0 z-50 w-full bg-[#8f0000] border-b border-[#710000]/50 py-4 sm:py-5 px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0">
+    <div class="flex items-center gap-3">
+      <a href="SuperAdminlog.html" class="text-[#efefef] hover:opacity-80 transition shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 19-7-7 7-7"></path>
+          <path d="M19 12H5"></path>
+        </svg>
+      </a>
+      <div class="flex flex-col">
+        <h2 class="text-lg sm:text-[23px] font-serif font-bold text-[#efefef] leading-tight">Adviser Dashboard</h2>
+        <p class="text-[11px] sm:text-[13px] text-[#efefef] font-light">Election Monitoring & Control Panel</p>
+      </div>
+    </div>
+
+    <!-- MOBILE HAMBURGER MENU -->
+    <div class="relative md:hidden shrink-0">
+      <details class="group">
+        <summary class="list-none cursor-pointer p-1 text-[#efefef] hover:opacity-80 transition focus:outline-none flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" x2="20" y1="6" y2="6"></line>
+            <line x1="4" x2="20" y1="12" y2="12"></line>
+            <line x1="4" x2="20" y1="18" y2="18"></line>
+          </svg>
+        </summary>
+
+        <div class="absolute right-0 mt-3 w-48 bg-[#efefef] rounded-xl shadow-2xl  py-3 z-50">
+          <div class="px-4 pb-2 mb-1  border-[#efefef] text-center font-bold text-[#8f0000] font-serif text-sm">
+            System Modules
+          </div>
+          <nav class="flex flex-col font-serif text-sm">
+            <a href="SuperAdmin.html" class="px-4 py-2 text-[#8f0000]  hover:text-black">
+              Manage Voters
+            </a>
+            <a href="Manageacc.html" class="px-4 py-2 text-[#8f0000]  hover:text-black transition">
+              Manage Accounts
+            </a>
+            <a href="Admin.html" class="px-4 py-2 text-[#8f0000]  hover:text-black transition">
+              System Control
+            </a>
+          </nav>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div class="flex flex-1 w-full min-w-0 pt-20">
+
+     <aside class="hidden md:block w-48 bg-[#efefef] border-r border-[#efefef] shrink-0">
+      <div class="p-4">
+        <div class="text-center font-bold text-gray-900 font-serif mb-6">
+          <h2 class="text-lg">System</h2>
+          <h2 class="text-lg">Modules</h2>
+        </div>
+        <nav class="flex flex-col gap-4 font-bold text-gray-800 font-serif text-sm">
+          <a href="SuperAdmin.html" class="flex items-center gap-2 pl-2 text-[#8f0000] hover:text-[#710000] py-1 transition">Manage Voters</a>
+          <a href="Manageacc.html" class="flex items-center gap-2 pl-2 text-[#8f0000]  hover:text-[#710000] py-1 transition">Manage Accounts</a>
+          <a href="Admin.html" class="flex items-center gap-2 pl-2 text-[#8f0000] hover:text-[#710000] py-1 transition">System Control</a>
+        </nav>
+      </div>
+    </aside>
+
+    <main class="flex-1 w-full min-w-0 p-4 sm:p-6 md:p-8 overflow-x-hidden">
+
+      <div class="w-full bg-gradient-to-br from-[#8f0000] to-[#710000] rounded-2xl p-5 sm:p-6 text-[#efefef] shadow-lg mb-8">
+        <h3 class="text-lg md:text-xl font-serif font-bold mb-4">Add New Voters</h3>
+        
+        <form id="addVoterForm" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div>
+              <label for="studentId" class="block text-xs font-serif mb-1 text-gray-100">Student ID:</label>
+              <input type="text" id="studentId" name="studentId" required placeholder="A23-0055" 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#710000] text-sm">
+            </div>
+
+            <div>
+              <label for="fullName" class="block text-xs font-serif mb-1 text-gray-100">Full Name:</label>
+              <input type="text" id="fullName" name="fullName" required placeholder="Juan Dela Cruz" 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#710000] text-sm">
+            </div>
+
+            <div>
+              <label for="course" class="block text-xs font-serif mb-1 text-gray-100">Course:</label>
+              <select id="course" name="course" required 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#710000] text-sm cursor-pointer">
+                <option value="" disabled selected>Select Course</option>
+                <option value="BS Computer Science">Bachelor of Science in Computer Science</option>
+                <option value="Elementary Education">Bachelor of Elementary Education</option>
+                <option value="Secondary Education">Bachelor of Secondary Education</option>
+                <option value="BS Hospitality Management">Bachelor of Science in Hospitality Management</option>
+                <option value="BS Business Administration">Bachelor of Science in Business Administration</option>
+                <option value="BA Psychology">Bachelor of Arts in Psychology</option>
+                <option value="BS Computer Engineering">Bachelor of Science in Computer Engineering</option>
+                <option value="BS Accountancy">Bachelor of Science in Accountancy</option>
+                <option value="BS Tourism Management">Bachelor of Science in Tourism Management</option>
+                <option value="BS Nursing">Bachelor of Science in Nursing</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="yearLevel" class="block text-xs font-serif mb-1 text-gray-100">Grade Level:</label>
+              <select id="yearLevel" name="yearLevel" required 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#710000] text-sm cursor-pointer">
+                <option value="" disabled selected>Select Year Level</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <label for="email" class="block text-xs font-serif mb-1 text-gray-100">Email Address:</label>
+              <input type="email" id="email" name="email" required placeholder="juandelacruz@gmail.com" 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#710000] text-sm">
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 pt-2">
+            <button type="submit" class="flex-1 bg-[#8f0000] hover:bg-[#efefef] hover:text-black text-[#efefef] py-2.5 rounded-lg font-serif font-bold transition shadow text-center">
+              Add Voter
+            </button>
+            <button type="reset" class="flex-1 bg-[#efefef] hover:bg-[#8f0000] hover:text-[#efefef] text-black py-2.5 rounded-lg font-serif font-bold transition shadow text-center">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="w-full">
+        <h3 class="text-xl font-bold font-serif text-gray-900 mb-4">Registered Voters :</h3>
+        
+        <div class="w-full bg-[#efefef] rounded-2xl border border-[#710000] shadow-sm overflow-hidden mb-12">
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-center border-collapse min-w-[600px]">
+              <thead class="bg-[#710000] text-[#efefef] font-serif text-sm">
+                <tr>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Student ID</th>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Name</th>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Course</th>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Year Level</th>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Email</th>
+                </tr>
+              </thead>
+              <tbody id="votersTableBody" class="text-xs md:text-sm font-sans text-gray-800 divide-y divide-gray-200">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById('addVoterForm');
+    const tableBody = document.getElementById('votersTableBody');
+ //temp data
+    const initialVoters = [
+      { id: "A20-0055", name: "Samantha Reyes", course: "BS Computer Science", year: "4th Year", email: "reyes12@gmail.com" },
+      { id: "A20-0067", name: "Ricardo Dalisay", course: "BS Computer Engineering", year: "3rd Year", email: "recardo@gmail.com" },
+      { id: "A20-0068", name: "Maria Clara Santos", course: "BS Accountancy", year: "1st Year", email: "santos21@gmail.com" },
+      { id: "A20-0069", name: "Juan Dela Cruz", course: "BS Tourism Management", year: "2nd Year", email: "juan@gmail.com" },
+      { id: "A20-0070", name: "Gabriel Dimagiba", course: "BS Nursing", year: "2nd Year", email: "gabriel@gmail.com" }
+    ];
+
+    function getVoters() {
+      const stored = localStorage.getItem('voters_data');
+      if (!stored) {
+        localStorage.setItem('voters_data', JSON.stringify(initialVoters));
+        return initialVoters;
+      }
+      return JSON.parse(stored);
+    }
+
+    function renderVoters() {
+      const voters = getVoters();
+      tableBody.innerHTML = "";
+
+      if (voters.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">No registered voters yet.</td></tr>`;
+        return;
+      }
+
+      voters.forEach(voter => {
+        const row = document.createElement('tr');
+        row.className = "hover:bg-red-50/50 transition";
+        row.innerHTML = `
+          <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-900">${voter.id}</td>
+          <td class="py-3 px-4 whitespace-nowrap">${voter.name}</td>
+          <td class="py-3 px-4 whitespace-nowrap">${voter.course}</td>
+          <td class="py-3 px-4 whitespace-nowrap">${voter.year}</td>
+          <td class="py-3 px-4 whitespace-nowrap text-gray-600">${voter.email}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const newVoter = {
+        id: document.getElementById('studentId').value.trim(),
+        name: document.getElementById('fullName').value.trim(),
+        course: document.getElementById('course').value,
+        year: document.getElementById('yearLevel').value,
+        email: document.getElementById('email').value.trim()
+      };
+
+      const currentVoters = getVoters();
+      currentVoters.unshift(newVoter);
+
+      localStorage.setItem('voters_data', JSON.stringify(currentVoters));
+
+      renderVoters();
+      form.reset();
+    });
+
+    document.addEventListener('DOMContentLoaded', renderVoters);
+  </script>
+</body>
+</html>

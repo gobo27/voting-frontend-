@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Election Management - MSEUF Election System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-serif-title { font-family: 'Cinzel', serif; }
+    .font-mono-id { font-family: 'Space Mono', monospace; }
+    input[type="time"]::-webkit-calendar-picker-indicator,
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      filter: invert(0.2);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen w-full bg-cover bg-center bg-no-repeat text-gray-800 font-sans antialiased flex flex-col"
+  style="background-image: url('../image/bg5.jpg');">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="sticky top-0 z-50 w-full bg-[#7a0000] border-b border-black/20 py-4 px-4 sm:px-8 flex items-center gap-3 shadow-md shrink-0">
+    <div class="flex items-center gap-3">
+      <a href="Adviser.html" class="text-white hover:opacity-80 transition shrink-0" aria-label="Back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 19-7-7 7-7"></path>
+          <path d="M19 12H5"></path>
+        </svg>
+      </a>
+      <div class="flex flex-col">
+        <h1 class="text-xl sm:text-2xl font-serif font-bold text-white leading-none">Adviser Dashboard</h1>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WRAPPER ==================== -->
+  <main class="w-full max-w-[1400px] mx-auto flex flex-col md:flex-row gap-6 p-4 sm:p-6 min-h-screen pb-16">
+
+    <!-- 1. KALIWANG CONTAINER (Election Management Control Panel) -->
+    <div class="w-full min-w-0 md:flex-[2.5] bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col border border-white/20 order-1 overflow-hidden">
+      
+      <!-- NAVIGATION TABS -->
+      <nav class="w-full bg-[#e8e6e6] pt-4 pb-3.5 px-6 border-b border-gray-300/80 flex items-center justify-center gap-8 sm:gap-12 shrink-0">
+        <a href="Adviser.html" class="flex items-center gap-2 text-slate-700 hover:text-black font-serif text-sm sm:text-base font-medium transition">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-[#8f0000] shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+          </svg>
+          <span>Candidate Management</span>
+        </a>
+
+        <a href="elecmanagement.html" class="flex items-center gap-2 text-slate-900 hover:text-black font-serif text-sm sm:text-base font-bold transition">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-[#8f0000] shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span>Election Management</span>
+        </a>
+      </nav>
+
+      <!-- CONTENT BODY -->
+      <div class="p-6 sm:p-8 space-y-6">
+
+        <div class="flex items-center justify-between flex-wrap gap-3 border-b border-gray-300/80 pb-3">
+          <h2 class="text-2xl font-bold font-serif-title tracking-wide text-gray-950">Election Control Panel</h2>
+
+          <div id="statusPill" class="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-300 text-xs sm:text-sm font-serif-title shadow-sm">
+            <span class="text-gray-700">Status: <strong id="statusText" class="text-[#8f0000]">OPEN</strong></span>
+            <span class="text-gray-300">|</span>
+            <span class="text-gray-700">Names: <strong id="maskedText" class="text-[#8f0000]">Masked</strong></span>
+          </div>
+        </div>
+
+        <!-- Maroon Control Box -->
+        <form id="electionTimeForm" onsubmit="handleStartElection(event)"
+          class="bg-[#8f0000] p-6 sm:p-8 rounded-2xl shadow-xl text-white space-y-5">
+          
+          <!-- Set Starting Time -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <label for="startTime" class="flex items-center space-x-3 cursor-pointer">
+              <i data-lucide="clock" class="w-5 h-5 text-white shrink-0"></i>
+              <span class="font-serif text-white text-base sm:text-lg">Set Starting Time</span>
+            </label>
+            <input type="time" id="startTime" name="startTime" value="07:00" required
+              class="bg-[#efefef] text-red-950 font-serif font-bold text-center px-4 py-2.5 rounded-lg w-full sm:w-64 outline-none focus:ring-2 focus:ring-amber-400 shadow cursor-pointer text-sm sm:text-base" />
+          </div>
+
+          <!-- Set Closing Time -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <label for="closingTime" class="flex items-center space-x-3 cursor-pointer">
+              <i data-lucide="clock" class="w-5 h-5 text-white shrink-0"></i>
+              <span class="font-serif text-white text-base sm:text-lg">Set Closing Time</span>
+            </label>
+            <input type="time" id="closingTime" name="closingTime" value="19:00" required
+              class="bg-[#efefef] text-red-950 font-serif font-bold text-center px-4 py-2.5 rounded-lg w-full sm:w-64 outline-none focus:ring-2 focus:ring-amber-400 shadow cursor-pointer text-sm sm:text-base" />
+          </div>
+
+        </form>
+
+        <!-- 3 Quick Action Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 pt-2">
+          
+          <!-- Start Election Button (Blue) -->
+          <button type="button" id="startElectionBtn" onclick="handleStartElectionClick()"
+            class="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center space-y-3 hover:scale-[1.02] active:scale-95 transition">
+            <div class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center">
+              <i data-lucide="play" class="w-5 h-5 fill-white ml-0.5"></i>
+            </div>
+            <h3 class="font-serif text-lg sm:text-xl font-bold">Start Election</h3>
+            <p class="text-xs text-white/90">Manually trigger election start</p>
+          </button>
+
+          <!-- Stop Voting Button (Maroon) -->
+          <button type="button" id="stopVotingBtn" onclick="handleStopVoting()"
+            class="bg-[#8f0000] hover:bg-[#710000] text-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center space-y-3 hover:scale-[1.02] active:scale-95 transition">
+            <div class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center">
+              <i data-lucide="square" class="w-5 h-5 fill-white"></i>
+            </div>
+            <h3 class="font-serif text-lg sm:text-xl font-bold">Stop Voting</h3>
+            <p class="text-xs text-white/90">Permanently end the election</p>
+          </button>
+
+          <!-- Mask the Name Button (Green) -->
+          <button type="button" id="maskToggleBtn" onclick="handleMaskToggle()"
+            class="bg-emerald-700 hover:bg-emerald-800 text-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center space-y-3 hover:scale-[1.02] active:scale-95 transition">
+            <div id="maskIconContainer" class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center">
+              <i data-lucide="eye-off" class="w-6 h-6 text-white"></i>
+            </div>
+            <h3 id="maskBtnTitle" class="font-serif text-lg sm:text-xl font-bold">Mask Names</h3>
+            <p id="maskBtnDesc" class="text-xs text-white/90">Hide candidate real names</p>
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 2. KANANG CONTAINER (Live Results Sidebar) -->
+    <aside class="w-full md:w-80 bg-[#efefef] rounded-2xl sm:rounded-3xl p-5 shadow-2xl shrink-0 flex flex-col border border-white/20 md:sticky md:top-24 self-start space-y-4 order-2">
+      
+      <div class="space-y-3">
+        <h3 class="text-2xl font-serif font-bold text-gray-950 leading-tight">Live Results</h3>
+        
+        <!-- Bars -->
+        <div id="dynamicSidebarPositions" class="flex flex-col gap-2"></div>
+      </div>
+
+      <!-- STATUS FOOTER -->
+      <div class="border-t border-gray-300 pt-3 mt-4 text-[13px] text-gray-800 space-y-1">
+        <h4 class="text-sm font-serif font-bold text-gray-950 mb-1">Status</h4>
+        <div class="flex justify-between font-medium">
+          <span>No.Voters:</span>
+          <span id="No.voters" class="text-gray-500 truncate max-w-[130px] text-right">Database not f...</span>
+        </div>
+        <div class="flex justify-between font-medium">
+          <span>Voted :</span>
+          <span id="Voted" class="text-gray-500 truncate max-w-[130px] text-right">0</span>
+        </div>
+        <div class="flex justify-between font-medium">
+          <span>No.Candidate:</span>
+          <span id="No.candidates" class="text-gray-500 truncate max-w-[130px] text-right">0</span>
+        </div>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- ==================== JAVASCRIPT LOGIC ENGINE ==================== -->
+  <script>
+    const STORAGE_KEYS = {
+      status: 'election_status',
+      masked: 'names_masked',
+      ballot: 'ballot_config',
+      results: 'election_results'
+    };
+
+    /* --- Election Controls --- */
+    function getElectionStatus() {
+      // Default na OPEN kung walang nakalagay sa localStorage
+      return localStorage.getItem(STORAGE_KEYS.status) || 'OPEN';
+    }
+
+    function getNamesMasked() {
+      const v = localStorage.getItem(STORAGE_KEYS.masked);
+      return v === null ? true : v === 'true';
+    }
+
+    function setElectionStatus(status) {
+      localStorage.setItem(STORAGE_KEYS.status, status);
+      window.dispatchEvent(new Event('storage'));
+      refreshStatusUI();
+    }
+
+    function setNamesMasked(masked) {
+      localStorage.setItem(STORAGE_KEYS.masked, masked ? 'true' : 'false');
+      window.dispatchEvent(new Event('storage'));
+      refreshStatusUI();
+    }
+
+    function refreshStatusUI() {
+      const status = getElectionStatus();
+      const masked = getNamesMasked();
+
+      const statusTextEl = document.getElementById('statusText');
+      if (statusTextEl) {
+        statusTextEl.textContent = status;
+        // Palitan ang kulay base sa Status para tugma sa UI dashboard natin
+        if (status === 'OPEN') {
+          statusTextEl.className = "text-emerald-600 font-bold";
+        } else if (status === 'CLOSED') {
+          statusTextEl.className = "text-red-600 font-bold";
+        }
+      }
+
+      const maskedTextEl = document.getElementById('maskedText');
+      if (maskedTextEl) {
+        maskedTextEl.textContent = masked ? 'Masked' : 'Unmasked';
+        maskedTextEl.className = masked ? "text-amber-600 font-bold" : "text-emerald-600 font-bold";
+      }
+
+      // Nagpapalit-palit ang labels sa mismong card button depende sa active state nito
+      const maskBtnTitle = document.getElementById('maskBtnTitle');
+      const maskBtnDesc = document.getElementById('maskBtnDesc');
+      const maskIconContainer = document.getElementById('maskIconContainer');
+
+      if (masked) {
+        if (maskBtnTitle) maskBtnTitle.textContent = 'Mask Names';
+        if (maskBtnDesc) maskBtnDesc.textContent = 'Hide candidate real names';
+        if (maskIconContainer) maskIconContainer.innerHTML = '<i data-lucide="eye-off" class="w-6 h-6 text-white"></i>';
+      } else {
+        if (maskBtnTitle) maskBtnTitle.textContent = 'Unmask Names';
+        if (maskBtnDesc) maskBtnDesc.textContent = 'Show candidate real names';
+        if (maskIconContainer) maskIconContainer.innerHTML = '<i data-lucide="eye" class="w-6 h-6 text-white"></i>';
+      }
+
+      // Idi-disable ang pulang "Stop Voting" button kapag naka-CLOSED na para iwas double click
+      const stopBtn = document.getElementById('stopVotingBtn');
+      if (stopBtn) {
+        if (status === 'CLOSED') {
+          stopBtn.disabled = true;
+          stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+          stopBtn.disabled = false;
+          stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      }
+
+      lucide.createIcons();
+    }
+
+    // Konektado sa asul na "Start Election" card button
+    function handleStartElectionClick() {
+      setElectionStatus('OPEN');
+      alert("The election has been officially STARTED! Live voting is now active.");
+    }
+
+    // Konektado sa scheduler form submit button
+    function handleStartElectionForm(event) {
+      event.preventDefault();
+      const start = document.getElementById('startTime').value;
+      const close = document.getElementById('closingTime').value;
+      setElectionStatus('OPEN');
+      alert(`Election Schedule Saved:\nStart: ${start}\nClose: ${close}`);
+    }
+
+    // Konektado sa pulang "Stop Voting" card button
+    function handleStopVoting() {
+      if (getElectionStatus() === 'CLOSED') return;
+      const confirmed = confirm(
+        'Are you sure you want to PERMANENTLY STOP the voting process? This action cannot be undone and candidate names will be revealed.'
+      );
+      if (!confirmed) return;
+      setElectionStatus('CLOSED');
+      alert("The election has been CLOSED. Votes are now being consolidated.");
+    }
+
+    // Konektado sa berdeng "Mask Names" card button
+    function handleMaskToggle() {
+      setNamesMasked(!getNamesMasked());
+    }
+
+    /* --- Live Results Sidebar Render Engine --- */
+    function getBallotState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.ballot);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        console.warn('Could not parse ballot_config', e);
+      }
+      return {
+        positions: [
+          { id: 'pos-pres', name: 'President', candidates: [] },
+          { id: 'pos-vp', name: 'Vice-President', candidates: [] },
+          { id: 'pos-sec', name: 'Senator', candidates: [] }
+        ]
+      };
+    }
+
+    function renderLiveSidebar() {
+      const state = getBallotState();
+      let tally = null;
+      try {
+        tally = JSON.parse(localStorage.getItem(STORAGE_KEYS.results));
+      } catch (e) {}
+
+      const sidebar = document.getElementById('dynamicSidebarPositions');
+      const votedCountEl = document.getElementById('Voted');
+      const candCountEl = document.getElementById('No.candidates');
+
+      let totalCandidateCount = 0;
+
+      if (sidebar) {
+        sidebar.innerHTML = (state.positions || []).map((pos, pIdx) => {
+          const posTally = (tally && tally.positions && tally.positions[pos.id]) ? tally.positions[pos.id] : null;
+
+          const candidateData = (pos.candidates || []).map(c => {
+            totalCandidateCount++;
+            return {
+              id: c.id,
+              name: c.name,
+              votes: (posTally && posTally.candidates && posTally.candidates[c.id]) ? posTally.candidates[c.id].votes : 0
+            };
+          });
+
+          const totalVotesInPos = candidateData.reduce((sum, c) => sum + c.votes, 0);
+
+          const barsHTML = candidateData.map(c => {
+            const percent = totalVotesInPos > 0 ? Math.round((c.votes / totalVotesInPos) * 100) : 0;
+            return `
+              <div class="candidate-row flex flex-col w-full" data-candidate-id="${escapeHtml(c.id)}">
+                <div class="flex justify-between items-center text-xs sm:text-sm font-serif font-semibold text-gray-800 leading-none mb-1">
+                  <span class="truncate pr-2">${escapeHtml(c.name)}</span>
+                  <span class="font-mono text-gray-900 shrink-0">${percent}%</span>
+                </div>
+                <div class="w-full bg-gray-400/60 h-3 sm:h-3.5 rounded-full overflow-hidden shadow-inner">
+                  <div class="bg-[#8f0000] h-full rounded-full transition-all duration-500 ease-out" style="width: ${percent}%;"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          return `
+            <div class="position-section flex flex-col ${pIdx > 0 ? 'mt-2' : ''} gap-1.5 w-full" data-position="${escapeHtml(pos.name)}">
+              <div class="pl-1">
+                <h4 class="text-[18px] sm:text-[20px] font-serif font-bold text-gray-900 leading-tight">
+                  ${escapeHtml(pos.name)}
+                </h4>
+              </div>
+              <div class="candidates-list flex flex-col gap-2 pl-2 w-full">
+                ${barsHTML || '<div class="text-[11px] text-gray-400 italic pl-1">No candidates yet</div>'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Update Footer
+      if (votedCountEl) votedCountEl.textContent = (tally && tally.totalScanned ? tally.totalScanned : 0).toLocaleString();
+      if (candCountEl) candCountEl.textContent = totalCandidateCount.toLocaleString();
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === STORAGE_KEYS.ballot || e.key === STORAGE_KEYS.results) {
+        renderLiveSidebar();
+      }
+      if (e.key === STORAGE_KEYS.status || e.key === STORAGE_KEYS.masked) {
+        refreshStatusUI();
+      }
+    });
+
+    window.addEventListener('ballotUpdated', renderLiveSidebar);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      refreshStatusUI();
+      renderLiveSidebar();
+      setInterval(renderLiveSidebar, 2000);
+    });
+  </script>
+
+</body>
+
+</html>

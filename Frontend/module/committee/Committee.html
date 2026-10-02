@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Committee Dashboard MSEUF Election System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-serif-title { font-family: 'Cinzel', serif; }
+    .font-mono-id { font-family: 'Space Mono', monospace; }
+  </style>
+</head>
+
+<body class="min-h-screen w-full bg-black text-gray-800 font-sans flex flex-col overflow-y-auto">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 w-full bg-[#8f0000] border-b border-red-900/50 py-5 px-3 flex items-center gap-3 shadow-md shrink-0">
+    <a href="Committeelogin.html" class="text-white hover:opacity-80 transition shrink-0" aria-label="Back">
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 19-7-7 7-7"></path>
+        <path d="M19 12H5"></path>
+      </svg>
+    </a>
+    <div class="flex flex-col">
+      <h2 class="text-[23px] font-serif font-bold text-white leading-none">Committee Dashboard</h2>
+    </div>
+  </header>
+
+  <main 
+    class="relative flex-1 w-full bg-cover bg-center flex items-center justify-center p-6 md:p-12 pt-20 sm:pt-24 pb-16 overflow-hidden"
+  >
+    <!-- Background Overlay -->
+    <div class="absolute inset-0 bg-[url('../image/bg5.jpg')] bg-cover bg-center opacity-30 pointer-events-none"></div>
+
+    <!-- Main Card Container -->
+    <div class="relative z-10 w-full max-w-6xl bg-[#8f0000] rounded-3xl p-8 md:p-14 shadow-2xl space-y-12 text-[#efefef]">
+
+      <div class="flex flex-col md:flex-row items-center justify-between gap-10">
+        
+        <div class="space-y-4 max-w-lg w-full text-left">
+          <div class="flex items-center space-x-4">
+            <i data-lucide="camera" class="w-12 h-12 text-[#efefef] shrink-0"></i>
+            <h2 class="text-3xl font-bold tracking-tight">Scan Physical Ballot</h2>
+          </div>
+          
+          <p class="text-lg font-medium text-[#efefef]/90">Use the rear camera or upload an image to scan the ballot.</p>
+          
+          <ul class="space-y-3 text-base pt-2">
+            <li class="flex items-center space-x-3">
+              <i data-lucide="check-circle-2" class="w-6 h-6 text-[#efefef]/90 shrink-0"></i>
+              <span>Position ballot within edges</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <i data-lucide="check-circle-2" class="w-6 h-6 text-[#efefef]/90 shrink-0"></i>
+              <span>Ensure good lighting</span>
+            </li>
+            <li class="flex items-center space-x-3">
+              <i data-lucide="check-circle-2" class="w-6 h-6 text-[#efefef]/90 shrink-0"></i>
+              <span>Review and submit captured votes</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- AUTO-ADJUSTING MINI BALLOT CARD (Tinanggal ang sagabal na timing marks) -->
+        <div class="w-64 h-fit min-h-[160px] bg-white rounded-2xl border-2 border-white/40 shadow-2xl overflow-hidden shrink-0 relative p-4 select-none pointer-events-none text-gray-900 transition-all duration-300">
+          <div id="ballotThumbnailCard" class="w-full h-auto flex flex-col space-y-2">
+            <!-- Dito ilalagay ang content ng JavaScript -->
+          </div>
+        </div>
+
+        <div class="flex flex-col space-y-4 w-full md:w-56">
+          <a href="scanner.html?mode=camera" class="bg-[#efefef] hover:bg-white text-[#8f0000] py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 font-bold text-lg shadow-lg transition active:scale-95 text-center">
+            <i data-lucide="scan" class="w-6 h-6"></i>
+            <span>Live Camera</span>
+          </a>
+          
+          <a href="scanner.html?mode=upload" class="bg-[#710000] hover:bg-[#5a0000] border border-white/20 text-[#efefef] py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 font-bold text-lg shadow-lg transition text-center leading-tight active:scale-95">
+            <i data-lucide="upload" class="w-6 h-6 shrink-0"></i>
+            <span>Upload Image</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="flex flex-col md:flex-row items-center justify-between gap-10 pt-8 border-t-2 border-white/20">
+        
+        <div class="space-y-3 max-w-lg w-full">
+          <div class="flex items-center space-x-4">
+            <i data-lucide="file-signature" class="w-12 h-12 text-[#efefef] shrink-0"></i>
+            <h2 class="text-3xl font-bold tracking-tight">Create Ballot</h2>
+          </div>
+          <p class="text-lg font-medium text-[#efefef]/90 pl-16">
+            Review, customize candidates, and generate the official ballot sheet.
+          </p>
+        </div>
+
+        <div class="w-full md:w-56">
+          <a href="ballot.html" class="w-full bg-[#efefef] hover:bg-white text-[#8f0000] py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 font-bold text-lg shadow-lg transition active:scale-95 text-center">
+            <i data-lucide="file-edit" class="w-6 h-6"></i>
+            <span>Create/Review</span>
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderMiniBallotThumbnail();
+    });
+
+    function renderMiniBallotThumbnail() {
+      const container = document.getElementById('ballotThumbnailCard');
+      if (!container) return;
+
+      let cfg = null;
+      try {
+        cfg = JSON.parse(localStorage.getItem('ballot_config'));
+      } catch (e) {
+        cfg = null;
+      }
+
+      if (!cfg || !Array.isArray(cfg.positions) || cfg.positions.length === 0) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-6 text-center text-gray-400 space-y-1">
+            <i data-lucide="file-question" class="w-8 h-8 text-gray-300 mx-auto"></i>
+            <p class="text-[10px] font-bold text-gray-600">No Ballot Created</p>
+            <p class="text-[8px] text-gray-400">Click Create/Review to set up.</p>
+          </div>`;
+        lucide.createIcons();
+        return;
+      }
+
+      const yr = (cfg.academicYear || '----').replace(/\D/g, '').slice(0, 4) || '2026';
+      const ballotId = `MSEUFCI-${yr}`;
+
+      const positionsHTML = cfg.positions.map(p => `
+        <div class="border-b border-gray-100 pb-1">
+          <div class="flex justify-between items-center text-[7.5px] font-bold uppercase text-gray-900">
+            <span class="truncate max-w-[120px]">${escapeHtml(p.name)}</span>
+            <span class="text-[6.5px] text-gray-500 tracking-tight">Pick ${p.maxChoices}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-2 gap-y-1 mt-0.5 text-[7px] text-gray-700">
+            ${p.candidates.map(c => `
+              <div class="flex items-center gap-1 min-w-0">
+                <div class="w-1.5 h-1.5 rounded-full border border-gray-800 shrink-0"></div>
+                <span class="truncate leading-none">${escapeHtml(c.name)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <!-- Header: Malinis at walang harang -->
+        <div class="border-b border-gray-900 pb-1.5 flex items-start justify-between gap-1.5">
+          <div class="min-w-0 flex-1">
+            <p class="font-bold text-[9px] text-gray-950 font-serif leading-tight truncate">${escapeHtml(cfg.title || 'MSEUF-CI Ballot')}</p>
+            <p class="text-[7px] text-gray-500 font-medium">A.Y. ${escapeHtml(cfg.academicYear || '—')}</p>
+          </div>
+          <span class="font-mono text-[7px] bg-black/5 px-1 py-0.5 rounded border border-gray-300 shrink-0 font-bold leading-none">${ballotId}</span>
+        </div>
+
+        <!-- Dynamic Positions -->
+        <div class="space-y-1.5 pt-0.5">
+          ${positionsHTML}
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-1.5 border-t border-dashed border-gray-300 text-center text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">
+          Official Ballot Preview
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>

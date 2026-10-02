@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin Dashboard - Manage Accounts</title>
+  <link rel="stylesheet" href="../dist/output.css">
+</head>
+<body class="bg-gray-100 font-sans antialiased w-full overflow-x-hidden min-h-screen flex flex-col">
+
+  <header class="fixed top-0 left-0 right-0 z-50 w-full bg-[#8f0000] border-b border-[#710000]/50 py-4 sm:py-5 px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0">
+    <div class="flex items-center gap-3">
+      <a href="SuperAdminlog.html" class="text-[#efefef] hover:opacity-80 transition shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 19-7-7 7-7"></path>
+          <path d="M19 12H5"></path>
+        </svg>
+      </a>
+
+      <div class="flex flex-col">
+        <h2 class="text-lg sm:text-[23px] font-serif font-bold text-[#efefef] leading-tight">Adviser Dashboard</h2>
+        <p class="text-[11px] sm:text-[13px] text-[#efefef]/90 font-light">Election Monitoring & Control Panel</p>
+      </div>
+    </div>
+
+    <div class="relative md:hidden shrink-0">
+      <details class="group">
+        <summary class="list-none cursor-pointer p-1 text-white hover:opacity-80 transition focus:outline-none flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" x2="20" y1="6" y2="6"></line>
+            <line x1="4" x2="20" y1="12" y2="12"></line>
+            <line x1="4" x2="20" y1="18" y2="18"></line>
+          </svg>
+        </summary>
+
+        <div class="absolute right-0 mt-3 w-48 bg-[#efefef] rounded-xl shadow-2xl border border-red-900/20 py-3 z-50">
+          <div class="px-4 border-[#efefef] text-center font-bold text-[#8f0000] font-serif text-sm">
+            System Modules
+          </div>
+          <nav class="flex flex-col font-serif text-sm mt-1">
+            <a href="SuperAdmin.html" class="px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-black transition">
+              Manage Voters
+            </a>
+            <a href="Manageacc.html" class="px-4 py-2 text-[#8f0000] bg-red-50 font-bold border-l-4 border-[#8f0000]">
+              Manage Accounts
+            </a>
+            <a href="Admin.html" class="px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-black transition">
+              System Control
+            </a>
+          </nav>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div class="pt-20 flex flex-1 w-full min-w-0">
+
+    <aside class="hidden md:block w-48 bg-white border-r border-gray-200 shrink-0">
+      <div class="p-4">
+        <div class="text-center font-bold text-gray-900 font-serif mb-6">
+          <h2 class="text-lg">System</h2>
+          <h2 class="text-lg">Modules</h2>
+        </div>
+        <nav class="flex flex-col gap-4 font-bold text-gray-800 font-serif text-sm">
+          <a href="SuperAdmin.html" class="flex items-center gap-2 pl-2 text-gray-700 hover:text-[#700000] py-1 transition">Manage Voters</a>
+          <a href="Manageacc.html" class="flex items-center gap-2 pl-2 text-[#700000] font-bold border-l-4 border-[#700000] py-1 transition">Manage Accounts</a>
+          <a href="Admin.html" class="flex items-center gap-2 pl-2 text-gray-700 hover:text-[#700000] py-1 transition">System Control</a>
+        </nav>
+      </div>
+    </aside>
+
+    <main class="flex-1 w-full min-w-0 p-4 sm:p-6 md:p-8 overflow-x-hidden">
+
+      <div class="w-full bg-gradient-to-br from-[#700000] to-red-800 rounded-2xl p-5 sm:p-6 text-white shadow-lg mb-8">
+        <h3 class="text-lg md:text-xl font-serif font-bold mb-4">Create New System Accounts</h3>
+        
+        <form id="addAccountForm" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div>
+              <label for="userName" class="block text-xs font-serif mb-1 text-gray-100">User Name</label>
+              <input type="text" id="userName" name="userName" required placeholder="Juan Dela Cruz" 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm">
+            </div>
+
+            <div>
+              <label for="accountEmail" class="block text-xs font-serif mb-1 text-gray-100">Email</label>
+              <input type="email" id="accountEmail" name="accountEmail" required placeholder="jaundelacruz@gmail.com" 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm">
+            </div>
+
+            <div>
+              <label for="password" class="block text-xs font-serif mb-1 text-gray-100">Password</label>
+              <input type="password" id="password" name="password" required placeholder="********" 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm">
+            </div>
+
+            <div>
+              <label for="role" class="block text-xs font-serif mb-1 text-gray-100">Role</label>
+              <select id="role" name="role" required 
+                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm cursor-pointer">
+                <option value="Adviser">Adviser</option>
+                <option value="Committee">Committee</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 pt-2">
+            <button type="submit" class="flex-1 bg-[#4a0000] hover:bg-red-950 text-white py-2.5 rounded-lg font-serif font-bold transition shadow text-center">
+              Create Account
+            </button>
+            <button type="reset" class="flex-1 bg-white hover:bg-gray-100 text-gray-900 py-2.5 rounded-lg font-serif font-bold transition shadow text-center">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="w-full">
+        <h3 class="text-xl font-bold font-serif text-gray-900 mb-4">Account List</h3>
+        
+        <div class="w-full bg-white rounded-2xl border border-red-900/30 shadow-sm overflow-hidden mb-12">
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-center border-collapse min-w-[550px]">
+              <thead class="bg-[#700000] text-white font-serif text-sm">
+                <tr>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Name</th>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Password</th>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Role</th>
+                  <th class="py-3.5 px-4 whitespace-nowrap">Email</th>
+                </tr>
+              </thead>
+              <tbody id="accountsTableBody" class="text-xs md:text-sm font-sans text-gray-800 divide-y divide-gray-200">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById('addAccountForm');
+    const tableBody = document.getElementById('accountsTableBody');
+
+    const initialAccounts = [
+      { name: "Samantha Reyes", password: "reyes123", role: "Adviser", email: "reyes12@gmail.com" },
+      { name: "Ricardo Dalisay", password: "dalisay234", role: "Committee", email: "recardo@gmail.com" },
+      { name: "Maria Clara Santos", password: "santos456", role: "Adviser", email: "santos21@gmail.com" },
+      { name: "Juan Dela Cruz", password: "cruz678", role: "Committee", email: "juan@gmail.com" },
+      { name: "Gabriel Dimagiba", password: "dimagiba124", role: "Committee", email: "gabriel@gmail.com" }
+    ];
+
+    function getAccounts() {
+      const stored = localStorage.getItem('system_accounts');
+      if (!stored) {
+        localStorage.setItem('system_accounts', JSON.stringify(initialAccounts));
+        return initialAccounts;
+      }
+      return JSON.parse(stored);
+    }
+
+    function renderAccounts() {
+      const accounts = getAccounts();
+      tableBody.innerHTML = "";
+
+      if (accounts.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-500 font-serif">No registered accounts yet.</td></tr>`;
+        return;
+      }
+
+      accounts.forEach(acc => {
+        const row = document.createElement('tr');
+        row.className = "hover:bg-red-50/50 transition";
+        row.innerHTML = `
+          <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-900">${acc.name}</td>
+          <td class="py-3.5 px-4 whitespace-nowrap text-gray-700 font-mono">${acc.password}</td>
+          <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-800">${acc.role}</td>
+          <td class="py-3.5 px-4 whitespace-nowrap text-gray-600">${acc.email}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const newAccount = {
+        name: document.getElementById('userName').value.trim(),
+        email: document.getElementById('accountEmail').value.trim(),
+        password: document.getElementById('password').value.trim(),
+        role: document.getElementById('role').value
+      };
+
+      const currentAccounts = getAccounts();
+      currentAccounts.unshift(newAccount);
+
+      localStorage.setItem('system_accounts', JSON.stringify(currentAccounts));
+
+      renderAccounts();
+      form.reset();
+    });
+
+    document.addEventListener('DOMContentLoaded', renderAccounts);
+  </script>
+</body>
+</html>
