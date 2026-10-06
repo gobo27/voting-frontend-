@@ -7,7 +7,7 @@
   const pages = {
     adviser: "module/adviser/Adviser.html",
     committee: "module/committee/Committee.html",
-    super_admin: "module/SuperAdmin/SuperAdmin.html",
+    super_admin: "module/SuperAdmin/Manageacc.html",
   };
   const loginPages = {
     adviser: "module/adviser/Adviserlogin.html",
