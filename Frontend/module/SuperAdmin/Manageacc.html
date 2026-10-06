@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Super Admin Dashboard - Manage Accounts</title>
-  <link rel="stylesheet" href="../dist/output.css">
+  <link rel="stylesheet" href="../../dist/output.css">
 </head>
 <body class="bg-gray-100 font-sans antialiased w-full overflow-x-hidden min-h-screen flex flex-col">
 
@@ -142,68 +142,118 @@
   </div>
 
   <script>
+    const API_BASE = 'http://localhost:3306/api/admin'; // Baguhin ayon sa iyong Express server URL
+    const TOKEN = localStorage.getItem('token'); // Siguraduhing na-save ang JWT sa login
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN}`
+    };
+
     const form = document.getElementById('addAccountForm');
     const tableBody = document.getElementById('accountsTableBody');
 
-    const initialAccounts = [
-      { name: "Samantha Reyes", password: "reyes123", role: "Adviser", email: "reyes12@gmail.com" },
-      { name: "Ricardo Dalisay", password: "dalisay234", role: "Committee", email: "recardo@gmail.com" },
-      { name: "Maria Clara Santos", password: "santos456", role: "Adviser", email: "santos21@gmail.com" },
-      { name: "Juan Dela Cruz", password: "cruz678", role: "Committee", email: "juan@gmail.com" },
-      { name: "Gabriel Dimagiba", password: "dimagiba124", role: "Committee", email: "gabriel@gmail.com" }
-    ];
+    // 1. Kumuha ng Accounts mula sa Backend Database (GET /api/admin/accounts)
+    async function renderAccounts() {
+      try {
+        const res = await fetch(`${API_BASE}/accounts`, { headers });
+        
+        // Safety check para sa HTML errors / Non-JSON responses
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Server returned non-JSON response.");
+        }
 
-    function getAccounts() {
-      const stored = localStorage.getItem('system_accounts');
-      if (!stored) {
-        localStorage.setItem('system_accounts', JSON.stringify(initialAccounts));
-        return initialAccounts;
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to fetch accounts');
+
+        const accounts = data.users || [];
+        tableBody.innerHTML = "";
+
+        if (accounts.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500 font-serif">No registered accounts yet.</td></tr>`;
+          return;
+        }
+
+        accounts.forEach(acc => {
+          const row = document.createElement('tr');
+          row.className = "hover:bg-red-50/50 transition border-b border-gray-100";
+          row.innerHTML = `
+            <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-900">${escapeHtml(acc.name)}</td>
+            <td class="py-3.5 px-4 whitespace-nowrap text-gray-400 font-mono italic">Protected (Hashed)</td>
+            <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-800 capitalize">${escapeHtml(acc.role)}</td>
+            <td class="py-3.5 px-4 whitespace-nowrap text-gray-600">${escapeHtml(acc.email)}</td>
+            <td class="py-3.5 px-4 whitespace-nowrap text-center">
+              <button onclick="deleteAccount(${acc.id})" class="px-2.5 py-1 text-xs bg-red-700 hover:bg-red-800 text-white font-serif rounded transition">
+                Delete
+              </button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } catch (err) {
+        console.error("Error loading accounts:", err);
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-red-600 font-serif">Error loading accounts: ${err.message}</td></tr>`;
       }
-      return JSON.parse(stored);
     }
 
-    function renderAccounts() {
-      const accounts = getAccounts();
-      tableBody.innerHTML = "";
-
-      if (accounts.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-500 font-serif">No registered accounts yet.</td></tr>`;
-        return;
-      }
-
-      accounts.forEach(acc => {
-        const row = document.createElement('tr');
-        row.className = "hover:bg-red-50/50 transition";
-        row.innerHTML = `
-          <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-900">${acc.name}</td>
-          <td class="py-3.5 px-4 whitespace-nowrap text-gray-700 font-mono">${acc.password}</td>
-          <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-800">${acc.role}</td>
-          <td class="py-3.5 px-4 whitespace-nowrap text-gray-600">${acc.email}</td>
-        `;
-        tableBody.appendChild(row);
-      });
-    }
-
-    form.addEventListener('submit', function(e) {
+    // 2. Magdagdag ng Bagong Account sa Database (POST /api/admin/accounts)
+    form.addEventListener('submit', async function(e) {
       e.preventDefault();
 
-      const newAccount = {
+      const payload = {
         name: document.getElementById('userName').value.trim(),
         email: document.getElementById('accountEmail').value.trim(),
         password: document.getElementById('password').value.trim(),
-        role: document.getElementById('role').value
+        // Convert to lowercase dahil 'adviser' at 'committee' ang naka-allow sa backend controller
+        role: document.getElementById('role').value.toLowerCase() 
       };
 
-      const currentAccounts = getAccounts();
-      currentAccounts.unshift(newAccount);
+      try {
+        const res = await fetch(`${API_BASE}/accounts`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
 
-      localStorage.setItem('system_accounts', JSON.stringify(currentAccounts));
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to create account');
 
-      renderAccounts();
-      form.reset();
+        alert("Account created successfully!");
+        form.reset();
+        renderAccounts(); // I-refresh ang listahan
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
     });
+
+    // 3. Magbura ng Account sa Database (DELETE /api/admin/accounts/:id)
+    async function deleteAccount(id) {
+      if (!confirm("Are you sure you want to delete this account?")) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/accounts/${id}`, {
+          method: 'DELETE',
+          headers
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to delete account');
+
+        alert("Account deleted successfully!");
+        renderAccounts();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+    // Utility function para iwas sa XSS
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
     document.addEventListener('DOMContentLoaded', renderAccounts);
   </script>
+<script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="super_admin"></script>
 </body>
 </html>
