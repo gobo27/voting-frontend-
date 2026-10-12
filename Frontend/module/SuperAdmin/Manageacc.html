@@ -1,259 +1,954 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Super Admin Dashboard - Manage Accounts</title>
-  <link rel="stylesheet" href="../../dist/output.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampusVote | Super Admin Dashboard</title>
+<link rel="stylesheet" href="../../dist/output.css">
+<style>
+:root {
+    --maroon: #4a151b;
+    --maroon-light: #70272e;
+    --primary: #841823;
+    --background: #f7f8fa;
+    --border: #e0e3e8;
+    --muted: #697586;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--background);
+    color: #252932;
+    font-family: Arial, Helvetica, sans-serif;
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+/* SIDEBAR */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 285px;
+    padding: 35px 18px;
+    background: var(--maroon);
+    color: white;
+    display: flex;
+    flex-direction: column;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 12px;
+}
+.brand-icon {
+    width: 45px;
+    height: 45px;
+    border: 1px solid #ffffff99;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+}
+.brand strong { font-size: 23px; }
+.brand small {
+    display: block;
+    margin-top: 7px;
+    color: #dfc8ca;
+    font-size: 11px;
+    line-height: 1.7;
+    letter-spacing: 1px;
+}
+.nav-heading {
+    margin: 55px 16px 18px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #c8aeb1;
+}
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--maroon-light);
+    border-radius: 8px;
+    color: white;
+    text-decoration: none;
+    font-size: 15px;
+}
+.sidebar-bottom {
+    margin-top: auto;
+    padding: 22px 12px 0;
+    border-top: 1px solid #ffffff26;
+}
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.avatar {
+    background: #fff0f1;
+    color: var(--primary);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    display: grid;
+    place-items: center;
+    font-weight: bold;
+}
+.profile small {
+    display: block;
+    margin-top: 5px;
+    color: #d7bfc1;
+}
+.logout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 27px 0 0 60px;
+    color: #e2c8cb;
+    text-decoration: none;
+}
+/* MAIN CONTENT */
+.main {
+    margin-left: 285px;
+    padding: 24px 48px 60px;
+    max-width: 1800px;
+}
+.main h1 {
+    font-size: 34px;
+    letter-spacing: -1px;
+    margin: 0 0 35px;
+}
+/* STATISTICS */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    margin-bottom: 38px;
+}
+.stat, .panel {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    box-shadow: 0 2px 5px #18202c04;
+}
+.stat {
+    padding: 26px;
+    min-height: 145px;
+    position: relative;
+}
+.stat .caption {
+    color: #626c7a;
+    font-size: 14px;
+}
+.stat strong {
+    display: block;
+    font-size: 36px;
+    margin: 9px 0 4px;
+}
+.stat small { color: #66717e; }
+.stat-icon {
+    position: absolute;
+    right: 24px;
+    top: 25px;
+    width: 48px;
+    height: 48px;
+    background: #fcecee;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: var(--primary);
+}
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 19px;
+    margin-bottom: 30px;
+}
+/* FORM */
+.panel {
+    padding: 28px;
+    margin-bottom: 34px;
+}
+.panel h2 {
+    font-size: 20px;
+    margin: 0 0 10px;
+}
+.sub {
+    color: #677381;
+    font-size: 14px;
+    margin: 0 0 32px;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 26px 30px;
+}
+.field label {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 11px;
+}
+.field input, .field select {
+    width: 100%;
+    height: 49px;
+    padding: 0 15px;
+    background: white;
+    border: 1px solid #dce0e6;
+    border-radius: 7px;
+    color: #222;
+}
+.field input:focus, .field select:focus {
+    outline: 2px solid #b75d66;
+    outline-offset: 1px;
+}
+.form-footer {
+    border-top: 1px solid var(--border);
+    margin-top: 26px;
+    padding-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+.btn {
+    padding: 12px 20px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    font-weight: 600;
+}
+.btn-light {
+    background: #f8f9fa;
+    color: #333;
+}
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+/* ACCOUNT LIST */
+.list-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.list-heading h2 {
+    margin: 0;
+    font-size: 20px;
+}
+.count {
+    background: #fbeaec;
+    color: var(--primary);
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+.table-panel {
+    padding: 0;
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+}
+thead { background: #f4f5f6; }
+th {
+    text-align: left;
+    font-size: 13px;
+    color: #5e6977;
+    font-weight: 500;
+    padding: 21px;
+}
+td {
+    padding: 23px 21px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+}
+th:last-child, td:last-child { text-align: right; }
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.initials {
+    width: 45px;
+    height: 45px;
+    border-radius: 9px;
+    background: #fcecee;
+    color: var(--primary);
+    display: grid;
+    place-items: center;
+    font-weight: bold;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.user-cell small {
+    display: block;
+    color: #87909b;
+    margin-top: 6px;
+}
+.role {
+    padding: 9px 13px;
+    border-radius: 6px;
+    font-size: 12px;
+    display: inline-block;
+}
+.role.adviser {
+    background: #fcecee;
+    color: #891d29;
+}
+.role.committee {
+    background: #e0f6ea;
+    color: #13704b;
+}
+.email { color: #596473; }
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+}
+.icon-btn {
+    border: none;
+    background: transparent;
+    color: #657180;
+    padding: 10px;
+    font-size: 28px; /* Laki ng icon */
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.icon-btn:hover {
+    color: #841823;
+    background: #fcecee;
+    border-radius: 8px;
+}
+.status.error {
+    background: #fff0f0;
+    color: #a3202d;
+}
+
+/* EDIT MODAL */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: #0008;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+}
+
+.modal.open { display: flex; }
+
+.modal-card {
+    background: white;
+    border-radius: 13px;
+    padding: 28px;
+    width: 100%;
+    max-width: 490px;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.modal-card h2 { margin-top: 0; }
+.modal-card .field { margin-top: 18px; }
+
+.hint {
+    color: #66717e;
+    font-size: 12px;
+    margin-top: 7px;
+}
+
+[hidden] { display: none !important; }
+
+/* RESPONSIVE */
+@media (max-width: 1100px) {
+    .sidebar { width: 235px; }
+    .main { margin-left: 235px; padding: 25px; }
+    .stats { gap: 12px; }
+    .stat { padding: 20px; }
+    .stat-icon { right: 14px; }
+}
+
+@media (max-width: 760px) {
+    .sidebar {
+        position: static;
+        width: 100%;
+        padding: 15px;
+    }
+
+    .brand { padding: 0; }
+    .nav-heading, .sidebar-bottom { display: none; }
+    .nav-link { margin-top: 12px; }
+    .main { margin-left: 0; padding: 20px 14px; }
+    .main h1 { font-size: 27px; }
+    .stats { grid-template-columns: 1fr; }
+    .stat { min-height: 110px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .panel { padding: 18px; }
+    .table-panel { padding: 0; }
+}
+</style>
 </head>
-<body class="bg-gray-100 font-sans antialiased w-full overflow-x-hidden min-h-screen flex flex-col">
 
-  <header class="fixed top-0 left-0 right-0 z-50 w-full bg-[#8f0000] border-b border-[#710000]/50 py-4 sm:py-5 px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0">
-    <div class="flex items-center gap-3">
-      <a href="SuperAdminlog.html" class="text-[#efefef] hover:opacity-80 transition shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m12 19-7-7 7-7"></path>
-          <path d="M19 12H5"></path>
-        </svg>
-      </a>
+<body>
 
-      <div class="flex flex-col">
-        <h2 class="text-lg sm:text-[23px] font-serif font-bold text-[#efefef] leading-tight">Adviser Dashboard</h2>
-        <p class="text-[11px] sm:text-[13px] text-[#efefef]/90 font-light">Election Monitoring & Control Panel</p>
-      </div>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+    <div class="brand">
+        <span class="brand-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor"
+                 stroke-width="1.8">
+                <path d="m2 10 10-5 10 5-10 5-10-5Z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                <path d="M22 10v7"/>
+            </svg>
+        </span>
+
+        <div>
+            <strong>CampusVote.</strong>
+            <small>STUDENT ELECTION<br>SYSTEM</small>
+        </div>
     </div>
 
-    <div class="relative md:hidden shrink-0">
-      <details class="group">
-        <summary class="list-none cursor-pointer p-1 text-white hover:opacity-80 transition focus:outline-none flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="4" x2="20" y1="6" y2="6"></line>
-            <line x1="4" x2="20" y1="12" y2="12"></line>
-            <line x1="4" x2="20" y1="18" y2="18"></line>
-          </svg>
-        </summary>
+    <div class="nav-heading">ADMINISTRATION</div>
 
-        <div class="absolute right-0 mt-3 w-48 bg-[#efefef] rounded-xl shadow-2xl border border-red-900/20 py-3 z-50">
-          <div class="px-4 border-[#efefef] text-center font-bold text-[#8f0000] font-serif text-sm">
-            System Modules
-          </div>
-          <nav class="flex flex-col font-serif text-sm mt-1">
-            <a href="SuperAdmin.html" class="px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-black transition">
-              Manage Voters
-            </a>
-            <a href="Manageacc.html" class="px-4 py-2 text-[#8f0000] bg-red-50 font-bold border-l-4 border-[#8f0000]">
-              Manage Accounts
-            </a>
-            <a href="Admin.html" class="px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-black transition">
-              System Control
-            </a>
-          </nav>
+    <a class="nav-link" href="SuperAdmin.html">
+        <span>♙</span>
+        Account management
+    </a>
+
+    <div class="sidebar-bottom">
+        <div class="profile">
+            <span class="avatar">SA</span>
+            <div>
+                <strong>Super admin</strong>
+                <small>System administrator</small>
+            </div>
         </div>
-      </details>
+
+        <a class="logout" href="SuperAdminlog.html"
+           id="logoutLink">
+            ⇥ &nbsp; Log out
+        </a>
     </div>
-  </header>
 
-  <div class="pt-20 flex flex-1 w-full min-w-0">
+</aside>
 
-    <aside class="hidden md:block w-48 bg-white border-r border-gray-200 shrink-0">
-      <div class="p-4">
-        <div class="text-center font-bold text-gray-900 font-serif mb-6">
-          <h2 class="text-lg">System</h2>
-          <h2 class="text-lg">Modules</h2>
+<!-- MAIN DASHBOARD -->
+<main class="main">
+
+    <h1>Super admin dashboard</h1>
+
+    <!-- STATISTICS -->
+    <section class="stats">
+
+        <div class="stat">
+            <span class="caption">System accounts</span>
+            <strong id="statTotal">00</strong>
+            <small>Your election team</small>
+            <span class="stat-icon">♙</span>
         </div>
-        <nav class="flex flex-col gap-4 font-bold text-gray-800 font-serif text-sm">
-          <a href="SuperAdmin.html" class="flex items-center gap-2 pl-2 text-gray-700 hover:text-[#700000] py-1 transition">Manage Voters</a>
-          <a href="Manageacc.html" class="flex items-center gap-2 pl-2 text-[#700000] font-bold border-l-4 border-[#700000] py-1 transition">Manage Accounts</a>
-          <a href="Admin.html" class="flex items-center gap-2 pl-2 text-gray-700 hover:text-[#700000] py-1 transition">System Control</a>
-        </nav>
-      </div>
-    </aside>
 
-    <main class="flex-1 w-full min-w-0 p-4 sm:p-6 md:p-8 overflow-x-hidden">
+        <div class="stat">
+            <span class="caption">Advisers</span>
+            <strong id="statAdvisers">00</strong>
+            <small>Candidate &amp; election management</small>
+            <span class="stat-icon">♧</span>
+        </div>
 
-      <div class="w-full bg-gradient-to-br from-[#700000] to-red-800 rounded-2xl p-5 sm:p-6 text-white shadow-lg mb-8">
-        <h3 class="text-lg md:text-xl font-serif font-bold mb-4">Create New System Accounts</h3>
-        
-        <form id="addAccountForm" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="stat">
+            <span class="caption">Committee members</span>
+            <strong id="statCommittee">00</strong>
+            <small>Election committee accounts</small>
+            <span class="stat-icon">♢</span>
+        </div>
 
-            <div>
-              <label for="userName" class="block text-xs font-serif mb-1 text-gray-100">User Name</label>
-              <input type="text" id="userName" name="userName" required placeholder="Juan Dela Cruz" 
-                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm">
+    </section>
+
+    <div class="section-title">
+        ♙ &nbsp; Account management
+    </div>
+
+    <!-- CREATE ACCOUNT -->
+    <section class="panel">
+
+        <h2>Create a system account</h2>
+
+        <p class="sub">
+            Add an adviser or committee member to your election team.
+        </p>
+
+        <form id="addAccountForm">
+
+            <div class="form-grid">
+
+                <div class="field">
+                    <label for="userName">User name *</label>
+                    <input
+                        id="userName"
+                        required
+                        maxlength="100"
+                        placeholder="e.g. Juan Dela Cruz">
+                </div>
+                <div class="field">
+                    <label for="accountEmail">Email address *</label>
+                    <input
+                        id="accountEmail"
+                        type="email"
+                        required
+                        maxlength="150"
+                        placeholder="name@example.com">
+                </div>
+                <div class="field">
+                    <label for="password">Password *</label>
+                    <input
+                        id="password"
+                        type="password"
+                        required
+                        minlength="6"
+                        placeholder="Enter a password">
+                </div>
+                <div class="field">
+                    <label for="role">Role *</label>
+                    <select id="role" required>
+                        <option value="adviser">Adviser</option>
+                        <option value="committee">Committee</option>
+                    </select>
+                </div>
             </div>
-
-            <div>
-              <label for="accountEmail" class="block text-xs font-serif mb-1 text-gray-100">Email</label>
-              <input type="email" id="accountEmail" name="accountEmail" required placeholder="jaundelacruz@gmail.com" 
-                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm">
+            <div class="form-footer">
+                <button class="btn btn-light" type="reset">
+                    ✕ &nbsp; Cancel
+                </button>
+                <button class="btn btn-primary" type="submit">
+                    ＋ &nbsp; Create account
+                </button>
             </div>
-
-            <div>
-              <label for="password" class="block text-xs font-serif mb-1 text-gray-100">Password</label>
-              <input type="password" id="password" name="password" required placeholder="********" 
-                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm">
-            </div>
-
-            <div>
-              <label for="role" class="block text-xs font-serif mb-1 text-gray-100">Role</label>
-              <select id="role" name="role" required 
-                class="w-full px-3 py-2 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm cursor-pointer">
-                <option value="Adviser">Adviser</option>
-                <option value="Committee">Committee</option>
-              </select>
-            </div>
-
-          </div>
-
-          <div class="flex flex-col sm:flex-row gap-3 pt-2">
-            <button type="submit" class="flex-1 bg-[#4a0000] hover:bg-red-950 text-white py-2.5 rounded-lg font-serif font-bold transition shadow text-center">
-              Create Account
-            </button>
-            <button type="reset" class="flex-1 bg-white hover:bg-gray-100 text-gray-900 py-2.5 rounded-lg font-serif font-bold transition shadow text-center">
-              Cancel
-            </button>
-          </div>
         </form>
-      </div>
-
-      <div class="w-full">
-        <h3 class="text-xl font-bold font-serif text-gray-900 mb-4">Account List</h3>
-        
-        <div class="w-full bg-white rounded-2xl border border-red-900/30 shadow-sm overflow-hidden mb-12">
-          <div class="overflow-x-auto w-full">
-            <table class="w-full text-center border-collapse min-w-[550px]">
-              <thead class="bg-[#700000] text-white font-serif text-sm">
+    </section>
+    <!-- ACCOUNT LIST -->
+    <div class="list-heading">
+        <h2>System accounts</h2>
+        <span class="count" id="listCount">0</span>
+    </div>
+    <div id="statusMessage"
+         class="status"
+         role="status"
+         hidden></div>
+    <section class="panel table-panel">
+        <table>
+            <thead>
                 <tr>
-                  <th class="py-3.5 px-4 whitespace-nowrap">Name</th>
-                  <th class="py-3.5 px-4 whitespace-nowrap">Password</th>
-                  <th class="py-3.5 px-4 whitespace-nowrap">Role</th>
-                  <th class="py-3.5 px-4 whitespace-nowrap">Email</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Email address</th>
+                    <th>Actions</th>
                 </tr>
-              </thead>
-              <tbody id="accountsTableBody" class="text-xs md:text-sm font-sans text-gray-800 divide-y divide-gray-200">
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+            </thead>
+            <tbody id="accountsTableBody">
+                <tr>
+                    <td colspan="4">Loading accounts...</td>
+                </tr>
+            </tbody>
+        </table>
 
-    </main>
-  </div>
+    </section>
 
-  <script>
-    const API_BASE = 'http://localhost:3306/api/admin'; // Baguhin ayon sa iyong Express server URL
-    const TOKEN = localStorage.getItem('token'); // Siguraduhing na-save ang JWT sa login
+</main>
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${TOKEN}`
-    };
+<!-- EDIT ACCOUNT MODAL -->
+<div class="modal" id="editModal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="editTitle">
 
-    const form = document.getElementById('addAccountForm');
-    const tableBody = document.getElementById('accountsTableBody');
+    <div class="modal-card">
 
-    // 1. Kumuha ng Accounts mula sa Backend Database (GET /api/admin/accounts)
-    async function renderAccounts() {
-      try {
-        const res = await fetch(`${API_BASE}/accounts`, { headers });
-        
-        // Safety check para sa HTML errors / Non-JSON responses
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Server returned non-JSON response.");
+        <h2 id="editTitle">Edit account</h2>
+
+        <form id="editAccountForm">
+
+            <input type="hidden" id="editId">
+
+            <div class="field">
+                <label for="editName">User name</label>
+                <input id="editName" required maxlength="100">
+            </div>
+            <div class="field">
+                <label for="editEmail">Email address</label>
+                <input id="editEmail" type="email"
+                       required maxlength="150">
+            </div>
+            <div class="field">
+                <label for="editRole">Role</label>
+                <select id="editRole" required>
+                    <option value="adviser">Adviser</option>
+                    <option value="committee">Committee</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="editPassword">
+                    New password (optional)
+                </label>
+                <input id="editPassword"
+                       type="password"
+                       minlength="6"
+                       placeholder="Leave blank to keep existing password">
+                <p class="hint">
+                    Leave blank if you do not want to change the password.
+                </p>
+            </div>
+            <div class="form-footer">
+                <button class="btn btn-light"
+                        type="button" id="cancelEdit">
+                    Cancel
+                </button>
+                <button class="btn btn-primary" type="submit">
+                    Save changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- AUTHENTICATION -->
+<script src="../sheared/auth.js?v=20261002-2"
+        data-mode="guard"
+        data-role="super_admin"></script>
+<script>
+(() => {
+    "use strict";
+    // Express API
+    // Live Server :5500 -> local Express :3000
+    // Otherwise -> same-origin API
+    const API_BASE =
+        window.location.port === "5500"
+            ? "http://localhost:3000/api/createAccount"
+            : "/api/createAccount";
+
+    const $ = id => document.getElementById(id);
+    function getToken() {
+        return (
+            sessionStorage.getItem("voting_token") ||
+            localStorage.getItem("voting_token") ||
+            localStorage.getItem("token")
+        );
+    }
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+    let accounts = [];
+    function showStatus(message, isError = false) {
+        const element = $("statusMessage");
+        element.hidden = false;
+        element.textContent = message;
+        element.className =
+            "status" + (isError ? " error" : "");
+    }
+    // API REQUEST
+    async function apiRequest(path, options = {}) {
+        const token = getToken();
+        if (!token) {
+            throw new Error(
+                "Login token missing. Please sign in as Super Admin."
+            );
         }
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Failed to fetch accounts');
-
-        const accounts = data.users || [];
-        tableBody.innerHTML = "";
+        let response;
+        try {
+            response = await fetch(API_BASE + path, {
+                ...options,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                    ...(options.headers || {})
+                }
+            });
+        } catch (error) {
+            throw new Error(
+                "Cannot connect to API. Check Express server and API URL."
+            );
+        }
+        const raw = await response.text();
+        let data;
+        try {
+            data = raw ? JSON.parse(raw) : {};
+        } catch {
+            throw new Error(
+                `Invalid API response (HTTP ${response.status}).`
+            );
+        }
+        if (!response.ok) {
+            throw new Error(
+                data.message || `HTTP ${response.status}`
+            );
+        }
+        return data;
+    }
+    // UPDATE STATISTICS AND ACCOUNT TABLE
+    function renderAccounts() {
+        const advisers = accounts.filter(
+            account => account.role === "adviser"
+        ).length;
+        const committees = accounts.filter(
+            account => account.role === "committee"
+        ).length;
+        $("statTotal").textContent =
+            String(accounts.length).padStart(2, "0");
+        $("statAdvisers").textContent =
+            String(advisers).padStart(2, "0");
+        $("statCommittee").textContent =
+            String(committees).padStart(2, "0");
+        $("listCount").textContent = accounts.length;
+        const tbody = $("accountsTableBody");
 
         if (accounts.length === 0) {
-          tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500 font-serif">No registered accounts yet.</td></tr>`;
-          return;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4">No accounts found.</td>
+                </tr>
+            `;
+            return;
         }
+        tbody.innerHTML = accounts.map(account => {
+            const initials = String(account.name)
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map(word => word[0] || "")
+                .join("")
+                .toUpperCase();
 
-        accounts.forEach(acc => {
-          const row = document.createElement('tr');
-          row.className = "hover:bg-red-50/50 transition border-b border-gray-100";
-          row.innerHTML = `
-            <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-900">${escapeHtml(acc.name)}</td>
-            <td class="py-3.5 px-4 whitespace-nowrap text-gray-400 font-mono italic">Protected (Hashed)</td>
-            <td class="py-3.5 px-4 whitespace-nowrap font-medium text-gray-800 capitalize">${escapeHtml(acc.role)}</td>
-            <td class="py-3.5 px-4 whitespace-nowrap text-gray-600">${escapeHtml(acc.email)}</td>
-            <td class="py-3.5 px-4 whitespace-nowrap text-center">
-              <button onclick="deleteAccount(${acc.id})" class="px-2.5 py-1 text-xs bg-red-700 hover:bg-red-800 text-white font-serif rounded transition">
-                Delete
-              </button>
-            </td>
-          `;
-          tableBody.appendChild(row);
-        });
-      } catch (err) {
-        console.error("Error loading accounts:", err);
-        tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-red-600 font-serif">Error loading accounts: ${err.message}</td></tr>`;
-      }
+            const isCommittee = account.role === "committee";
+
+            return `
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <span class="initials">
+                                ${escapeHtml(initials)}
+                            </span>
+
+                            <div>
+                                <strong>
+                                    ${escapeHtml(account.name)}
+                                </strong>
+                                <small>System account</small>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        <span class="role ${isCommittee ? "committee" : "adviser"}">
+                            ${isCommittee ? "♢ Committee" : "♧ Adviser"}
+                        </span>
+                    </td>
+
+                    <td class="email">
+                        ✉ &nbsp; ${escapeHtml(account.email)}
+                    </td>
+
+                    <td>
+                        <div class="actions">
+                            <button
+                                class="icon-btn"
+                                type="button"
+                                data-edit="${Number(account.id)}"
+                                title="Edit account"
+                                aria-label="Edit account">
+                                ✎
+                            </button>
+
+                            <button
+                                class="icon-btn"
+                                type="button"
+                                data-delete="${Number(account.id)}"
+                                title="Delete account"
+                                aria-label="Delete account">
+                                ▤
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
     }
-
-    // 2. Magdagdag ng Bagong Account sa Database (POST /api/admin/accounts)
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-
-      const payload = {
-        name: document.getElementById('userName').value.trim(),
-        email: document.getElementById('accountEmail').value.trim(),
-        password: document.getElementById('password').value.trim(),
-        // Convert to lowercase dahil 'adviser' at 'committee' ang naka-allow sa backend controller
-        role: document.getElementById('role').value.toLowerCase() 
-      };
-
-      try {
-        const res = await fetch(`${API_BASE}/accounts`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Failed to create account');
-
-        alert("Account created successfully!");
-        form.reset();
-        renderAccounts(); // I-refresh ang listahan
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
+    // LOAD ACCOUNTS
+    async function loadAccounts() {
+        try {
+            const data = await apiRequest("/accounts");
+            accounts = Array.isArray(data.users)
+                ? data.users
+                : [];
+            renderAccounts();
+        } catch (error) {
+            console.error("LOAD ACCOUNTS:", error);
+            showStatus(error.message, true);
+            $("accountsTableBody").innerHTML = `
+                <tr>
+                    <td colspan="4">
+                        ${escapeHtml(error.message)}
+                    </td>
+                </tr>
+            `;
+        }
+    }
+    // CREATE ACCOUNT
+    $("addAccountForm").addEventListener(
+        "submit",
+        async event => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const button = form.querySelector(
+                'button[type="submit"]'
+            );
+            button.disabled = true;
+            try {
+                await apiRequest("/accounts", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: $("userName").value.trim(),
+                        email: $("accountEmail").value.trim(),
+                        password: $("password").value,
+                        role: $("role").value
+                    })
+                });
+                form.reset();
+                await loadAccounts();
+                showStatus("Account created successfully.");
+            } catch (error) {
+                showStatus(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        }
+    );
+    // OPEN EDIT MODAL
+    function openEdit(id) {
+        const account = accounts.find(
+            item => Number(item.id) === Number(id)
+        );
+        if (!account) return;
+        $("editId").value = account.id;
+        $("editName").value = account.name;
+        $("editEmail").value = account.email;
+        $("editRole").value = account.role;
+        $("editPassword").value = "";
+        $("editModal").classList.add("open");
+        $("editName").focus();
+    }
+    function closeEdit() {
+        $("editModal").classList.remove("open");
+        $("editAccountForm").reset();
+    }
+    $("cancelEdit").addEventListener("click", closeEdit);
+    $("editModal").addEventListener("click", event => {
+        if (event.target === $("editModal")) {
+            closeEdit();
+        }
     });
-
-    // 3. Magbura ng Account sa Database (DELETE /api/admin/accounts/:id)
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            closeEdit();
+        }
+    });
+    // SAVE EDIT
+    $("editAccountForm").addEventListener(
+        "submit",
+        async event => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const button = form.querySelector(
+                'button[type="submit"]'
+            );
+            button.disabled = true;
+            try {
+                const id = Number($("editId").value);
+                await apiRequest(`/accounts/${id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        name: $("editName").value.trim(),
+                        email: $("editEmail").value.trim(),
+                        role: $("editRole").value,
+                        password: $("editPassword").value
+                    })
+                });
+                closeEdit();
+                await loadAccounts();
+                showStatus("Account updated successfully.");
+            } catch (error) {
+                alert("Update failed: " + error.message);
+            } finally {
+                button.disabled = false;
+            }
+        }
+    );
+    // DELETE ACCOUNT
     async function deleteAccount(id) {
-      if (!confirm("Are you sure you want to delete this account?")) return;
-
-      try {
-        const res = await fetch(`${API_BASE}/accounts/${id}`, {
-          method: 'DELETE',
-          headers
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Failed to delete account');
-
-        alert("Account deleted successfully!");
-        renderAccounts();
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
+        const account = accounts.find(
+            item => Number(item.id) === Number(id)
+        );
+        if (!account) return;
+        const confirmed = confirm(
+            `Are you sure you want to delete "${account.name}"?`
+        );
+        if (!confirmed) return;
+        try {
+            await apiRequest(`/accounts/${id}`, {
+                method: "DELETE"
+            });
+            await loadAccounts();
+            showStatus("Account deleted successfully.");
+        } catch (error) {
+            showStatus(error.message, true);
+        }
     }
-
-    // Utility function para iwas sa XSS
-    function escapeHtml(str) {
-      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    document.addEventListener('DOMContentLoaded', renderAccounts);
-  </script>
-<script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="super_admin"></script>
+    // TABLE ACTIONS
+    $("accountsTableBody").addEventListener(
+        "click",
+        event => {
+            const editButton =
+                event.target.closest("[data-edit]");
+            const deleteButton =
+                event.target.closest("[data-delete]");
+            if (editButton) {
+                openEdit(Number(editButton.dataset.edit));
+            }
+            if (deleteButton) {
+                deleteAccount(
+                    Number(deleteButton.dataset.delete)
+                );
+            }
+        }
+    );
+    // LOAD ON PAGE OPEN
+    loadAccounts();
+})();
+</script>
 </body>
 </html>
