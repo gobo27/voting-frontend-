@@ -3,7 +3,7 @@
     base = new URL("../../", script.src),
     role = script.dataset.role;
     
-  const api = "http://[::1]:3306/api";
+  const api = "http://localhost:3000/api";;
   const pages = {
     adviser: "module/adviser/Adviser.html",
     committee: "module/committee/Committee.html",

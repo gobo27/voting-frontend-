@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Committee Dashboard MSEUF Election System</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../dist/output.css">
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -33,7 +33,11 @@
     class="relative flex-1 w-full bg-cover bg-center flex items-center justify-center p-6 md:p-12 pt-20 sm:pt-24 pb-16 overflow-hidden"
   >
     <!-- Background Overlay -->
-    <div class="absolute inset-0 bg-[url('../image/bg5.jpg')] bg-cover bg-center opacity-30 pointer-events-none"></div>
+    <div 
+  class="absolute inset-0 bg-cover bg-center opacity-30 pointer-events-none" 
+  style="background-image: url('../../image/bg5.jpg');">
+</div>
+
 
     <!-- Main Card Container -->
     <div class="relative z-10 w-full max-w-6xl bg-[#8f0000] rounded-3xl p-8 md:p-14 shadow-2xl space-y-12 text-[#efefef]">

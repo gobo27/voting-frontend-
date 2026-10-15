@@ -1,179 +1,752 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Election Management - MSEUF Election System</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CampusVote | Election Management</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .font-serif-title { font-family: 'Cinzel', serif; }
-    .font-mono-id { font-family: 'Space Mono', monospace; }
-    input[type="time"]::-webkit-calendar-picker-indicator,
-    input[type="date"]::-webkit-calendar-picker-indicator {
-      cursor: pointer;
-      filter: invert(0.2);
+    :root {
+      --maroon: #801224;
     }
+
+    * {
+      box-sizing: border-box;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #f6f7f9;
+      color: #252a34;
+    }
+
+    button, input, select {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 280px;
+      background: var(--maroon);
+      color: white;
+      position: fixed;
+      inset: 0 auto 0 0;
+      display: flex;
+      flex-direction: column;
+      padding: 30px 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 60px;
+    }
+
+    .brand-icon {
+      padding: 12px;
+      border: 1px solid #ffffff66;
+      border-radius: 12px;
+    }
+
+    .brand h2 {
+      margin: 0;
+      font-size: 23px;
+    }
+
+    .brand p {
+      font-size: 11px;
+      color: #dfc6c8;
+      line-height: 1.7;
+    }
+
+    .nav-label {
+      color: #cdaeb3;
+      letter-spacing: 3px;
+      font-size: 11px;
+      margin: 0 15px 18px;
+    }
+
+    .nav-link {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border-radius: 9px;
+      text-decoration: none;
+      color: #e8d7d9;
+      margin-bottom: 7px;
+    }
+
+    .nav-link.active,
+    .nav-link:hover {
+      background: #713039;
+      color: white;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      border-top: 1px solid #ffffff30;
+      padding-top: 22px;
+    }
+
+    /* MAIN */
+    .main {
+      margin-left: 280px;
+      padding: 28px 45px 45px;
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 36px;
+    }
+
+    .page-head h1 {
+      font-size: 32px;
+      margin: 0 0 12px;
+    }
+
+    .muted {
+      color: #747b87;
+      font-size: 13px;
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid #e0e3e8;
+      border-radius: 11px;
+      box-shadow: 0 3px 9px #00000004;
+      padding: 27px;
+    }
+
+    .election-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 365px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .election-content {
+      min-width: 0;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 35px;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 30px;
+    }
+
+    .tabs a {
+      text-decoration: none;
+      color: #747b87;
+      padding: 15px 18px;
+    }
+
+    .tabs a.active {
+      border-bottom: 2px solid var(--maroon);
+      color: var(--maroon);
+      font-weight: 600;
+    }
+
+    /* CONTROL PANEL */
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 25px;
+    }
+
+    .election-title {
+      font-size: 21px;
+      font-weight: 650;
+      margin: 0;
+    }
+
+    .status-pill {
+      padding: 11px 15px;
+      border: 1px solid #e0e3e8;
+      border-radius: 9px;
+      background: #fafafa;
+      font-size: 12px;
+      color: #606875;
+    }
+
+    .status-pill strong {
+      color: var(--maroon);
+    }
+
+    /* ELECTION TIME */
+    .time-form {
+      background: #f8f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 25px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .time-row label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .control-label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .time-input {
+      padding: 13px 16px;
+      border: 1px solid #dce0e6;
+      border-radius: 8px;
+      background: white;
+      color: #252a34;
+      min-width: 180px;
+    }
+
+    .time-input:focus {
+      outline: none;
+      border-color: var(--maroon);
+    }
+
+    /* ACTION CARDS */
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 15px;
+      margin-top: 22px;
+    }
+
+    .action-card {
+      border: 1px solid #e0e3e8;
+      background: white;
+      color: #252a34;
+      border-radius: 11px;
+      padding: 24px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+      min-height: 185px;
+      transition: box-shadow .2s, border-color .2s;
+    }
+
+    .action-card:hover {
+      border-color: var(--maroon);
+      box-shadow: 0 5px 18px #00000012;
+    }
+
+    .action-icon {
+      border: 1px solid #eddde0;
+      background: #fbedee;
+      color: var(--maroon);
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .action-title {
+      font-size: 16px;
+      font-weight: 650;
+      margin: 0;
+    }
+
+    .action-desc {
+      font-size: 12px;
+      color: #747b87;
+      margin: 0;
+    }
+
+    .action-stop .action-icon {
+      background: #fff1f1;
+    }
+
+    .action-mask .action-icon {
+      background: #eaf7f1;
+      border-color: #d6eee1;
+      color: #147b58;
+    }
+
+    /* LIVE RESULTS */
+    .live-panel {
+      padding: 28px;
+    }
+
+    .live-panel h2 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+
+    .primary {
+      border: 0;
+      border-radius: 8px;
+      background: var(--maroon);
+      color: white;
+      font-weight: 600;
+      padding: 15px 20px;
+    }
+
+    .primary:hover {
+      background: #640d1b;
+    }
+
+    .view-results {
+      display: block;
+      width: 100%;
+      margin: 16px 0 22px;
+    }
+
+    .live-positions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .overview {
+      margin-top: 35px;
+      border-top: 1px solid #ddd;
+      padding-top: 25px;
+    }
+
+    .overview h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0 0 12px;
+    }
+
+    .overview-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      margin: 22px 0;
+    }
+
+    .overview-row strong {
+      color: #747b87;
+      text-align: right;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1250px) {
+      .election-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        position: static;
+        width: 100%;
+        padding: 20px;
+      }
+
+      .brand {
+        margin-bottom: 15px;
+      }
+
+      .sidebar-bottom {
+        display: none;
+      }
+
+      .main {
+        margin: 0;
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 750px) {
+      .action-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .time-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .time-input {
+        width: 100%;
+      }
+
+      .control-header {
+        align-items: flex-start;
+      }
+
+      .tabs {
+        gap: 8px;
+      }
+
+      .tabs a {
+        padding: 12px 8px;
+        font-size: 13px;
+      }
+    }
+    
+/* ORIGINAL ELECTION BUTTON COLORS */
+
+.action-card {
+  color: white;
+  border: none;
+  border-radius: 11px;
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  min-height: 185px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* START ELECTION - BLUE */
+.action-start {
+  background: #2563eb;
+  color: white;
+}
+
+.action-start:hover {
+  background: #1d4ed8;
+}
+
+/* STOP VOTING - MUTED RED */
+.action-stop {
+  background: #bf797b;
+  color: white;
+}
+
+.action-stop:hover {
+  background: #a95f62;
+}
+
+/* MASK / UNMASK NAMES - GREEN */
+.action-mask {
+  background: #047857;
+  color: white;
+}
+
+.action-mask:hover {
+  background: #065f46;
+}
+
+/* BUTTON ICONS */
+.action-card .action-icon,
+.action-stop .action-icon,
+.action-mask .action-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: transparent;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* BUTTON TEXT */
+.action-card .action-title {
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.action-card .action-desc {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+}
+
+/* HOVER EFFECT */
+.action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
   </style>
 </head>
 
-<body class="min-h-screen w-full bg-cover bg-center bg-no-repeat text-gray-800 font-sans antialiased flex flex-col"
-  style="background-image: url('../image/bg5.jpg');">
+<body>
 
-  <!-- ==================== HEADER ==================== -->
-  <header class="sticky top-0 z-50 w-full bg-[#7a0000] border-b border-black/20 py-4 px-4 sm:px-8 flex items-center gap-3 shadow-md shrink-0">
-    <div class="flex items-center gap-3">
-      <a href="Adviser.html" class="text-white hover:opacity-80 transition shrink-0" aria-label="Back">
-        <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m12 19-7-7 7-7"></path>
-          <path d="M19 12H5"></path>
-        </svg>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">
+        <i data-lucide="graduation-cap"></i>
+      </div>
+
+      <div>
+        <h2>CampusVote.</h2>
+        <p>STUDENT ELECTION<br>SYSTEM</p>
+      </div>
+    </div>
+
+    <div class="nav-label">WORKSPACE</div>
+
+    <a class="nav-link" href="Adviser.html">
+      <i data-lucide="users"></i>
+      Candidate management
+    </a>
+
+    <a class="nav-link active" href="elecmanagement.html">
+      <i data-lucide="vote"></i>
+      Election management
+    </a>
+
+    <div class="sidebar-bottom">
+      <p>Election adviser</p>
+      <p class="muted">Administrator</p>
+
+      <a href="Adviserlogin.html" class="nav-link">
+        <i data-lucide="log-out"></i>
+        Log out
       </a>
-      <div class="flex flex-col">
-        <h1 class="text-xl sm:text-2xl font-serif font-bold text-white leading-none">Adviser Dashboard</h1>
-      </div>
     </div>
-  </header>
+  </aside>
 
-  <!-- ==================== MAIN WRAPPER ==================== -->
-  <main class="w-full max-w-[1400px] mx-auto flex flex-col md:flex-row gap-6 p-4 sm:p-6 min-h-screen pb-16">
+  <!-- MAIN CONTENT -->
+  <main class="main">
 
-    <!-- 1. KALIWANG CONTAINER (Election Management Control Panel) -->
-    <div class="w-full min-w-0 md:flex-[2.5] bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col border border-white/20 order-1 overflow-hidden">
-      
-      <!-- NAVIGATION TABS -->
-      <nav class="w-full bg-[#e8e6e6] pt-4 pb-3.5 px-6 border-b border-gray-300/80 flex items-center justify-center gap-8 sm:gap-12 shrink-0">
-        <a href="Adviser.html" class="flex items-center gap-2 text-slate-700 hover:text-black font-serif text-sm sm:text-base font-medium transition">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-[#8f0000] shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-          </svg>
-          <span>Candidate Management</span>
-        </a>
-
-        <a href="elecmanagement.html" class="flex items-center gap-2 text-slate-900 hover:text-black font-serif text-sm sm:text-base font-bold transition">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-[#8f0000] shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-          <span>Election Management</span>
-        </a>
-      </nav>
-
-      <!-- CONTENT BODY -->
-      <div class="p-6 sm:p-8 space-y-6">
-
-        <div class="flex items-center justify-between flex-wrap gap-3 border-b border-gray-300/80 pb-3">
-          <h2 class="text-2xl font-bold font-serif-title tracking-wide text-gray-950">Election Control Panel</h2>
-
-          <div id="statusPill" class="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-300 text-xs sm:text-sm font-serif-title shadow-sm">
-            <span class="text-gray-700">Status: <strong id="statusText" class="text-[#8f0000]">OPEN</strong></span>
-            <span class="text-gray-300">|</span>
-            <span class="text-gray-700">Names: <strong id="maskedText" class="text-[#8f0000]">Masked</strong></span>
-          </div>
-        </div>
-
-        <!-- Maroon Control Box -->
-        <form id="electionTimeForm" onsubmit="handleStartElection(event)"
-          class="bg-[#8f0000] p-6 sm:p-8 rounded-2xl shadow-xl text-white space-y-5">
-          
-          <!-- Set Starting Time -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <label for="startTime" class="flex items-center space-x-3 cursor-pointer">
-              <i data-lucide="clock" class="w-5 h-5 text-white shrink-0"></i>
-              <span class="font-serif text-white text-base sm:text-lg">Set Starting Time</span>
-            </label>
-            <input type="time" id="startTime" name="startTime" value="07:00" required
-              class="bg-[#efefef] text-red-950 font-serif font-bold text-center px-4 py-2.5 rounded-lg w-full sm:w-64 outline-none focus:ring-2 focus:ring-amber-400 shadow cursor-pointer text-sm sm:text-base" />
-          </div>
-
-          <!-- Set Closing Time -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <label for="closingTime" class="flex items-center space-x-3 cursor-pointer">
-              <i data-lucide="clock" class="w-5 h-5 text-white shrink-0"></i>
-              <span class="font-serif text-white text-base sm:text-lg">Set Closing Time</span>
-            </label>
-            <input type="time" id="closingTime" name="closingTime" value="19:00" required
-              class="bg-[#efefef] text-red-950 font-serif font-bold text-center px-4 py-2.5 rounded-lg w-full sm:w-64 outline-none focus:ring-2 focus:ring-amber-400 shadow cursor-pointer text-sm sm:text-base" />
-          </div>
-
-        </form>
-
-        <!-- 3 Quick Action Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 pt-2">
-          
-          <!-- Start Election Button (Blue) -->
-          <button type="button" id="startElectionBtn" onclick="handleStartElectionClick()"
-            class="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center space-y-3 hover:scale-[1.02] active:scale-95 transition">
-            <div class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center">
-              <i data-lucide="play" class="w-5 h-5 fill-white ml-0.5"></i>
-            </div>
-            <h3 class="font-serif text-lg sm:text-xl font-bold">Start Election</h3>
-            <p class="text-xs text-white/90">Manually trigger election start</p>
-          </button>
-
-          <!-- Stop Voting Button (Maroon) -->
-          <button type="button" id="stopVotingBtn" onclick="handleStopVoting()"
-            class="bg-[#8f0000] hover:bg-[#710000] text-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center space-y-3 hover:scale-[1.02] active:scale-95 transition">
-            <div class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center">
-              <i data-lucide="square" class="w-5 h-5 fill-white"></i>
-            </div>
-            <h3 class="font-serif text-lg sm:text-xl font-bold">Stop Voting</h3>
-            <p class="text-xs text-white/90">Permanently end the election</p>
-          </button>
-
-          <!-- Mask the Name Button (Green) -->
-          <button type="button" id="maskToggleBtn" onclick="handleMaskToggle()"
-            class="bg-emerald-700 hover:bg-emerald-800 text-white p-6 rounded-2xl shadow-lg flex flex-col items-center text-center space-y-3 hover:scale-[1.02] active:scale-95 transition">
-            <div id="maskIconContainer" class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center">
-              <i data-lucide="eye-off" class="w-6 h-6 text-white"></i>
-            </div>
-            <h3 id="maskBtnTitle" class="font-serif text-lg sm:text-xl font-bold">Mask Names</h3>
-            <p id="maskBtnDesc" class="text-xs text-white/90">Hide candidate real names</p>
-          </button>
-
-        </div>
-
-      </div>
-
+    <div class="page-head">
+      <h1>Adviser dashboard</h1>
     </div>
 
-    <!-- 2. KANANG CONTAINER (Live Results Sidebar) -->
-    <aside class="w-full md:w-80 bg-[#efefef] rounded-2xl sm:rounded-3xl p-5 shadow-2xl shrink-0 flex flex-col border border-white/20 md:sticky md:top-24 self-start space-y-4 order-2">
-      
-      <div class="space-y-3">
-        <h3 class="text-2xl font-serif font-bold text-gray-950 leading-tight">Live Results</h3>
-        
-        <!-- Bars -->
-        <div id="dynamicSidebarPositions" class="flex flex-col gap-2"></div>
+    <div class="election-layout">
+
+      <div class="election-content">
+
+        <!-- NAVIGATION TABS -->
+        <div class="tabs">
+          <a href="Adviser.html">
+            ♙ Candidate management
+          </a>
+
+          <a href="elecmanagement.html" class="active">
+            Election management
+          </a>
+        </div>
+
+        <!-- ELECTION CONTROL PANEL -->
+        <section class="panel">
+
+          <div class="control-header">
+
+            <h2 class="election-title">
+              Election Control Panel
+            </h2>
+
+            <div id="statusPill" class="status-pill">
+              Status:
+              <strong id="statusText">OPEN</strong>
+              &nbsp; | &nbsp;
+              Names:
+              <strong id="maskedText">Masked</strong>
+            </div>
+
+          </div>
+
+          <!-- ELECTION TIME FORM -->
+          <form
+            id="electionTimeForm"
+            class="time-form"
+            onsubmit="handleStartElection(event)"
+          >
+
+            <div class="time-row">
+
+              <label for="startTime">
+                <i data-lucide="clock"></i>
+                <span class="control-label">
+                  Set Starting Time
+                </span>
+              </label>
+
+              <input
+                type="time"
+                id="startTime"
+                name="startTime"
+                value="07:00"
+                class="time-input"
+                required
+              >
+
+            </div>
+
+            <div class="time-row">
+
+              <label for="closingTime">
+                <i data-lucide="clock"></i>
+                <span class="control-label">
+                  Set Closing Time
+                </span>
+              </label>
+
+              <input
+                type="time"
+                id="closingTime"
+                name="closingTime"
+                value="19:00"
+                class="time-input"
+                required
+              >
+
+            </div>
+
+          </form>
+
+          <!-- ELECTION ACTIONS -->
+          <div class="action-grid">
+
+            <!-- START ELECTION -->
+            <button
+              type="button"
+              id="startElectionBtn"
+              onclick="handleStartElectionClick()"
+              class="action-card action-start"
+            >
+
+              <div class="action-icon">
+                <i data-lucide="play"></i>
+              </div>
+
+              <h3 class="action-title">
+                Start Election
+              </h3>
+
+              <p class="action-desc">
+                Manually trigger election start
+              </p>
+
+            </button>
+
+            <!-- STOP VOTING -->
+            <button
+              type="button"
+              id="stopVotingBtn"
+              onclick="handleStopVoting()"
+              class="action-card action-stop"
+            >
+
+              <div class="action-icon">
+                <i data-lucide="square"></i>
+              </div>
+
+              <h3 class="action-title">
+                Stop Voting
+              </h3>
+
+              <p class="action-desc">
+                Permanently end the election
+              </p>
+
+            </button>
+
+            <!-- MASK / UNMASK NAMES -->
+            <button
+              type="button"
+              id="maskToggleBtn"
+              onclick="handleMaskToggle()"
+              class="action-card action-mask"
+            >
+
+              <div id="maskIconContainer" class="action-icon">
+                <i data-lucide="eye-off"></i>
+              </div>
+
+              <h3 id="maskBtnTitle" class="action-title">
+                Mask Names
+              </h3>
+
+              <p id="maskBtnDesc" class="action-desc">
+                Hide candidate real names
+              </p>
+
+            </button>
+
+          </div>
+
+        </section>
+
       </div>
 
-      <!-- STATUS FOOTER -->
-      <div class="border-t border-gray-300 pt-3 mt-4 text-[13px] text-gray-800 space-y-1">
-        <h4 class="text-sm font-serif font-bold text-gray-950 mb-1">Status</h4>
-        <div class="flex justify-between font-medium">
-          <span>No.Voters:</span>
-          <span id="No.voters" class="text-gray-500 truncate max-w-[130px] text-right">Database not f...</span>
-        </div>
-        <div class="flex justify-between font-medium">
-          <span>Voted :</span>
-          <span id="Voted" class="text-gray-500 truncate max-w-[130px] text-right">0</span>
-        </div>
-        <div class="flex justify-between font-medium">
-          <span>No.Candidate:</span>
-          <span id="No.candidates" class="text-gray-500 truncate max-w-[130px] text-right">0</span>
-        </div>
-      </div>
+      <!-- LIVE RESULTS -->
+      <aside class="panel live-panel">
 
-    </aside>
+        <h2>Live Results</h2>
+
+        <p class="muted">
+          Every voice. Every vote.
+        </p>
+
+        <!-- DYNAMIC LIVE RESULTS -->
+        <div
+          id="dynamicSidebarPositions"
+          class="live-positions"
+        ></div>
+
+        <!-- ELECTION OVERVIEW -->
+        <div class="overview">
+
+          <h3>Status</h3>
+
+          <div class="overview-row">
+            <span>No.Voters:</span>
+            <strong id="No.voters">
+              Database not f...
+            </strong>
+          </div>
+
+          <div class="overview-row">
+            <span>Voted :</span>
+            <strong id="Voted">0</strong>
+          </div>
+
+          <div class="overview-row">
+            <span>No.Candidate:</span>
+            <strong id="No.candidates">0</strong>
+          </div>
+
+        </div>
+
+      </aside>
+
+    </div>
 
   </main>
 
-    <script src="./elecmanagement.js"></script>
+  <!-- ORIGINAL JAVASCRIPT -->
+  <script src="./elecmanagement.js"></script>
 
-<script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="adviser"></script>
+  <!-- ORIGINAL AUTHENTICATION -->
+  <script
+    src="../sheared/auth.js?v=20261002-2"
+    data-mode="guard"
+    data-role="adviser"
+  ></script>
+
 </body>
-
 </html>

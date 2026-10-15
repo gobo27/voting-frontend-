@@ -1,306 +1,424 @@
-// Kunin ang active election_id mula sa URL query string (e.g. ?election_id=1) o default sa 1
+
+"use strict";
+
+const API_BASE = "http://localhost:3000/api";
 const urlParams = new URLSearchParams(window.location.search);
-const activeElectionId = urlParams.get('election_id') || 1;
 
-const STORAGE_KEYS = {
-  status: 'election_status',
-  masked: 'names_masked'
-};
+let activeElectionId = urlParams.get("election_id") || null;
 
-/* --- API HELPER FUNCTION FOR AUTHENTICATED REQUESTS --- */
-async function apiFetch(url, options = {}) {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...(options.headers || {})
-  };
-
-  const response = await fetch(url, { ...options, headers });
-  return response;
-}
-
-/* --- FETCH ELECTION STATUS FROM BACKEND --- */
-async function fetchElectionStatus() {
-  try {
-    const res = await fetch(`/api/elections/${activeElectionId}/status`);
-    if (!res.ok) throw new Error('Failed to fetch election status');
-
-    const data = await res.json();
-    const election = data.election;
-
-    if (election) {
-      // Map backend status to UI state
-      let currentStatus = 'OPEN';
-      if (election.status === 'completed' || election.is_active === 0) {
-        currentStatus = 'CLOSED';
-      } else if (election.status === 'active' || election.is_active === 1) {
-        currentStatus = 'OPEN';
-      }
-
-      localStorage.setItem(STORAGE_KEYS.status, currentStatus);
-      localStorage.setItem(STORAGE_KEYS.masked, election.mask_names ? 'true' : 'false');
-
-      // Populate schedule inputs if available
-      if (election.start_time) {
-        const startTimeVal = new Date(election.start_time).toTimeString().slice(0, 5);
-        const startTimeInput = document.getElementById('startTime');
-        if (startTimeInput) startTimeInput.value = startTimeVal;
-      }
-      if (election.end_time) {
-        const endTimeVal = new Date(election.end_time).toTimeString().slice(0, 5);
-        const closingTimeInput = document.getElementById('closingTime');
-        if (closingTimeInput) closingTimeInput.value = endTimeVal;
-      }
-
-      refreshStatusUI();
+async function resolveCurrentElection() {
+    if (activeElectionId) {
+        return activeElectionId;
     }
-  } catch (err) {
-    console.warn('Backend status fetch error:', err);
-    refreshStatusUI();
-  }
+
+    const data = await apiFetch("/positions/election/current");
+
+    const id = data.election_id;
+
+    if (!id) {
+        throw new Error(
+            "No current election found. Please create or select an election first."
+        );
+    }
+
+    activeElectionId = String(id);
+    return activeElectionId;
 }
 
-/* --- FETCH PUBLIC CANDIDATES & LIVE RESULTS --- */
-async function fetchPublicCandidatesAndResults() {
-  try {
-    const res = await fetch(`/api/elections/${activeElectionId}/candidates`);
-    if (!res.ok) throw new Error('Failed to fetch public candidates');
 
-    const data = await res.json();
-    const candidates = data.candidates || [];
-    const isMasked = data.mask_names;
+const REFRESH_INTERVAL = 5000;
+const MASK_CHAR = "••••••••";
 
-    localStorage.setItem(STORAGE_KEYS.masked, isMasked ? 'true' : 'false');
-    refreshStatusUI();
+let electionData = null;
+let positionsData = [];
+let refreshing = false;
 
-    renderLiveSidebarWithCandidates(candidates);
-  } catch (err) {
-    console.warn('Backend candidate fetch error:', err);
-  }
+const $ = id => document.getElementById(id);
+
+function getToken() {
+    return sessionStorage.getItem("voting_token") ||
+        localStorage.getItem("voting_token") ||
+        localStorage.getItem("token");
 }
 
-/* --- ELECTION CONTROL ACTIONS --- */
+async function apiFetch(path, options = {}) {
+    const token = getToken();
 
-// 1. Trigger Start Election Button
-async function handleStartElectionClick() {
-  try {
-    const res = await apiFetch(`/api/elections/${activeElectionId}/start`, {
-      method: 'POST'
+    const response = await fetch(API_BASE + path, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(options.headers || {})
+        },
+        cache: "no-store"
     });
-    const data = await res.json();
 
-    if (res.ok) {
-      setElectionStatus('OPEN');
-      alert("The election has been officially STARTED! Live voting is now active.");
-    } else {
-      alert(data.message || 'Failed to start election.');
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(data.message || `API error ${response.status}`);
     }
-  } catch (err) {
-    console.error('Start election error:', err);
-    alert('Network error attempting to start election.');
-  }
+
+    return data;
 }
 
-// 2. Submit Schedule Form
-async function handleStartElection(event) {
-  event.preventDefault();
-  const startTimeVal = document.getElementById('startTime').value;
-  const closingTimeVal = document.getElementById('closingTime').value;
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
-  const today = new Date().toISOString().split('T')[0];
-  const start_time = `${today} ${startTimeVal}:00`;
-  const end_time = `${today} ${closingTimeVal}:00`;
+function electionStatus() {
+    const value = String(electionData?.status || "UNKNOWN").toUpperCase();
 
-  try {
-    const res = await apiFetch(`/api/elections/${activeElectionId}/schedule`, {
-      method: 'PATCH',
-      body: JSON.stringify({ start_time, end_time })
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      alert(`Election Schedule Saved successfully:\nStart: ${startTimeVal}\nClose: ${closingTimeVal}`);
-    } else {
-      alert(data.message || 'Failed to update election schedule.');
+    if (["CLOSED", "COMPLETED", "FINISHED"].includes(value)) {
+        return "CLOSED";
     }
-  } catch (err) {
-    console.error('Schedule update error:', err);
-    alert('Network error updating schedule.');
-  }
+
+    if (value === "PAUSED") return "PAUSED";
+    if (value === "ACTIVE" || value === "OPEN") return "OPEN";
+
+    return value;
 }
 
-// 3. Trigger Stop Voting Button
-async function handleStopVoting() {
-  if (getElectionStatus() === 'CLOSED') return;
-  const confirmed = confirm(
-    'Are you sure you want to PERMANENTLY STOP the voting process? This action cannot be undone and candidate names will be revealed.'
-  );
-  if (!confirmed) return;
+function namesMasked() {
+    return Boolean(Number(electionData?.mask_names ?? 1));
+}
 
-  try {
-    const res = await apiFetch(`/api/elections/${activeElectionId}/stop`, {
-      method: 'POST'
-    });
-    const data = await res.json();
+function namesRevealed() {
+    return electionStatus() === "CLOSED" && !namesMasked();
+}
 
-    if (res.ok) {
-      setElectionStatus('CLOSED');
-      alert("The election has been CLOSED. Votes are now being consolidated.");
-    } else {
-      alert(data.message || 'Failed to stop voting.');
+async function refreshDashboard() {
+    if (refreshing) return;
+    refreshing = true;
+
+    try {
+        const result = await apiFetch(
+            `/dashboard/${encodeURIComponent(activeElectionId)}/overview`
+        );
+
+        if (!result.election || !Array.isArray(result.positions)) {
+            throw new Error("Invalid dashboard API response.");
+        }
+
+        electionData = result.election;
+        positionsData = result.positions;
+
+        refreshStatusUI();
+        renderLiveSidebar();
+
+    } catch (error) {
+        console.error("Election management refresh error:", error);
+
+        const sidebar = $("dynamicSidebarPositions");
+
+        if (sidebar && !positionsData.length) {
+            sidebar.textContent = "Unable to load results: " + error.message;
+        }
+    } finally {
+        refreshing = false;
     }
-  } catch (err) {
-    console.error('Stop voting error:', err);
-    alert('Network error attempting to stop voting.');
-  }
-}
-
-// 4. Trigger Toggle Mask Names Button
-async function handleMaskToggle() {
-  try {
-    const res = await apiFetch(`/api/elections/${activeElectionId}/mask`, {
-      method: 'POST'
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      setNamesMasked(data.mask_names);
-      fetchPublicCandidatesAndResults();
-    } else {
-      alert(data.message || 'Failed to toggle mask names.');
-    }
-  } catch (err) {
-    console.error('Toggle mask error:', err);
-    alert('Network error toggling candidate masking.');
-  }
-}
-
-/* --- UI HELPERS --- */
-function getElectionStatus() {
-  return localStorage.getItem(STORAGE_KEYS.status) || 'OPEN';
-}
-
-function getNamesMasked() {
-  return localStorage.getItem(STORAGE_KEYS.masked) === 'true';
-}
-
-function setElectionStatus(status) {
-  localStorage.setItem(STORAGE_KEYS.status, status);
-  refreshStatusUI();
-}
-
-function setNamesMasked(masked) {
-  localStorage.setItem(STORAGE_KEYS.masked, masked ? 'true' : 'false');
-  refreshStatusUI();
 }
 
 function refreshStatusUI() {
-  const status = getElectionStatus();
-  const masked = getNamesMasked();
+    const status = electionStatus();
+    const masked = namesMasked();
 
-  const statusTextEl = document.getElementById('statusText');
-  if (statusTextEl) {
-    statusTextEl.textContent = status;
-    statusTextEl.className = status === 'OPEN' ? "text-emerald-600 font-bold" : "text-red-600 font-bold";
-  }
-
-  const maskedTextEl = document.getElementById('maskedText');
-  if (maskedTextEl) {
-    maskedTextEl.textContent = masked ? 'Masked' : 'Unmasked';
-    maskedTextEl.className = masked ? "text-amber-600 font-bold" : "text-emerald-600 font-bold";
-  }
-
-  const maskBtnTitle = document.getElementById('maskBtnTitle');
-  const maskBtnDesc = document.getElementById('maskBtnDesc');
-  const maskIconContainer = document.getElementById('maskIconContainer');
-
-  if (masked) {
-    if (maskBtnTitle) maskBtnTitle.textContent = 'Unmask Names';
-    if (maskBtnDesc) maskBtnDesc.textContent = 'Show candidate real names';
-    if (maskIconContainer) maskIconContainer.innerHTML = '<i data-lucide="eye" class="w-6 h-6 text-white"></i>';
-  } else {
-    if (maskBtnTitle) maskBtnTitle.textContent = 'Mask Names';
-    if (maskBtnDesc) maskBtnDesc.textContent = 'Hide candidate real names';
-    if (maskIconContainer) maskIconContainer.innerHTML = '<i data-lucide="eye-off" class="w-6 h-6 text-white"></i>';
-  }
-
-  const stopBtn = document.getElementById('stopVotingBtn');
-  if (stopBtn) {
-    if (status === 'CLOSED') {
-      stopBtn.disabled = true;
-      stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    } else {
-      stopBtn.disabled = false;
-      stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    if ($("statusText")) {
+        $("statusText").textContent = status;
+        $("statusText").className =
+            status === "OPEN"
+                ? "text-emerald-600 font-bold"
+                : "text-red-600 font-bold";
     }
-  }
 
-  if (window.lucide) {
-    lucide.createIcons();
-  }
+    if ($("maskedText")) {
+        $("maskedText").textContent =
+            masked ? "Masked" : "Unmasked";
+    }
+
+    if ($("maskBtnTitle")) {
+        $("maskBtnTitle").textContent =
+            masked ? "Unmask Names" : "Mask Names";
+    }
+
+    if ($("maskBtnDesc")) {
+        $("maskBtnDesc").textContent =
+            masked
+                ? "Show candidate real names"
+                : "Hide candidate real names";
+    }
+
+    if ($("maskIconContainer")) {
+        $("maskIconContainer").innerHTML = masked
+            ? '<i data-lucide="eye" class="w-6 h-6 text-white"></i>'
+            : '<i data-lucide="eye-off" class="w-6 h-6 text-white"></i>';
+    }
+
+    if ($("stopVotingBtn")) {
+        $("stopVotingBtn").disabled = status === "CLOSED";
+        $("stopVotingBtn").classList.toggle(
+            "opacity-50",
+            status === "CLOSED"
+        );
+    }
+
+    if (window.lucide) lucide.createIcons();
 }
 
-function renderLiveSidebarWithCandidates(candidates) {
-  const sidebar = document.getElementById('dynamicSidebarPositions');
-  const candCountEl = document.getElementById('No.candidates');
+function renderLiveSidebar() {
+    const sidebar = $("dynamicSidebarPositions");
+    if (!sidebar) return;
 
-  if (candCountEl) candCountEl.textContent = candidates.length.toLocaleString();
+    let candidateCount = 0;
 
-  // I-group ang candidates ayon sa position_title
-  const grouped = {};
-  candidates.forEach(c => {
-    const posTitle = c.position_title || 'General Position';
-    if (!grouped[posTitle]) grouped[posTitle] = [];
-    grouped[posTitle].push(c);
-  });
+    sidebar.innerHTML = positionsData.map(position => {
+        const candidates = position.candidates || [];
 
-  if (sidebar) {
-    sidebar.innerHTML = Object.keys(grouped).map((posTitle, pIdx) => {
-      const cList = grouped[posTitle];
-      const barsHTML = cList.map(c => `
-        <div class="candidate-row flex flex-col w-full" data-candidate-id="${c.candidate_id}">
-          <div class="flex justify-between items-center text-xs sm:text-sm font-serif font-semibold text-gray-800 leading-none mb-1">
-            <span class="truncate pr-2">${escapeHtml(c.name)}</span>
-            <span class="font-mono text-gray-900 shrink-0">0%</span>
-          </div>
-          <div class="w-full bg-gray-400/60 h-3 sm:h-3.5 rounded-full overflow-hidden shadow-inner">
-            <div class="bg-[#8f0000] h-full rounded-full transition-all duration-500 ease-out" style="width: 0%;"></div>
-          </div>
-        </div>
-      `).join('');
+        candidateCount += candidates.length;
 
-      return `
-        <div class="position-section flex flex-col ${pIdx > 0 ? 'mt-2' : ''} gap-1.5 w-full">
-          <div class="pl-1">
-            <h4 class="text-[18px] sm:text-[20px] font-serif font-bold text-gray-900 leading-tight">
-              ${escapeHtml(posTitle)}
-            </h4>
-          </div>
-          <div class="candidates-list flex flex-col gap-2 pl-2 w-full">
-            ${barsHTML}
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
+        const totalVotes = candidates.reduce(
+            (sum, c) => sum + Math.max(0, Number(c.total_votes) || 0),
+            0
+        );
+
+        const rows = candidates.map(candidate => {
+            const votes = Math.max(
+                0,
+                Number(candidate.total_votes) || 0
+            );
+
+            const percent = totalVotes
+                ? (votes / totalVotes) * 100
+                : 0;
+
+            const name = namesRevealed()
+                ? candidate.name
+                : MASK_CHAR;
+
+            return `
+                <div class="candidate-row flex flex-col w-full mb-3">
+                    <div class="flex justify-between items-center gap-2 text-xs font-serif font-semibold text-gray-800 mb-1">
+                        <span class="truncate">
+                            ${escapeHtml(name)}
+                        </span>
+                        <span class="shrink-0">
+                            ${percent.toFixed(1)}%
+                            (${votes.toLocaleString()} votes)
+                        </span>
+                    </div>
+
+                    <div class="w-full bg-gray-400/60 h-3 rounded-full overflow-hidden">
+                        <div
+                            class="bg-[#8f0000] h-full rounded-full transition-all duration-500"
+                            style="width:${percent.toFixed(2)}%">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        return `
+            <section class="position-section mb-4">
+                <h4 class="text-lg font-serif font-bold text-gray-900 mb-2">
+                    ${escapeHtml(position.position_title)}
+                </h4>
+
+                <p class="text-xs text-gray-500 mb-2">
+                    Select up to ${Number(position.max_selection) || 1}
+                </p>
+
+                <div class="pl-2">
+                    ${rows || '<p class="text-sm">No candidates yet.</p>'}
+                </div>
+            </section>
+        `;
+    }).join("");
+
+    if (!positionsData.length) {
+        sidebar.textContent = "No positions or candidates found.";
+    }
+
+    if ($("No.candidates")) {
+        $("No.candidates").textContent =
+            candidateCount.toLocaleString();
+    }
+
+    // These require a separate voter statistics API.
+    if ($("No.voters")) {
+        $("No.voters").textContent = "Not available";
+    }
+
+    if ($("Voted")) {
+        $("Voted").textContent = "Not available";
+    }
 }
 
-function escapeHtml(str) {
-  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// Existing election-control actions.
+// Their routes must match electionControl.router.js.
+
+
+async function handleStartElectionClick() {
+    try {
+        await resolveCurrentElection();
+        await refreshDashboard();
+
+        if (!electionData) {
+            throw new Error(
+                "Election details could not be loaded."
+            );
+        }
+
+        if (electionStatus() === "CLOSED") {
+            alert(
+                "This election has already been permanently stopped. " +
+                "Please create a new election instead."
+            );
+            return;
+        }
+
+        if (electionStatus() === "OPEN") {
+            alert("This election is already active.");
+            return;
+        }
+
+        if (!confirm("Start this election?")) return;
+
+        await apiFetch(
+            `/election/${encodeURIComponent(activeElectionId)}/start`,
+            { method: "POST" }
+        );
+        await refreshDashboard();
+        alert("Election started successfully!");
+    } catch (error) {
+        console.error("Start election error:", error);
+        alert("Start failed: " + error.message);
+    }
+}
+async function handleStopVoting() {
+    if (electionStatus() === "CLOSED") return;
+
+    if (!confirm("Permanently stop voting for this election?")) {
+        return;
+    }
+
+    try {
+        await apiFetch(
+            `/election/${activeElectionId}/stop`,
+            { method: "POST" }
+        );
+
+        alert("Election stopped successfully.");
+        await refreshDashboard();
+
+    } catch (error) {
+        alert("Stop failed: " + error.message);
+    }
 }
 
-/* --- INITIALIZATION --- */
-document.addEventListener('DOMContentLoaded', () => {
-  if (window.lucide) {
-    lucide.createIcons();
-  }
-  fetchElectionStatus();
-  fetchPublicCandidatesAndResults();
+async function handleMaskToggle() {
+    try {
+        await apiFetch(
+            `/election/${activeElectionId}/mask`,
+            { method: "POST" }
+        );
 
-  // Auto-refresh kada 5 segundo para updated ang dashboard status at candidates
-  setInterval(() => {
-    fetchElectionStatus();
-    fetchPublicCandidatesAndResults();
-  }, 5000);
+        await refreshDashboard();
+
+    } catch (error) {
+        alert("Mask update failed: " + error.message);
+    }
+}
+
+async function handleStartElection(event) {
+    event.preventDefault();
+
+    const startTime = $("startTime").value;
+    const closingTime = $("closingTime").value;
+
+    if (!startTime || !closingTime) {
+        alert("Please enter both times.");
+        return;
+    }
+
+    const today = new Date();
+    const date = [
+        today.getFullYear(),
+        String(today.getMonth() + 1).padStart(2, "0"),
+        String(today.getDate()).padStart(2, "0")
+    ].join("-");
+
+    try {
+        await apiFetch(
+            `/election/${activeElectionId}/schedule`,
+            {
+                method: "PATCH",
+                body: JSON.stringify({
+                    start_time: `${date} ${startTime}:00`,
+                    end_time: `${date} ${closingTime}:00`
+                })
+            }
+        );
+
+        alert("Election schedule saved.");
+        await refreshDashboard();
+
+    } catch (error) {
+        alert("Schedule update failed: " + error.message);
+    }
+}
+
+function openLiveDashboard() {
+    window.location.href =
+        `dashboard.html?election_id=${encodeURIComponent(activeElectionId)}`;
+}
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+
+    const button = $("viewLiveResultsBtn");
+
+    if (button) {
+        button.addEventListener(
+            "click",
+            openLiveDashboard
+        );
+    }
+
+    try {
+        await resolveCurrentElection();
+        await refreshDashboard();
+
+        setInterval(refreshDashboard, REFRESH_INTERVAL);
+
+    } catch (error) {
+        console.error("Election initialization error:", error);
+
+        if ($("statusText")) {
+            $("statusText").textContent = "NOT FOUND";
+        }
+
+        if ($("dynamicSidebarPositions")) {
+            $("dynamicSidebarPositions").textContent =
+                error.message;
+        }
+
+        for (const id of [
+            "startElectionBtn",
+            "stopVotingBtn",
+            "maskToggleBtn"
+        ]) {
+            const button = $(id);
+            if (button) button.disabled = true;
+        }
+    }
 });
+
