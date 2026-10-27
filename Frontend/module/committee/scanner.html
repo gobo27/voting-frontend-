@@ -1,737 +1,838 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ballot Scanner - MSEUF-CI Election System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-serif-title { font-family: 'Cinzel', serif; }
-        .font-mono-id { font-family: 'Space Mono', monospace; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusVote | OMR Scanner</title>
 
-        #video, #captureCanvas, #resultCanvas { background: #111; }
+<style>
+:root {
+    --maroon: #800000;
+    --maroon-dark: #650000;
+    --bg: #f3f4f6;
+    --border: #e5e7eb;
+    --text: #242424;
+    --muted: #667085;
+}
 
-        .reticle {
-            position: absolute;
-            inset: 5% 10%;
-            margin: auto;
-            pointer-events: none;
-        }
-        .reticle-corner {
-            position: absolute;
-            width: 26px;
-            height: 26px;
-            border-color: #fff;
-        }
-        .rc-tl { top: 0; left: 0; border-top: 4px solid; border-left: 4px solid; }
-        .rc-tr { top: 0; right: 0; border-top: 4px solid; border-right: 4px solid; }
-        .rc-bl { bottom: 0; left: 0; border-bottom: 4px solid; border-left: 4px solid; }
-        .rc-br { bottom: 0; right: 0; border-bottom: 4px solid; border-right: 4px solid; }
+* { box-sizing: border-box; }
 
-        .tab-btn.active { background: #8f0000; color: #fff; }
-        .tab-btn { color: #8f0000; }
+html, body {
+    margin: 0;
+    min-height: 100%;
+}
 
-        .spinner {
-            border: 3px solid rgba(143,0,0,0.15);
-            border-top-color: #8f0000;
-            border-radius: 9999px;
-            width: 36px; height: 36px;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px Arial, sans-serif;
+    overflow-x: hidden;
+}
 
-        .drop-active { border-color: #8f0000 !important; background: #fdf2f2; }
-    </style>
+/* HEADER */
+
+header {
+    background: var(--maroon);
+    color: white;
+    padding: 16px 25px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.back-link {
+    color: white;
+    text-decoration: none;
+    font-size: 29px;
+    line-height: 1;
+    padding: 5px 8px;
+    border-radius: 8px;
+}
+
+.back-link:hover {
+    background: rgba(255,255,255,.12);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+header p {
+    margin: 5px 0 0;
+    font-size: 12px;
+    color: #f1d4d4;
+}
+
+/* MAIN LAYOUT */
+
+main {
+    width: 100%;
+    max-width: 1600px;
+    margin: 18px auto;
+    padding: 0 18px;
+    display: grid;
+    grid-template-columns: 360px minmax(0, 1fr);
+    align-items: start;
+    gap: 18px;
+}
+
+.panel {
+    background: white;
+    border: 1px solid #eaecf0;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.045);
+    min-width: 0;
+}
+
+h2 {
+    margin: 0 0 18px;
+    font-size: 20px;
+}
+
+h3 {
+    font-size: 15px;
+    margin: 18px 0 12px;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin: 13px 0 7px;
+}
+
+input:not([type="checkbox"]):not([type="range"]),
+select {
+    width: 100%;
+    min-height: 43px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    color: var(--text);
+    font: inherit;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+    outline: 2px solid var(--maroon);
+    outline-offset: 2px;
+}
+
+input[readonly] {
+    background: #f9fafb !important;
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: var(--maroon);
+    cursor: pointer;
+}
+
+input[type="file"] {
+    padding: 9px !important;
+}
+
+input[type="file"]::file-selector-button {
+    border: 0;
+    border-radius: 6px;
+    padding: 7px 10px;
+    margin-right: 8px;
+    background: #e5e7eb;
+    cursor: pointer;
+}
+
+/* BUTTONS */
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 13px 0;
+}
+
+button {
+    border: 0;
+    border-radius: 8px;
+    padding: 11px 14px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 43px;
+}
+
+button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+button:not(:disabled):hover {
+    filter: brightness(.95);
+}
+
+.primary {
+    background: var(--maroon);
+    color: white;
+}
+
+.secondary {
+    background: #e5e7eb;
+    color: #242424;
+}
+
+.outline {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+
+#analyzeBtn {
+    width: 100%;
+    font-size: 14px;
+    min-height: 48px;
+}
+
+#retakeBtn {
+    width: 100%;
+}
+
+#submitBtn {
+    display: none;
+}
+
+/* TEXT */
+
+.status,
+.note {
+    font-size: 12px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.status { margin: 10px 0; }
+.note { color: var(--muted); }
+
+.error,
+.overvote { color: #a00000; }
+
+.success,
+.valid { color: #176b36; }
+
+.valid,
+.overvote { font-weight: 600; }
+
+.divider {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+}
+
+/* CAMERA */
+
+.camera-box {
+    border-radius: 10px;
+    overflow: hidden;
+    background: #111;
+    margin-top: 12px;
+}
+
+#video {
+    display: none;
+    width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    background: #111;
+}
+
+/* PREVIEW */
+
+.preview-panel {
+    min-width: 0;
+}
+
+.preview-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.preview-heading h2 {
+    margin: 0;
+}
+
+.preview-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--maroon);
+    background: #fff1f2;
+    border-radius: 20px;
+    padding: 7px 10px;
+}
+
+.canvas-wrap {
+    position: relative;
+    min-height: 290px;
+    max-height: 650px;
+    overflow: auto;
+    background: #f8f9fa;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+#scanCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+}
+
+.preview-placeholder {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    text-align: center;
+    pointer-events: none;
+    color: #98a2b3;
+}
+
+.canvas-wrap:has(#scanCanvas[width="1"]) .preview-placeholder {
+    display: flex;
+}
+
+.placeholder-icon {
+    font-size: 34px;
+    color: #b0b6c0;
+}
+
+.preview-placeholder p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* RESULTS */
+
+.results-area {
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
+    padding-top: 18px;
+}
+
+.results-area h3 {
+    margin-top: 0;
+}
+
+#results {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.result-position {
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 13px;
+    margin: 12px 0;
+    background: #fff;
+}
+
+.result-position h4 {
+    margin: 0 0 9px;
+    font-size: 15px;
+}
+
+.result-position p {
+    margin: 7px 0;
+    font-size: 13px;
+}
+
+/* OMR SETTINGS */
+
+.toggle-box {
+    background: #fff8f8;
+    border: 1px solid #e7c5c5;
+    border-radius: 9px;
+    padding: 13px;
+    margin-top: 15px;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    margin: 0;
+}
+
+.toggle-row input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--maroon);
+    flex-shrink: 0;
+}
+
+.toggle-row span {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.toggle-box small {
+    display: block;
+    margin: 8px 0 0 28px;
+    font-size: 11px;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* COLLAPSIBLE DIAGNOSTICS */
+
+.debug {
+    margin-top: 18px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 12px;
+    line-height: 1.7;
+    overflow: hidden;
+}
+
+.debug summary {
+    cursor: pointer;
+    padding: 14px;
+    font-weight: 700;
+    user-select: none;
+}
+
+.debug-content {
+    padding: 0 14px 14px;
+}
+
+#debugInfo,
+#qrStatus {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+#debugInfo {
+    max-height: 300px;
+    overflow: auto;
+}
+
+/* STICKY DESKTOP LAYOUT */
+
+@media screen and (min-width: 1001px) {
+    .scanner-controls {
+        position: sticky;
+        top: 14px;
+        height: calc(100vh - 28px);
+        max-height: calc(100vh - 28px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+    }
+
+    .preview-panel {
+        position: sticky;
+        top: 14px;
+        height: calc(100vh - 28px);
+        max-height: calc(100vh - 28px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .preview-panel .canvas-wrap {
+        flex: 1 1 auto;
+        min-height: 150px;
+        max-height: none;
+    }
+
+    .preview-panel .results-area {
+        flex: 0 1 auto;
+        min-height: 110px;
+        max-height: 38%;
+        overflow-y: auto;
+    }
+}
+
+/* TABLET */
+
+@media screen and (min-width: 601px)
+and (max-width: 1000px) {
+    main {
+        grid-template-columns: 1fr;
+        max-width: 900px;
+    }
+
+    .scanner-controls {
+        order: 2;
+    }
+
+    .preview-panel {
+        order: 1;
+    }
+
+    .canvas-wrap {
+        max-height: 480px;
+    }
+}
+
+/* MOBILE */
+
+@media screen and (max-width: 600px) {
+    header {
+        padding: 14px 12px;
+        gap: 8px;
+    }
+
+    header h1 {
+        font-size: 17px;
+    }
+
+    header p {
+        font-size: 11px;
+        line-height: 1.4;
+    }
+
+    .back-link {
+        font-size: 26px;
+    }
+
+    main {
+        display: flex;
+        flex-direction: column;
+        padding: 0 10px;
+        margin: 12px auto;
+        gap: 12px;
+    }
+
+    .panel {
+        width: 100%;
+        padding: 15px;
+        border-radius: 11px;
+    }
+
+    .preview-panel {
+        order: 1;
+    }
+
+    .scanner-controls {
+        order: 2;
+    }
+
+    h2 {
+        font-size: 18px;
+    }
+
+    .preview-tag {
+        font-size: 10px;
+    }
+
+    .canvas-wrap {
+        min-height: 230px;
+        max-height: 380px;
+    }
+
+    #video {
+        max-height: 55vh;
+    }
+
+    .buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .buttons button {
+        width: 100%;
+        min-width: 0;
+        padding: 11px 8px;
+        font-size: 13px;
+    }
+
+    #retakeBtn,
+    #loadBtn,
+    #analyzeBtn {
+        width: 100%;
+    }
+
+    input:not([type="checkbox"]):not([type="range"]),
+    select {
+        font-size: 16px;
+    }
+
+    .results-area {
+        margin-top: 15px;
+    }
+
+    .toggle-box {
+        padding: 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+    }
+}
+</style>
 </head>
-<body class="bg-[#5a0a0a] min-h-screen text-gray-900 antialiased flex flex-col overflow-y-auto">
 
-    <!-- STANDARDIZED HEADER -->
-    <header class="sticky top-0 z-50 w-full bg-[#8f0000] border-b border-red-900/50 py-4 px-3 sm:px-8 flex items-center justify-between shadow-md shrink-0">
-        <div class="flex items-center gap-3">
-           <a href="Committee.html" class="text-white hover:opacity-80 transition shrink-0" aria-label="Back to Committee Dashboard">
-                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m12 19-7-7 7-7"></path>
-                    <path d="M19 12H5"></path>
-                </svg>
-            </a>
+<body>
 
-            <div class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 overflow-hidden rounded-full">
-                <img src="image/logo.png" alt="User Profile" class="w-full h-full object-cover">
-            </div>
+<header>
+    <a href="Committee.html"
+       class="back-link"
+       aria-label="Back to Committee Dashboard">
+        &#8592;
+    </a>
 
-            <div class="flex flex-col">
-                <h2 class="text-lg sm:text-[23px] font-serif font-bold text-white leading-none">Ballot Scanner</h2>
-            </div>
-        </div>
+    <div>
+        <h1>CampusVote — OMR Scanner</h1>
+        <p>QR Verification • Ballot Analysis • Vote Counting</p>
+    </div>
+</header>
 
-        <span id="ballotConfigBadge" class="hidden sm:flex items-center gap-1.5 text-[#efefef]/90 text-xs font-mono-id bg-black/20 border border-white/20 px-3.5 py-1.5 rounded-full mr-1"></span>
-    </header>
+<main>
 
-    <!-- MAIN CONTAINER -->
-    <main class="w-full max-w-5xl mx-auto px-2 sm:px-8 pt-3 sm:pt-6 flex flex-col items-center justify-start flex-1 pb-16 space-y-4 sm:space-y-6">
+    <!-- SCANNER CONTROLS -->
 
-        <div id="noConfigNotice" class="hidden w-full bg-[#efefef] border border-amber-300 rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
-            <i data-lucide="file-warning" class="w-12 h-12 text-amber-600 mx-auto"></i>
-            <p class="text-sm sm:text-base text-gray-800 font-medium">No ballot configuration was found in this browser. Create and save a ballot first.</p>
-            <button onclick="window.location.href='ballot_editor.html'" class="bg-[#8f0000] hover:bg-[#710000] text-white text-sm font-bold px-6 py-3 rounded-xl transition active:scale-95 shadow-md">
-                Go to Ballot Creator
+    <section class="panel scanner-controls">
+        <h2>Scanner Controls</h2>
+
+        <label for="electionId">Election ID</label>
+        <input
+            id="electionId"
+            type="number"
+            readonly
+            placeholder="Loading current election..."
+        >
+
+        <div class="buttons">
+            <button id="loadBtn"
+                    type="button"
+                    class="secondary">
+                Load Templates
             </button>
         </div>
 
-        <div id="scannerApp" class="w-full hidden space-y-4 sm:space-y-6 flex flex-col items-center">
+        <label for="templateSelect">Ballot Template</label>
+        <select id="templateSelect">
+            <option value="">Select a template</option>
+        </select>
 
-            <!-- Source tabs -->
-            <div class="w-full bg-[#efefef] rounded-xl sm:rounded-2xl shadow-md border border-gray-300 p-1.5 flex gap-1.5">
-                <button id="tabCameraBtn" onclick="switchTab('camera')" class="tab-btn flex-1 flex items-center justify-center gap-2 text-sm sm:text-base font-bold py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition">
-                    <i data-lucide="camera" class="w-4 h-4 sm:w-5 sm:h-5"></i> Live Camera
-                </button>
-                <button id="tabUploadBtn" onclick="switchTab('upload')" class="tab-btn flex-1 flex items-center justify-center gap-2 text-sm sm:text-base font-bold py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition">
-                    <i data-lucide="upload" class="w-4 h-4 sm:w-5 sm:h-5"></i> Upload Image
-                </button>
+        <p id="scannerStatus"
+           class="status"
+           role="status"></p>
+
+        <hr class="divider">
+
+        <!-- BALLOT IMAGE -->
+
+        <h3>Ballot Image</h3>
+
+        <label for="fileInput">
+            Upload Ballot Image (A5)
+        </label>
+
+        <input
+            id="fileInput"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+        >
+
+        <div class="buttons">
+            <button id="cameraBtn"
+                    type="button"
+                    class="secondary">
+                Open Camera
+            </button>
+
+            <button id="captureBtn"
+                    type="button"
+                    class="primary"
+                    disabled>
+                Capture
+            </button>
+
+            <button id="stopCameraBtn"
+                    type="button"
+                    class="outline"
+                    disabled>
+                Stop Camera
+            </button>
+        </div>
+
+        <div class="camera-box">
+            <video
+                id="video"
+                autoplay
+                playsinline
+                muted
+            ></video>
+        </div>
+
+        <p id="imageStatus"
+           class="status"
+           role="status"></p>
+
+        <div class="buttons">
+            <button id="retakeBtn"
+                    type="button"
+                    class="outline">
+                Retake Photo / Clear Image
+            </button>
+        </div>
+
+        <hr class="divider">
+
+        <!-- OMR SETTINGS -->
+
+        <h3>OMR Settings</h3>
+
+        <label for="sensitivity">
+            Shade Sensitivity:
+            <span id="sensitivityValue">Balanced</span>
+        </label>
+
+        <input
+            id="sensitivity"
+            type="range"
+            min="1"
+            max="3"
+            step="1"
+            value="2"
+        >
+
+        <p class="note">
+            1 = Strict · 2 = Balanced · 3 = Light Shade
+        </p>
+
+        <div class="toggle-box">
+            <label class="toggle-row" for="liveCount">
+                <input id="liveCount" type="checkbox">
+                <span>Enable Live Counting</span>
+            </label>
+
+            <small>
+                When enabled, Analyze Ballot will attempt
+                to save valid votes. Requires backend
+                counting permission.
+            </small>
+        </div>
+
+        <div class="buttons">
+            <button
+                id="analyzeBtn"
+                type="button"
+                class="primary"
+                disabled>
+                Analyze Ballot
+            </button>
+        </div>
+
+        <p id="analysisStatus"
+           class="status"
+           role="status"></p>
+
+        <p class="note">
+            Keep the entire ballot and all four registration
+            squares visible. If alignment fails, retake
+            the photo. Overvoted or unclear positions
+            will be skipped while valid positions continue.
+        </p>
+
+        <!-- Retained for scanner.js compatibility -->
+        <button id="submitBtn"
+                type="button"
+                disabled>
+            Submit Votes
+        </button>
+
+        <!-- DEBUG DIAGNOSTICS -->
+
+        <details class="debug">
+            <summary>Debug &amp; QR Diagnostics</summary>
+
+            <div class="debug-content">
+                <strong>Debug Diagnostics</strong>
+
+                <div id="debugInfo">
+                    Load a template and image, then analyze.
+                </div>
+
+                <hr class="divider">
+
+                <strong>QR Diagnostics</strong>
+
+                <p id="qrStatus">
+                    QR not scanned yet.
+                </p>
             </div>
+        </details>
+    </section>
 
-            <!-- CAMERA PANE -->
-            <div id="cameraPane" class="hidden w-full bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-2.5 sm:p-8 space-y-4 sm:space-y-6">
-                <div class="relative w-full aspect-[3/4] sm:aspect-[16/10] max-h-[70vh] bg-black rounded-xl sm:rounded-2xl overflow-hidden shadow-inner border border-gray-400">
-                    <video id="video" class="w-full h-full object-cover" autoplay playsinline muted></video>
-                    <div class="reticle">
-                        <div class="reticle-corner rc-tl"></div>
-                        <div class="reticle-corner rc-tr"></div>
-                        <div class="reticle-corner rc-bl"></div>
-                        <div class="reticle-corner rc-br"></div>
-                    </div>
-                    <div id="cameraStatus" class="absolute bottom-2.5 left-2.5 right-2.5 text-center text-xs sm:text-sm text-white/95 bg-black/60 backdrop-blur-md rounded-lg py-2 px-3 shadow">
-                        Align the ballot within the edges, then capture.
-                    </div>
-                </div>
+    <!-- BALLOT PREVIEW -->
 
-                <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-4 pt-1">
-                    <button onclick="startCamera()" id="startCameraBtn" class="flex-1 bg-white hover:bg-gray-100 text-gray-800 text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-md border border-gray-300 active:scale-95">
-                        <i data-lucide="video" class="w-4 h-4 sm:w-5 sm:h-5 text-[#8f0000]"></i> Start Camera
-                    </button>
-                    <button onclick="captureFrame()" id="captureBtn" disabled class="flex-1 bg-[#8f0000] hover:bg-[#710000] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-md active:scale-95">
-                        <i data-lucide="scan-line" class="w-4 h-4 sm:w-5 sm:h-5"></i> Capture
-                    </button>
-                </div>
-            </div>
+    <section class="panel preview-panel">
 
-            <!-- UPLOAD PANE -->
-            <div id="uploadPane" class="hidden w-full bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-3 sm:p-8 space-y-4 sm:space-y-6">
-                <div id="dropZone" class="border-2 border-dashed border-gray-400 bg-white/60 hover:bg-white rounded-xl sm:rounded-2xl p-8 sm:p-12 text-center transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
-                    <i data-lucide="image-plus" class="w-10 h-10 sm:w-12 sm:h-12 text-gray-500 mx-auto mb-2 sm:mb-3"></i>
-                    <p class="text-sm sm:text-base text-gray-800 font-semibold">Drag &amp; drop a ballot image here, or tap to browse</p>
-                    <p class="text-xs text-gray-500 mt-1">Supports JPG and PNG</p>
-                    <input id="fileInput" type="file" accept="image/jpeg,image/png,image/jpg" class="hidden" onchange="handleFileInput(event)" />
-                </div>
-                <div id="uploadPreviewWrap" class="hidden space-y-4">
-                    <img id="uploadPreviewImg" class="w-full max-h-[460px] object-contain rounded-xl border border-gray-300 bg-black/5" />
-                    <button onclick="processUploadedImage()" class="w-full bg-[#8f0000] hover:bg-[#710000] text-white text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-lg active:scale-95">
-                        <i data-lucide="cpu" class="w-5 h-5"></i> Process Image
-                    </button>
-                </div>
-            </div>
+        <div class="preview-heading">
+            <h2>Ballot Preview</h2>
+            <span class="preview-tag">Live Preview</span>
+        </div>
 
-            <!-- PROCESSING -->
-            <div id="processingPane" class="hidden w-full bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-8 sm:p-12 flex flex-col items-center gap-3 sm:gap-4">
-                <div class="spinner"></div>
-                <p class="text-sm sm:text-base text-gray-700 font-semibold">Analyzing ballot marks…</p>
-            </div>
+        <div class="canvas-wrap">
 
-            <!-- DETECTION WARNING -->
-            <div id="detectionWarning" class="hidden w-full bg-red-50 border border-red-300 rounded-2xl sm:rounded-3xl p-5 sm:p-6 text-center space-y-3 sm:space-y-4 shadow-xl">
-                <i data-lucide="alert-triangle" class="w-8 h-8 sm:w-10 sm:h-10 text-red-600 mx-auto"></i>
-                <p id="detectionWarningText" class="text-xs sm:text-base text-red-800 font-medium"></p>
-                <button onclick="resetScanner()" class="bg-[#8f0000] hover:bg-[#710000] text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-lg sm:rounded-xl transition active:scale-95 shadow">
-                    Try Again
-                </button>
-            </div>
+            <canvas
+                id="scanCanvas"
+                width="1"
+                height="1"
+            ></canvas>
 
-            <!-- RESULTS -->
-            <div id="resultsPane" class="hidden w-full space-y-4 sm:space-y-6">
-                <div class="bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-3 sm:p-6 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h2 class="font-serif-title font-bold text-sm sm:text-lg text-[#8f0000] flex items-center gap-1.5">
-                            <i data-lucide="scan-eye" class="w-4 h-4 sm:w-5 sm:h-5"></i> Detected Marks
-                        </h2>
-                        <span class="text-[11px] sm:text-xs text-gray-600 font-medium">Green = valid · Red = overvote</span>
-                    </div>
-                    <canvas id="resultCanvas" class="w-full rounded-xl border border-gray-300 shadow-sm"></canvas>
-                </div>
-
-                <div class="bg-[#efefef] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/40 p-4 sm:p-8 space-y-4">
-                    <h2 class="font-serif-title font-bold text-sm sm:text-lg text-[#8f0000] flex items-center gap-2">
-                        <i data-lucide="list-checks" class="w-4 h-4 sm:w-5 sm:h-5"></i> Vote Summary
-                    </h2>
-                    <div id="resultsList" class="space-y-2 sm:space-y-3"></div>
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <button onclick="resetScanner()" class="flex-1 bg-white hover:bg-gray-100 text-gray-800 text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 border border-gray-300 shadow-md active:scale-95">
-                        <i data-lucide="rotate-ccw" class="w-4 h-4 sm:w-5 sm:h-5 text-[#8f0000]"></i> Rescan / Retry
-                    </button>
-                    <button onclick="confirmSubmit()" class="flex-1 bg-[#8f0000] hover:bg-[#710000] text-white text-sm sm:text-base font-bold py-3 sm:py-3.5 rounded-xl sm:rounded-2xl transition flex items-center justify-center gap-2 shadow-lg active:scale-95">
-                        <i data-lucide="check-circle" class="w-4 h-4 sm:w-5 sm:h-5"></i> Confirm &amp; Submit Votes
-                    </button>
-                </div>
+            <div class="preview-placeholder">
+                <div class="placeholder-icon">&#9635;</div>
+                <p>
+                    Upload or capture a ballot image
+                    to display it here.
+                </p>
             </div>
 
         </div>
-    </main>
 
-    <canvas id="captureCanvas" class="hidden"></canvas>
-    
-    <div id="toast" class="fixed bottom-5 right-5 z-50 hidden max-w-xs bg-[#8f0000] text-[#efefef] text-sm font-medium px-4 py-3 rounded-xl shadow-2xl transition-opacity duration-300 border border-white/20"></div>
+        <div class="results-area">
+            <h3>Detected Results</h3>
 
-    <script>
-        const BALLOT_CONFIG_KEY = 'ballot_config';
-        const RESULTS_KEY = 'election_results';
-        const MAX_PROCESS_DIM = 1400;
+            <div id="results">
+                <p>No ballot analyzed yet.</p>
+            </div>
+        </div>
 
-        const DARK_LUMINANCE = 95;
-        const FILL_RATIO_THRESHOLD = 0.65;
-        const CORNER_SEARCH_FRACTION = 0.22;
-        const CORNER_MIN_DARKNESS = 150;
+    </section>
 
-        const LAYOUT = {
-            headerFrac: 0.17,
-            barcodeFrac: 0.08,
-            footerFrac: 0.05,
-            colGutterFrac: 0.5,
-            bubbleInsetFrac: 0.045,
-            bubbleSampleFrac: 0.013
-        };
+</main>
 
-        let config = null;
-        let stream = null;
-        let currentTab = 'camera';
-        let lastResults = null;
-        let lastSourceCanvas = null;
+<script>
 
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            loadConfig();
+    window.CAMPUSVOTE_API_BASE =
+        window.CAMPUSVOTE_API_BASE || "";
+</script>
 
-            const params = new URLSearchParams(window.location.search);
-            const requestedMode = params.get('mode');
-            switchTab(requestedMode === 'upload' ? 'upload' : 'camera');
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="./scanner.js?v=20261027-responsive"></script>
 
-            setupDropZone();
-        });
-
-        window.addEventListener('beforeunload', stopCamera);
-
-        function goBackToCommittee() {
-            stopCamera();
-            window.location.href = 'committee.html';
-        }
-
-        function loadConfig() {
-            try {
-                const raw = localStorage.getItem(BALLOT_CONFIG_KEY);
-                config = raw ? JSON.parse(raw) : null;
-            } catch (e) {
-                console.warn('Could not parse ballot_config', e);
-                config = null;
-            }
-
-            const noConfig = document.getElementById('noConfigNotice');
-            const app = document.getElementById('scannerApp');
-
-            if (!config || !Array.isArray(config.positions) || config.positions.length === 0) {
-                noConfig.classList.remove('hidden');
-                app.classList.add('hidden');
-                return;
-            }
-
-            noConfig.classList.add('hidden');
-            app.classList.remove('hidden');
-
-            const yr = (config.academicYear || '----').replace(/\D/g, '').slice(0, 4) || '2026';
-            const badge = document.getElementById('ballotConfigBadge');
-            badge.textContent = `MSEUFCI-${yr}`;
-            badge.classList.remove('hidden');
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('tabCameraBtn').classList.toggle('active', tab === 'camera');
-            document.getElementById('tabUploadBtn').classList.toggle('active', tab === 'upload');
-            document.getElementById('cameraPane').classList.toggle('hidden', tab !== 'camera');
-            document.getElementById('uploadPane').classList.toggle('hidden', tab !== 'upload');
-
-            hideAllResultPanes();
-
-            if (tab !== 'camera') stopCamera();
-        }
-
-        async function startCamera() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showToast('Camera access is not supported in this browser.', 'error');
-                return;
-            }
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' },
-                    audio: false
-                });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-                document.getElementById('captureBtn').disabled = false;
-                document.getElementById('cameraStatus').textContent = 'Align the ballot within the edges, then capture.';
-            } catch (e) {
-                console.warn('Camera error', e);
-                showToast('Could not access the camera. Check permissions or use Upload instead.', 'error');
-            }
-        }
-
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-                stream = null;
-            }
-            document.getElementById('captureBtn').disabled = true;
-        }
-
-        function captureFrame() {
-            const video = document.getElementById('video');
-            if (!video.videoWidth) {
-                showToast('Camera feed not ready yet.', 'error');
-                return;
-            }
-            const canvas = document.getElementById('captureCanvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            runPipelineFromCanvas(canvas);
-        }
-
-        function setupDropZone() {
-            const zone = document.getElementById('dropZone');
-            ['dragenter', 'dragover'].forEach(evt =>
-                zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('drop-active'); })
-            );
-            ['dragleave', 'drop'].forEach(evt =>
-                zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('drop-active'); })
-            );
-            zone.addEventListener('drop', (e) => {
-                const file = e.dataTransfer.files && e.dataTransfer.files[0];
-                if (file) loadImageFile(file);
-            });
-        }
-
-        function handleFileInput(e) {
-            const file = e.target.files && e.target.files[0];
-            if (file) loadImageFile(file);
-        }
-
-        let pendingUploadImg = null;
-        function loadImageFile(file) {
-            if (!file.type.startsWith('image/')) {
-                showToast('Please choose an image file.', 'error');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    pendingUploadImg = img;
-                    document.getElementById('uploadPreviewImg').src = e.target.result;
-                    document.getElementById('uploadPreviewWrap').classList.remove('hidden');
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function processUploadedImage() {
-            if (!pendingUploadImg) return;
-            const canvas = document.getElementById('captureCanvas');
-            canvas.width = pendingUploadImg.naturalWidth;
-            canvas.height = pendingUploadImg.naturalHeight;
-            canvas.getContext('2d').drawImage(pendingUploadImg, 0, 0);
-            runPipelineFromCanvas(canvas);
-        }
-
-        function hideAllResultPanes() {
-            document.getElementById('processingPane').classList.add('hidden');
-            document.getElementById('detectionWarning').classList.add('hidden');
-            document.getElementById('resultsPane').classList.add('hidden');
-        }
-
-        // ============================================================
-        // Pipeline with Dynamic Height Verification
-        // ============================================================
-        function runPipelineFromCanvas(sourceCanvas) {
-            hideAllResultPanes();
-            document.getElementById('processingPane').classList.remove('hidden');
-
-            setTimeout(() => {
-                try {
-                    const processed = downscaleToCanvas(sourceCanvas, MAX_PROCESS_DIM);
-                    lastSourceCanvas = processed;
-
-                    const ctx = processed.getContext('2d');
-                    const imageData = ctx.getImageData(0, 0, processed.width, processed.height);
-
-                    // GATE 1: Timing Marks
-                    const corners = detectCornerMarks(imageData, processed.width, processed.height);
-                    if (!corners) {
-                        showWarning('Could not detect all four corner alignment marks. Try better lighting and keep the ballot within the edges.');
-                        return;
-                    }
-
-                    // GATE 2: Dynamic Height Verification (Tinatanggap ang kahit anong haba basta portrait)
-                    const widthTop = Math.hypot(corners.tr.x - corners.tl.x, corners.tr.y - corners.tl.y);
-                    const widthBottom = Math.hypot(corners.br.x - corners.bl.x, corners.br.y - corners.bl.y);
-                    const heightLeft = Math.hypot(corners.bl.x - corners.tl.x, corners.bl.y - corners.tl.y);
-                    const heightRight = Math.hypot(corners.br.x - corners.tr.y, corners.br.y - corners.tr.y);
-
-                    const avgW = (widthTop + widthBottom) / 2;
-                    const avgH = (heightLeft + heightRight) / 2;
-                    const aspectRatio = avgH / avgW;
-
-                    if (aspectRatio < 1.0 || Math.abs(widthTop - widthBottom) / avgW > 0.40) {
-                        showWarning('Please align the official MSEUF-CI Ballot upright and within the edges.');
-                        return;
-                    }
-
-                    const rect = {
-                        x0: Math.min(corners.tl.x, corners.bl.x),
-                        y0: Math.min(corners.tl.y, corners.tr.y),
-                        x1: Math.max(corners.tr.x, corners.br.x),
-                        y1: Math.max(corners.bl.y, corners.br.y)
-                    };
-
-                    // GATE 3: Paper Whiteness
-                    const rw = rect.x1 - rect.x0;
-                    const rh = rect.y1 - rect.y0;
-                    const centerLuminance = avgLuminance(imageData, processed.width, Math.round(rect.x0 + rw * 0.25), Math.round(rect.y0 + rh * 0.25), Math.round(rw * 0.5), Math.round(rh * 0.5));
-                    
-                    if (centerLuminance < 140) {
-                        showWarning('The scanned surface is too dark or not a ballot document. Please scan in a well-lit area.');
-                        return;
-                    }
-
-                    // GATE 4: Barcode Strip Area
-                    if (!verifyBarcodePattern(imageData, processed.width, rect)) {
-                        showWarning('No ballot barcode pattern detected. Please make sure the official MSEUF-CI Ballot header is visible.');
-                        return;
-                    }
-
-                    // All Gates Passed
-                    const layout = buildLayoutRegions(config, rect);
-                    const results = runOmr(imageData, processed.width, layout);
-
-                    lastResults = results;
-                    renderResultCanvas(processed, layout, results);
-                    renderResultsList(results);
-
-                    document.getElementById('processingPane').classList.add('hidden');
-                    document.getElementById('resultsPane').classList.remove('hidden');
-                    lucide.createIcons();
-                } catch (err) {
-                    console.error(err);
-                    showWarning('Something went wrong while analyzing this image. Please try again.');
-                }
-            }, 50);
-        }
-
-        function showWarning(text) {
-            document.getElementById('processingPane').classList.add('hidden');
-            document.getElementById('detectionWarningText').textContent = text;
-            document.getElementById('detectionWarning').classList.remove('hidden');
-        }
-
-        function verifyBarcodePattern(imageData, imgWidth, rect) {
-            const rw = rect.x1 - rect.x0;
-            const rh = rect.y1 - rect.y0;
-            const testY = Math.round(rect.y0 + rh * (LAYOUT.headerFrac + LAYOUT.barcodeFrac * 0.5));
-            const startX = Math.round(rect.x0 + rw * 0.15);
-            const endX = Math.round(rect.x1 - rw * 0.15);
-
-            let transitions = 0;
-            let lastState = false;
-            const data = imageData.data;
-
-            for (let x = startX; x < endX; x++) {
-                const i = (testY * imgWidth + x) * 4;
-                const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                const isDark = lum < 120;
-
-                if (isDark !== lastState) {
-                    transitions++;
-                    lastState = isDark;
-                }
-            }
-            return transitions >= 8;
-        }
-
-        function downscaleToCanvas(sourceCanvas, maxDim) {
-            const { width, height } = sourceCanvas;
-            const scale = Math.min(1, maxDim / Math.max(width, height));
-            const out = document.createElement('canvas');
-            out.width = Math.round(width * scale);
-            out.height = Math.round(height * scale);
-            out.getContext('2d').drawImage(sourceCanvas, 0, 0, out.width, out.height);
-            return out;
-        }
-
-        function detectCornerMarks(imageData, width, height) {
-            const win = Math.max(6, Math.round(Math.min(width, height) * 0.012));
-            const stride = Math.max(2, Math.round(win / 2));
-
-            const searchW = Math.round(width * CORNER_SEARCH_FRACTION);
-            const searchH = Math.round(height * CORNER_SEARCH_FRACTION);
-
-            const regions = {
-                tl: { x0: 0, y0: 0, x1: searchW, y1: searchH },
-                tr: { x0: width - searchW, y0: 0, x1: width, y1: searchH },
-                bl: { x0: 0, y0: height - searchH, x1: searchW, y1: height },
-                br: { x0: width - searchW, y0: height - searchH, x1: width, y1: height }
-            };
-
-            const found = {};
-            for (const key in regions) {
-                const r = regions[key];
-                let best = null;
-                for (let y = r.y0; y < r.y1 - win; y += stride) {
-                    for (let x = r.x0; x < r.x1 - win; x += stride) {
-                        const avg = avgLuminance(imageData, width, x, y, win, win);
-                        if (!best || avg < best.avg) best = { x: x + win / 2, y: y + win / 2, avg };
-                    }
-                }
-                if (!best || best.avg > CORNER_MIN_DARKNESS) return null;
-                found[key] = best;
-            }
-            return found;
-        }
-
-        function avgLuminance(imageData, imgWidth, x0, y0, w, h) {
-            const data = imageData.data;
-            let sum = 0, count = 0;
-            const maxX = Math.min(imageData.width, x0 + w);
-            const maxY = Math.min(imageData.height, y0 + h);
-
-            for (let y = Math.max(0, y0); y < maxY; y++) {
-                let rowStart = (y * imgWidth + Math.max(0, x0)) * 4;
-                for (let x = Math.max(0, x0); x < maxX; x++) {
-                    const i = rowStart + (x - Math.max(0, x0)) * 4;
-                    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                    count++;
-                }
-            }
-            return count ? sum / count : 255;
-        }
-
-        function buildLayoutRegions(cfg, rect) {
-            const rw = rect.x1 - rect.x0;
-            const rh = rect.y1 - rect.y0;
-
-            const headerH = rh * LAYOUT.headerFrac;
-            const barcodeH = rh * LAYOUT.barcodeFrac;
-            const footerH = rh * LAYOUT.footerFrac;
-            const positionsTop = rect.y0 + headerH + barcodeH;
-            const positionsH = rh - headerH - barcodeH - footerH;
-
-            const rowsPerPosition = cfg.positions.map(p => Math.max(1, Math.ceil(p.candidates.length / 2)));
-            const weights = cfg.positions.map((p, i) => 1 + rowsPerPosition[i]);
-            const totalWeight = weights.reduce((a, b) => a + b, 0);
-
-            let cursorY = positionsTop;
-            const positions = [];
-
-            cfg.positions.forEach((position, i) => {
-                const blockH = positionsH * (weights[i] / totalWeight);
-                const titleH = blockH * (1 / weights[i]);
-                const rows = rowsPerPosition[i];
-                const rowH = (blockH - titleH) / rows;
-
-                const candidates = position.candidates.map((candidate, ci) => {
-                    const col = ci % 2;
-                    const row = Math.floor(ci / 2);
-                    const colLeft = rect.x0 + (col === 0 ? 0 : rw * LAYOUT.colGutterFrac);
-                    const bubbleX = colLeft + rw * LAYOUT.bubbleInsetFrac;
-                    const bubbleY = cursorY + titleH + rowH * (row + 0.5);
-                    return { candidate, x: bubbleX, y: bubbleY };
-                });
-
-                positions.push({ position, candidates, blockTop: cursorY, blockH });
-                cursorY += blockH;
-            });
-
-            return { rect, positions, sampleRadius: Math.max(4, rw * LAYOUT.bubbleSampleFrac) };
-        }
-
-        function runOmr(imageData, imgWidth, layout) {
-            return layout.positions.map(({ position, candidates }) => {
-                const scored = candidates.map(c => {
-                    const ratio = darkRatioInRegion(imageData, imgWidth, c.x, c.y, layout.sampleRadius);
-                    return { ...c, filled: ratio > FILL_RATIO_THRESHOLD, ratio };
-                });
-
-                const filled = scored.filter(c => c.filled);
-                const max = position.maxChoices || 1;
-                let status;
-                if (filled.length === 0) status = 'blank';
-                else if (filled.length > max) status = 'overvote';
-                else status = 'valid';
-
-                return { position, scored, filled, status };
-            });
-        }
-
-        function darkRatioInRegion(imageData, imgWidth, cx, cy, radius) {
-            const data = imageData.data;
-            const x0 = Math.max(0, Math.round(cx - radius));
-            const y0 = Math.max(0, Math.round(cy - radius));
-            const x1 = Math.min(imageData.width, Math.round(cx + radius));
-            const y1 = Math.min(imageData.height, Math.round(cy + radius));
-
-            let dark = 0, total = 0;
-            for (let y = y0; y < y1; y++) {
-                let rowStart = (y * imgWidth + x0) * 4;
-                for (let x = x0; x < x1; x++) {
-                    const i = rowStart + (x - x0) * 4;
-                    const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                    if (lum < DARK_LUMINANCE) dark++;
-                    total++;
-                }
-            }
-            return total ? dark / total : 0;
-        }
-
-        function renderResultCanvas(sourceCanvas, layout, results) {
-            const canvas = document.getElementById('resultCanvas');
-            canvas.width = sourceCanvas.width;
-            canvas.height = sourceCanvas.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(sourceCanvas, 0, 0);
-
-            const ringR = layout.sampleRadius * 1.6;
-
-            results.forEach(({ position, scored, status }) => {
-                scored.forEach(c => {
-                    if (!c.filled) return;
-                    ctx.beginPath();
-                    ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2);
-                    ctx.lineWidth = Math.max(2, ringR * 0.18);
-                    ctx.strokeStyle = status === 'overvote' ? '#dc2626' : '#16a34a';
-                    ctx.stroke();
-                });
-            });
-        }
-
-        function renderResultsList(results) {
-            const container = document.getElementById('resultsList');
-            container.innerHTML = results.map(({ position, filled, status }) => {
-                const badge = {
-                    valid: '<span class="text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">Valid</span>',
-                    overvote: '<span class="text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-800 px-2 py-0.5 rounded-full border border-red-300">Overvote</span>',
-                    blank: '<span class="text-[10px] font-bold uppercase tracking-wide bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full border border-gray-300">Blank</span>'
-                }[status];
-
-                const names = filled.length
-                    ? filled.map(c => escapeHtml(c.candidate.name)).join(', ')
-                    : '<span class="text-gray-400 italic">No selection detected</span>';
-
-                const border = status === 'overvote' ? 'border-red-300 bg-red-50' : status === 'valid' ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 bg-white';
-
-                return `
-                    <div class="border ${border} rounded-xl px-3.5 py-2.5 sm:py-3 flex items-start justify-between gap-3 shadow-sm">
-                        <div>
-                            <p class="text-xs font-bold text-gray-900 font-serif">${escapeHtml(position.name)}</p>
-                            <p class="text-xs text-gray-700 mt-0.5 font-medium">${names}</p>
-                            ${status === 'overvote' ? `<p class="text-[10px] text-red-700 mt-0.5 font-semibold">Selected more than the allowed ${position.maxChoices}.</p>` : ''}
-                        </div>
-                        ${badge}
-                    </div>`;
-            }).join('');
-        }
-
-        function confirmSubmit() {
-            if (!lastResults) return;
-
-            let tally;
-            try {
-                tally = JSON.parse(localStorage.getItem(RESULTS_KEY) || 'null');
-            } catch (e) {
-                tally = null;
-            }
-            if (!tally || !tally.positions) tally = initTally(config);
-
-            lastResults.forEach(({ position }) => {
-                if (!tally.positions[position.id]) {
-                    tally.positions[position.id] = {
-                        name: position.name, maxChoices: position.maxChoices,
-                        overvotes: 0, blanks: 0, candidates: {}
-                    };
-                }
-                position.candidates.forEach(c => {
-                    if (!tally.positions[position.id].candidates[c.id]) {
-                        tally.positions[position.id].candidates[c.id] = { name: c.name, votes: 0 };
-                    }
-                });
-            });
-
-            lastResults.forEach(({ position, filled, status }) => {
-                const posTally = tally.positions[position.id];
-                if (status === 'valid') {
-                    filled.forEach(c => { posTally.candidates[c.candidate.id].votes += 1; });
-                } else if (status === 'overvote') {
-                    posTally.overvotes += 1;
-                } else {
-                    posTally.blanks += 1;
-                }
-            });
-
-            tally.totalScanned = (tally.totalScanned || 0) + 1;
-            tally.lastUpdated = new Date().toISOString();
-
-            localStorage.setItem(RESULTS_KEY, JSON.stringify(tally));
-            showToast('Votes submitted and added to the tally.', 'success');
-            resetScanner();
-        }
-
-        function initTally(cfg) {
-            const positions = {};
-            cfg.positions.forEach(p => {
-                const candidates = {};
-                p.candidates.forEach(c => { candidates[c.id] = { name: c.name, votes: 0 }; });
-                positions[p.id] = { name: p.name, maxChoices: p.maxChoices, overvotes: 0, blanks: 0, candidates };
-            });
-            return { totalScanned: 0, positions };
-        }
-
-        function resetScanner() {
-            lastResults = null;
-            lastSourceCanvas = null;
-            pendingUploadImg = null;
-            document.getElementById('uploadPreviewWrap').classList.add('hidden');
-            document.getElementById('fileInput').value = '';
-            hideAllResultPanes();
-        }
-
-        function escapeHtml(str) {
-            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        let toastTimer = null;
-        function showToast(message, type = 'success') {
-            const el = document.getElementById('toast');
-            el.textContent = message;
-            el.classList.remove('hidden', 'bg-[#8f0000]', 'bg-red-800');
-            el.classList.add(type === 'error' ? 'bg-red-800' : 'bg-[#8f0000]');
-            el.style.opacity = '1';
-            clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                el.style.opacity = '0';
-                setTimeout(() => el.classList.add('hidden'), 300);
-            }, 2800);
-        }
-    </script>
-<script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="committee"></script>
 </body>
 </html>

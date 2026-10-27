@@ -569,8 +569,8 @@
 .border-\[\#8f0000\]\/60 {
   border-color: color-mix(in oklab, #8f0000 60%, transparent);
 }
-.border-\[\#550000\]\/60 {
-  border-color: color-mix(in oklab, #550000 60%, transparent);
+.border-\[\#00\]\/60 {
+  border-color: color-mix(in oklab, #00 60%, transparent);
 }
 .border-\[\#700000\] {
   border-color: #700000;

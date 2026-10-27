@@ -1,175 +1,231 @@
-const content = document.querySelector("#content");
-const submit = document.querySelector("#add");
-const update = document.querySelector("#update");
 
-// POST API - Create New Election
-submit.addEventListener("click", async () => {
-    const title = document.querySelector("#electionTitle").value;
-    const academic_year = document.querySelector("#academicYear").value;
-    const start_date = document.querySelector("#startDate").value;
-    const end_date = document.querySelector("#endDate").value;
-    const status = document.querySelector("#status").value || "Upcoming";
+"use strict";
 
-    const formData = { title, academic_year, start_date, end_date, status };
 
-    if (title && academic_year && start_date && end_date) {
+const BallotAPI = (() => {
+
+    const API_BASE =
+        window.CAMPUSVOTE_API_BASE ||
+        (
+            location.port === "5500" ||
+            location.port === "5501"
+                ? "http://localhost:3000/api"
+                : location.origin + "/api"
+        );
+
+    function getToken() {
+        return (
+            sessionStorage.getItem("voting_token") ||
+            localStorage.getItem("voting_token") ||
+            localStorage.getItem("token")
+        );
+    }
+
+    async function request(path, options = {}) {
+        const token = getToken();
+
+        if (!token) {
+            throw new Error(
+                "Session not found. Please log in again."
+            );
+        }
+
+        let response;
+
         try {
-            const response = await fetch("/api/elections", {
-                method: "POST",
-                body: JSON.stringify(formData),
+            response = await fetch(API_BASE + path, {
+                ...options,
                 headers: {
                     "Content-Type": "application/json",
-                },
-            });
-
-            if (response.ok) {
-                alert("Election Created Successfully");
-                location.reload();
-            } else {
-                const errData = await response.json();
-                alert(errData.message || "Failed to create election.");
-            }
-        } catch (error) {
-            console.error("Create election error:", error);
-        }
-    } else {
-        alert("Please fill in all required fields.");
-    }
-});
-
-// Load Election List on Page Load
-window.addEventListener("load", () => {
-    getElectionList();
-});
-
-// GET API - Read All Elections
-function getElectionList() {
-    let html = "";
-
-    fetch("/api/elections")
-        .then((response) => response.json())
-        .then((data) => {
-            const elections = data.elections || data;
-
-            elections.forEach((element) => {
-                const startDate = new Date(element.start_date);
-                const endDate = new Date(element.end_date);
-
-                const formattedStart = startDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                });
-
-                const formattedEnd = endDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                });
-
-                html += `
-            <tr>
-                <td class="px-4 py-2 font-medium">${element.title}</td>
-                <td class="px-4 py-2">${element.academic_year}</td>
-                <td class="px-4 py-2 text-xs">
-                    <div>Start: ${formattedStart}</div>
-                    <div>End: ${formattedEnd}</div>
-                </td>
-                <td class="px-4 py-2">
-                    <span class="px-2 py-1 rounded text-xs font-bold ${
-                        element.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                    }">${element.status}</span>
-                </td>
-                <td class="px-4 py-2 text-center">
-                    <button onClick="updateElection(${element.election_id})" class="text-blue-600 hover:text-blue-800 mx-1">
-                        <img src="./edit.png" class="w-5 h-5 inline hover:scale-110 transition-transform" alt="Edit">
-                    </button>
-                    <button onClick="deleteElection(${element.election_id})" class="text-red-600 hover:text-red-800 mx-1">
-                        <img src="./bin.png" class="w-5 h-5 inline hover:scale-110 transition-transform" alt="Delete">
-                    </button>
-                </td>
-            </tr>`;
-            });
-            content.innerHTML = html;
-        })
-        .catch((error) => {
-            console.error("Fetch election list error:", error);
-        });
-}
-
-// DELETE API - Remove Election
-function deleteElection(id) {
-    if (confirm("Are you sure you want to delete this election?")) {
-        fetch(`/api/elections/${id}`, {
-            method: "DELETE",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        })
-            .then((response) => {
-                if (response.ok) {
-                    alert("Election Deleted Successfully");
-                    location.reload();
-                } else {
-                    alert("Error Deleting Election");
+                    Authorization: `Bearer ${token}`,
+                    ...(options.headers || {})
                 }
-            })
-            .catch((error) => console.error("Delete error:", error));
+            });
+        } catch (error) {
+            throw new Error(
+                "Cannot connect to backend at " +
+                API_BASE
+            );
+        }
+
+        const data = await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ||
+                `API error ${response.status}`
+            );
+        }
+
+        return data;
     }
-}
 
-// GET API by ID - Load Data into Form for Editing
-function updateElection(id) {
-    fetch(`/api/elections/${id}`)
-        .then((response) => response.json())
-        .then((data) => {
-            const election = data.election || data[0] || data;
+    // CURRENT ELECTION
 
-            submit.classList.add("hidden");
-            update.classList.remove("hidden");
+    async function getElections() {
+        const result = await request(
+            "/election/current/status"
+        );
 
-            const startDate = new Date(election.start_date).toISOString().slice(0, 16);
-            const endDate = new Date(election.end_date).toISOString().slice(0, 16);
+        return {
+            elections: [result.election]
+        };
+    }
 
-            document.querySelector("#electionTitle").value = election.title;
-            document.querySelector("#academicYear").value = election.academic_year;
-            document.querySelector("#startDate").value = startDate;
-            document.querySelector("#endDate").value = endDate;
-            document.querySelector("#status").value = election.status;
-            document.querySelector("#ID").value = election.election_id;
-        })
-        .catch((error) => {
-            console.error("Fetch single election error:", error);
+    async function resolveElection(requestedId) {
+        const electionId =
+            requestedId || "current";
+
+        const result = await request(
+            `/election/${encodeURIComponent(electionId)}/status`
+        );
+
+        if (!result.election) {
+            throw new Error(
+                "Election not found."
+            );
+        }
+
+        return result.election;
+    }
+
+    // POSITIONS AND CANDIDATES
+
+    async function getPositions(electionId) {
+        return request(
+            `/positions/election/${encodeURIComponent(electionId)}`
+        );
+    }
+
+    async function addPosition(payload) {
+        return request("/positions", {
+            method: "POST",
+            body: JSON.stringify(payload)
         });
-}
+    }
 
-// PUT API - Update Election
-update.addEventListener("click", () => {
-    const title = document.querySelector("#electionTitle").value;
-    const academic_year = document.querySelector("#academicYear").value;
-    const start_date = document.querySelector("#startDate").value;
-    const end_date = document.querySelector("#endDate").value;
-    const status = document.querySelector("#status").value;
-    const id = document.querySelector("#ID").value;
-
-    const formData = { title, academic_year, start_date, end_date, status };
-
-    fetch(`/api/elections/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(formData),
-        headers: {
-            "Content-Type": "application/json",
-        },
-    })
-        .then((response) => {
-            if (response.ok) {
-                alert("Election Updated Successfully");
-                location.reload();
-            } else {
-                alert("Update Error.");
+    async function updatePosition(id, payload) {
+        return request(
+            `/positions/${encodeURIComponent(id)}`,
+            {
+                method: "PATCH",
+                body: JSON.stringify(payload)
             }
-        })
-        .catch((error) => {
-            console.error("Update error:", error);
+        );
+    }
+
+    // BALLOT TEMPLATES
+
+    async function createTemplate(payload) {
+        return request("/ballots/templates", {
+            method: "POST",
+            body: JSON.stringify(payload)
         });
-});
+    }
+
+    async function saveCompleteTemplate(payload) {
+        return request(
+            "/ballots/templates/complete",
+            {
+                method: "POST",
+                body: JSON.stringify(payload)
+            }
+        );
+    }
+
+    async function getTemplate(templateId) {
+        return request(
+            `/ballots/templates/${encodeURIComponent(templateId)}`
+        );
+    }
+
+    async function getTemplates(electionId) {
+        return request(
+            `/ballots/templates/election/${encodeURIComponent(electionId)}`
+        );
+    }
+
+    async function addGridCoordinate(
+        templateId,
+        payload
+    ) {
+        return request(
+            `/ballots/templates/${encodeURIComponent(templateId)}/coordinates`,
+            {
+                method: "POST",
+                body: JSON.stringify(payload)
+            }
+        );
+    }
+
+    async function deleteTemplate(templateId) {
+        return request(
+            `/ballots/templates/${encodeURIComponent(templateId)}`,
+            {
+                method: "DELETE"
+            }
+        );
+    }
+
+    // QR PRINT BATCHES
+
+    async function generateQRBatch(payload) {
+        return request(
+            "/ballots/qr/batches",
+            {
+                method: "POST",
+                body: JSON.stringify(payload)
+            }
+        );
+    }
+
+    async function getQRBatches(
+        electionId,
+        templateId = null
+    ) {
+        const params = new URLSearchParams();
+
+        if (templateId !== null && templateId !== "") {
+            params.set(
+                "template_id",
+                String(templateId)
+            );
+        }
+
+        const query = params.toString();
+
+        return request(
+            `/ballots/qr/batches/election/${encodeURIComponent(electionId)}` +
+            (query ? `?${query}` : "")
+        );
+    }
+
+    async function getQRBatch(batchId) {
+        return request(
+            `/ballots/qr/batches/${encodeURIComponent(batchId)}`
+        );
+    }
+
+    return {
+        request,
+        getElections,
+        resolveElection,
+        getPositions,
+        addPosition,
+        updatePosition,
+        createTemplate,
+        saveCompleteTemplate,
+        getTemplate,
+        getTemplates,
+        addGridCoordinate,
+        deleteTemplate,
+        generateQRBatch,
+        getQRBatches,
+        getQRBatch
+    };
+
+})();
+
+window.BallotAPI = BallotAPI;

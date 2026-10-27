@@ -1,124 +1,283 @@
 (() => {
-  const script = document.currentScript,
-    base = new URL("../../", script.src),
-    role = script.dataset.role;
-    
-  const api = "http://[::1]:3306/api";
+  const script = document.currentScript;
+
+  const base = new URL("../../", script.src);
+  const role = script.dataset.role;
+
+  const api = "http://localhost:3000/api";
+
   const pages = {
     adviser: "module/adviser/Adviser.html",
     committee: "module/committee/Committee.html",
-    super_admin: "module/SuperAdmin/Manageacc.html",
+    super_admin: "module/SuperAdmin/Manageacc.html"
   };
+
   const loginPages = {
     adviser: "module/adviser/Adviserlogin.html",
     committee: "module/committee/Committeelogin.html",
-    super_admin: "module/SuperAdmin/SuperAdminlog.html",
+    super_admin: "module/SuperAdmin/SuperAdminlog.html"
   };
+
+  const changePasswordPage =
+    "module/change_password/change_password.html";
+
+  function clearSession() {
+    sessionStorage.removeItem("voting_token");
+    sessionStorage.removeItem("voting_user");
+    sessionStorage.removeItem("first_login_role");
+  }
+
   async function request(route, options = {}) {
     const token = sessionStorage.getItem("voting_token");
+
     const response = await fetch(api + route, {
       ...options,
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: "Bearer " + token } : {}),
-        ...options.headers,
-      },
+        ...(token
+          ? { Authorization: "Bearer " + token }
+          : {}),
+        ...(options.headers || {})
+      }
     });
-    const contentType = response.headers.get("content-type") || "";
+
+    const contentType =
+      response.headers.get("content-type") || "";
+
     if (!contentType.includes("application/json")) {
       throw new Error(
-        "The API returned an unexpected response (HTTP " + response.status +
-        "). Check that the backend is running at " + api + " and reload this page.",
+        "Unexpected API response (HTTP " +
+        response.status +
+        "). Check that the backend is running."
       );
     }
+
     const raw = await response.text();
+
     let data;
+
     try {
       data = JSON.parse(raw);
     } catch {
-      throw new Error("The backend returned invalid JSON (HTTP " + response.status + "). Restart the backend and reload this page.");
+      throw new Error(
+        "The backend returned invalid JSON."
+      );
     }
+
     if (!response.ok) {
-      const error = new Error(data.message || "Request failed");
+      const error = new Error(
+        data.message || "Request failed."
+      );
+
       error.status = response.status;
+      error.mustChangePassword =
+        data.mustChangePassword === true;
+
       throw error;
     }
+
     return data;
   }
+
   window.votingAuth = { request };
+
+  // LOGIN PAGE
   if (script.dataset.mode === "login") {
-    const form = document.getElementById("loginForm"),
-      message = document.createElement("p");
+    const form = document.getElementById("loginForm");
+
+    if (!form) {
+      console.error("loginForm not found.");
+      return;
+    }
+
+    const message = document.createElement("p");
+
     message.setAttribute("role", "alert");
     message.setAttribute("aria-live", "polite");
+
     form.append(message);
-    form.addEventListener("submit", async (event) => {
+
+    form.addEventListener("submit", async event => {
       event.preventDefault();
-      const button = form.querySelector('button[type="submit"]');
+
+      const button = form.querySelector(
+        'button[type="submit"]'
+      );
+
       button.disabled = true;
       button.textContent = "Signing in...";
       message.textContent = "";
+
       try {
         const data = await request("/signin", {
           method: "POST",
           body: JSON.stringify({
-            email: form.querySelector("#email").value.trim(),
-            password: form.querySelector("#password").value,
-            role,
-          }),
+            email: form
+              .querySelector("#email")
+              .value.trim(),
+            password: form
+              .querySelector("#password")
+              .value,
+            role
+          })
         });
-        sessionStorage.setItem("voting_token", data.token);
-        sessionStorage.setItem("voting_user", JSON.stringify(data.user));
-        location.replace(new URL(pages[data.user.role], base));
+
+        sessionStorage.setItem(
+          "voting_token",
+          data.token
+        );
+
+        sessionStorage.setItem(
+          "voting_user",
+          JSON.stringify(data.user)
+        );
+
+        const targetRole =
+          data.user.role === "super_admin"
+            ? role
+            : data.user.role;
+
+        // FIRST-TIME LOGIN
+        if (data.mustChangePassword === true) {
+          sessionStorage.setItem(
+            "first_login_role",
+            role
+          );
+
+          location.replace(
+            new URL(changePasswordPage, base)
+          );
+
+          return;
+        }
+
+        // NORMAL LOGIN
+        location.replace(
+          new URL(pages[targetRole], base)
+        );
+
       } catch (error) {
         message.textContent =
           error instanceof TypeError
             ? "Cannot reach the server. Start the backend and try again."
             : error.message;
+
       } finally {
         button.disabled = false;
         button.textContent = "Log-in";
       }
     });
-  } else {
-    document.documentElement.style.visibility = "hidden";
-    request("/signin/me")
-      .then(({ user }) => {
-        if (user.role !== role) {
-          location.replace(new URL(pages[user.role] || "signin.html", base));
-          return;
-        }
-        document.documentElement.style.visibility = "";
-        const link = document.createElement("a");
-        link.href = new URL("signin.html", base);
-        link.textContent = "Log out";
-        link.style.cssText =
-          "position:fixed;bottom:16px;right:16px;z-index:100;background:#8f0000;color:white;padding:10px 16px;border-radius:8px";
-        link.addEventListener("click", async (event) => {
-          event.preventDefault();
-          try {
-            await request("/signin/logout", { method: "POST" });
-          } catch {}
-          sessionStorage.removeItem("voting_token");
-          sessionStorage.removeItem("voting_user");
-          location.replace(new URL("signin.html", base));
-        });
-        document.body.append(link);
-      })
-      .catch((error) => {
-        if (error.status === 401 || error.status === 403) {
-          sessionStorage.removeItem("voting_token");
-          sessionStorage.removeItem("voting_user");
-          location.replace(new URL(loginPages[role], base));
-        } else {
-          document.documentElement.style.visibility = "";
-          document.body.replaceChildren(
-            Object.assign(document.createElement("p"), {
-              textContent:
-                "Cannot verify your session. Check the backend connection and reload this page.",
-            }),
+
+    return;
+  }
+
+  // PROTECTED DASHBOARD
+  document.documentElement.style.visibility = "hidden";
+
+  request("/signin/me")
+    .then(({ user }) => {
+      const hasAccess =
+        user.role === role ||
+        user.role === "super_admin";
+
+      if (!hasAccess) {
+        location.replace(
+          new URL(
+            pages[user.role] || "signin.html",
+            base
+          )
+        );
+        return;
+      }
+
+      document.documentElement.style.visibility = "";
+
+      async function logout(event) {
+        event.preventDefault();
+
+        try {
+          await request("/signin/logout", {
+            method: "POST"
+          });
+        } catch (error) {
+          console.warn(
+            "Logout request failed:",
+            error
           );
         }
-      });
-  }
+
+        clearSession();
+
+        location.replace(
+          new URL(loginPages[role], base)
+        );
+      }
+
+      // Existing sidebar logout
+      const sidebarLogout =
+        document.getElementById("logoutLink");
+
+      if (sidebarLogout) {
+        sidebarLogout.addEventListener(
+          "click",
+          logout
+        );
+      }
+
+      // Existing logout elements from HTML.
+      // No new floating button is created.
+      document
+        .querySelectorAll(
+          ".floating-logout, .logout"
+        )
+        .forEach(element => {
+          if (element !== sidebarLogout) {
+            element.addEventListener(
+              "click",
+              logout
+            );
+          }
+        });
+    })
+    .catch(error => {
+      if (
+        error.mustChangePassword ||
+        (
+          error.status === 403 &&
+          error.message ===
+          "Password change required."
+        )
+      ) {
+        location.replace(
+          new URL(changePasswordPage, base)
+        );
+
+        return;
+      }
+
+      if (
+        error.status === 401 ||
+        error.status === 403
+      ) {
+        clearSession();
+
+        location.replace(
+          new URL(loginPages[role], base)
+        );
+
+        return;
+      }
+
+      document.documentElement.style.visibility = "";
+
+      document.body.replaceChildren(
+        Object.assign(
+          document.createElement("p"),
+          {
+            textContent:
+              "Cannot verify your session. Check the backend connection and reload this page."
+          }
+        )
+      );
+    });
 })();

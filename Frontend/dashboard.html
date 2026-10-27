@@ -1,228 +1,326 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Live Results - MSEUF Election System</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --maroon: #801224;
+      --maroon-dark: #650d1c;
+      --background: #f6f7f9;
+      --border: #e0e3e8;
+      --muted: #747b87;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: #252a34;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    .dashboard-header {
+      background: var(--maroon);
+      color: white;
+      padding: 17px 35px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 8px #00000012;
+    }
+
+    .back-link {
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .2s;
+    }
+
+    .back-link:hover {
+      opacity: .75;
+    }
+
+    .dashboard-logo {
+      width: 43px;
+      height: 43px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .dashboard-header h1 {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 700;
+    }
+
+    .dashboard-main {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 28px 35px 50px;
+    }
+
+    #statusBanner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-radius: 10px;
+      border: 1px solid #dce0e6;
+      background: white;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 7px #00000005;
+      transition: background-color .2s, border-color .2s;
+    }
+
+    #statusIcon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .results-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 18px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 23px 26px;
+      margin-bottom: 18px;
+      box-shadow: 0 3px 9px #00000004;
+    }
+
+    .results-heading h2 {
+      font-size: 23px;
+      font-weight: 700;
+      margin: 0 0 7px;
+      color: #252a34;
+    }
+
+    .results-subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .sort-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sort-group label {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .sort-wrapper {
+      position: relative;
+    }
+
+    #sortSelect {
+      appearance: none;
+      background: #fbedee;
+      color: var(--maroon);
+      border: 1px solid #f0d9de;
+      border-radius: 9px;
+      padding: 12px 38px 12px 15px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      min-width: 205px;
+    }
+
+    #sortSelect:focus {
+      border-color: var(--maroon);
+    }
+
+    .sort-arrow {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--maroon);
+    }
+
+    #resultsContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: 100%;
+    }
+
+    #resultsContainer>div,
+    #resultsContainer>section,
+    #resultsContainer>article {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 3px 12px #00000006;
+      min-width: 0;
+    }
+
+    #resultsContainer h3 {
+      color: #252a34;
+      font-family: Inter, Arial, sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    #resultsContainer p,
+    #resultsContainer span {
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    #resultsContainer button {
+      cursor: pointer;
+    }
+
+    #resultsContainer .progress-bar,
+    #resultsContainer .vote-progress {
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-header {
+        padding: 16px 20px;
+      }
+
+      .dashboard-header h1 {
+        font-size: 19px;
+      }
+
+      .dashboard-logo {
+        width: 36px;
+        height: 36px;
+      }
+
+      .dashboard-main {
+        padding: 20px 16px 35px;
+      }
+
+      .results-heading {
+        padding: 20px;
+      }
+
+      .results-heading h2 {
+        font-size: 21px;
+      }
+
+      #resultsContainer>div,
+      #resultsContainer>section,
+      #resultsContainer>article {
+        padding: 18px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .sort-group {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .sort-wrapper,
+      #sortSelect {
+        width: 100%;
+      }
+
+      .results-heading {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+    /* TOTAL COUNTED BALLOTS */
+
+.ballot-counter {
+    min-width: 205px;
+    padding: 16px 20px;
+    background: #fff5f6;
+    border: 1px solid #efd7dc;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ballot-counter-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #801224;
+}
+
+#totalCountedBallots {
+    font-size: 30px;
+    font-weight: 800;
+    color: #801224;
+    line-height: 1.2;
+}
+
+.ballot-counter-note {
+    font-size: 11px;
+    color: #747b87;
+}
+
+@media (max-width: 480px) {
+    .ballot-counter {
+        width: 100%;
+    }
+}
+  </style>
 </head>
-<body class="min-h-screen w-full bg-[#e3dddd] text-gray-800 font-sans antialiased flex flex-col">
 
-  <header class="sticky top-0 z-50 w-full bg-[#700000] border-b border-red-950/50 py-5 px-3 flex items-center gap-3 shadow-md">
-    <div class="flex items-center gap-2 sm:gap-3">
-      <a href="index.html" class="text-white hover:opacity-80 transition" aria-label="Back">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m12 19-7-7 7-7"></path>
-          <path d="M19 12H5"></path>
-        </svg>
-      </a>
-
-      <div class="w-11 h-11 shrink-0 overflow-hidden rounded-full">
-        <img src="image/logo.png" alt="User Profile" class="w-full h-full object-cover">
-      </div>
-
-      <h2 class="text-lg sm:text-[22px] font-serif font-bold text-white leading-none">Live Dashboard</h2>
-    </div>
+<body>
+  <header class="dashboard-header">
+    <a href="index.html" class="back-link" aria-label="Back">
+      <svg xmlns="http://www.w3.org/2000/svg" width="29" height="29" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 19-7-7 7-7"></path>
+        <path d="M19 12H5"></path>
+      </svg>
+    </a>
+    <h1>Live Dashboard</h1>
   </header>
-  
-  <main class="w-full flex-1 px-6 pt-4 pb-8 md:px-12 md:pt-5 md:pb-10 flex flex-col gap-4">
 
-    <div id="statusBanner"
-      class="w-full rounded-xl px-4 py-2.5 font-serif font-semibold text-sm sm:text-base flex items-center gap-2 shadow-sm border transition-colors">
+  <main class="dashboard-main">
+    <div id="statusBanner">
       <span id="statusIcon">🔒</span>
       <span id="statusBannerText">Voting in Progress (Names Hidden)</span>
     </div>
- 
-    <div class="flex items-center justify-between gap-4 border-b border-gray-300 pb-2.5">
-      <div class="flex items-center gap-3">
-        <h2 class="text-[25px] sm:text-[20px] font-serif font-bold text-gray-950 leading-none">Live Results</h2>
-      </div>
 
-      <div class="flex items-center gap-2">
-        <label for="sortSelect" class="font-serif font-semibold text-gray-800 text-[20px] sm:text-[15px] leading-none">Sort By:</label>
-        <div class="relative flex items-center">
-          <select id="sortSelect" onchange="renderLiveResults()" class="appearance-none bg-[#d5cece] hover:bg-[#c9c1c1] border border-red-900/40 text-gray-900 font-serif font-medium text-sm sm:text-base rounded-xl py-1 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-red-800 cursor-pointer shadow-sm">
-            <option value="default">Default (Ballot Order)</option>
-            <option value="high-low">Highest to Lowest</option>
-            <option value="low-high">Lowest to Highest</option>
-          </select>
-          <div class="pointer-events-none absolute right-2 flex items-center text-red-900">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </div>
-        </div>
+    <div class="results-heading">
+      <div>
+        <h2>Live Results</h2>
+        <p class="results-subtitle">Real-time election results from all students.</p>
+      </div>
+      <div class="ballot-counter">
+        <span class="ballot-counter-label">Total Counted Ballots</span>
+        <strong id="totalCountedBallots">0</strong>
+        <span class="ballot-counter-note">Successfully scanned ballots</span>
       </div>
     </div>
-
-    <div id="resultsContainer" class="flex flex-col gap-6 w-full">
-      </div>
-
+    <div id="resultsContainer"></div>
   </main>
 
-  <script>
-    const STORAGE_KEYS = {
-      status: 'election_status',   // 'OPEN' | 'PAUSED' | 'CLOSED'
-      masked: 'names_masked',      // 'true' | 'false'
-      ballot: 'ballot_config',     // Configuration mula sa ballot creator
-      results: 'election_results'  // Naipong boto mula sa ballot scanner
-    };
-    const MASK_CHAR = '••••••••';
-
-    function getElectionStatus() {
-      return localStorage.getItem(STORAGE_KEYS.status) || 'OPEN';
-    }
-
-    function getNamesMasked() {
-      const v = localStorage.getItem(STORAGE_KEYS.masked);
-      return v === null ? true : v === 'true'; // Naka-mask by default
-    }
-
-    function isRevealed() {
-      if (getElectionStatus() === 'CLOSED') return true;
-      return !getNamesMasked();
-    }
-
-    function renderLiveResults() {
-      let config = null;
-      let tally = null;
-
-      try {
-        config = JSON.parse(localStorage.getItem(STORAGE_KEYS.ballot));
-        tally = JSON.parse(localStorage.getItem(STORAGE_KEYS.results));
-      } catch (e) {
-        console.warn('Error reading ballot configuration/results', e);
-      }
-
-      const container = document.getElementById('resultsContainer');
-      const sortMode = document.getElementById('sortSelect').value;
-      const revealed = isRevealed();
-
-      // Kung walang configuration na nahanap
-      if (!config || !Array.isArray(config.positions) || config.positions.length === 0) {
-        container.innerHTML = `
-          <div class="p-8 text-center bg-white/50 border border-gray-300 rounded-2xl">
-            <p class="font-serif font-bold text-gray-700 text-lg">No Ballot Data Found</p>
-            <p class="text-sm text-gray-500 mt-1">Please create and save a ballot first in the Ballot Creator.</p>
-          </div>
-        `;
-        applyBannerState();
-        return;
-      }
-
-      // Buuin ang bawat posisyon at kandidato mula sa ballot config
-      container.innerHTML = config.positions.map(position => {
-        const posTally = (tally && tally.positions && tally.positions[position.id]) ? tally.positions[position.id] : null;
-
-        // I-map ang bawat kandidato sa kanilang botong nakuha
-        let candidates = position.candidates.map(candidate => {
-          const votes = (posTally && posTally.candidates && posTally.candidates[candidate.id])
-            ? posTally.candidates[candidate.id].votes
-            : 0;
-          return {
-            id: candidate.id,
-            name: candidate.name,
-            votes: votes
-          };
-        });
-
-        // Kabuuang boto sa posisyong ito para sa porsyento
-        const totalVotesInPosition = candidates.reduce((acc, curr) => acc + curr.votes, 0);
-
-        // Pag-uuri (Sorting)
-        if (sortMode === 'high-low') {
-          candidates.sort((a, b) => b.votes - a.votes);
-        } else if (sortMode === 'low-high') {
-          candidates.sort((a, b) => a.votes - b.votes);
-        }
-
-        const candidateRowsHTML = candidates.map((candidate, idx) => {
-          const percent = totalVotesInPosition > 0 
-            ? Math.round((candidate.votes / totalVotesInPosition) * 100) 
-            : 0;
-
-          return `
-            <div class="candidate-row flex flex-col w-full ${idx > 0 ? 'mt-2.5' : ''}" 
-                 data-candidate-id="${escapeHtml(candidate.id)}" 
-                 data-candidate-name="${escapeHtml(candidate.name)}">
-              <div class="flex justify-between items-center text-xs sm:text-sm font-serif font-semibold text-gray-700 leading-none mb-1">
-                <span class="candidate-name">${revealed ? escapeHtml(candidate.name) : MASK_CHAR}</span>
-                <span class="candidate-percent font-sans">${percent}% (${candidate.votes.toLocaleString()} votes)</span>
-              </div>
-              <div class="w-full bg-gray-400/60 h-3 sm:h-3.5 rounded-full overflow-hidden shadow-inner">
-                <div class="candidate-bar bg-red-600 h-full rounded-full transition-all duration-500 ease-out" 
-                     style="width: ${percent}%;"></div>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        return `
-          <div class="position-section flex flex-col gap-2 w-full" data-position="${escapeHtml(position.name)}">
-            <div class="border-l-4 border-red-800 pl-2.5 flex items-baseline justify-between">
-              <h3 class="text-[22px] sm:text-[19px] font-serif font-bold text-gray-900 leading-tight">${escapeHtml(position.name)}</h3>
-              <span class="text-xs text-gray-500 font-serif">Select up to ${position.maxChoices}</span>
-            </div>
-
-            <div class="candidates-list flex flex-col pl-3 w-full">
-              ${candidateRowsHTML}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      applyBannerState();
-    }
-
-    function applyBannerState() {
-      const status = getElectionStatus();
-      const revealed = isRevealed();
-
-      const banner = document.getElementById('statusBanner');
-      const bannerText = document.getElementById('statusBannerText');
-      const statusIcon = document.getElementById('statusIcon');
-
-      banner.classList.remove(
-        'bg-emerald-100', 'text-emerald-900', 'border-emerald-400',
-        'bg-amber-100', 'text-amber-900', 'border-amber-400',
-        'bg-gray-200', 'text-gray-800', 'border-gray-400'
-      );
-
-      if (status === 'CLOSED') {
-        bannerText.textContent = 'Election Ended — Official Results Revealed';
-        statusIcon.textContent = '✅';
-        banner.classList.add('bg-emerald-100', 'text-emerald-900', 'border-emerald-400');
-      } else if (revealed) {
-        bannerText.textContent = 'Voting in Progress — Names Revealed (Preview)';
-        statusIcon.textContent = '👁️';
-        banner.classList.add('bg-amber-100', 'text-amber-900', 'border-amber-400');
-      } else {
-        bannerText.textContent = 'Voting in Progress (Names Hidden)';
-        statusIcon.textContent = '🔒';
-        banner.classList.add('bg-gray-200', 'text-gray-800', 'border-gray-400');
-      }
-    }
-
-    function escapeHtml(str) {
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    // Naka-sync sa ibang tabs/windows kapag may na-scan o binago sa ballot/admin
-    window.addEventListener('storage', (event) => {
-      if (
-        event.key === STORAGE_KEYS.status || 
-        event.key === STORAGE_KEYS.masked ||
-        event.key === STORAGE_KEYS.ballot ||
-        event.key === STORAGE_KEYS.results
-      ) {
-        renderLiveResults();
-      }
-    });
-
-    // Auto-poll tuwing 2 segundo para real-time updates
-    setInterval(renderLiveResults, 2000);
-
-    document.addEventListener('DOMContentLoaded', renderLiveResults);
-  </script>
+  <script src="dashboard.js"></script>
 </body>
+
 </html>

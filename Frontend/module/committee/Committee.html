@@ -1,188 +1,1189 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Committee Dashboard MSEUF Election System</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>CampusVote | Committee Dashboard</title>
+
+  <link rel="stylesheet" href="../../dist/output.css">
+
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .font-serif-title { font-family: 'Cinzel', serif; }
-    .font-mono-id { font-family: 'Space Mono', monospace; }
+    :root {
+      --maroon: #800000;
+      --maroon-dark: #650000;
+      --maroon-light: #fff1f2;
+      --background: #f4f5f7;
+      --white: #ffffff;
+      --text: #202124;
+      --muted: #667085;
+      --border: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--background);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* HEADER */
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      width: 100%;
+      background: var(--maroon);
+      color: white;
+      padding: 17px 30px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+    }
+
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      color: white;
+      text-decoration: none;
+      border-radius: 9px;
+      transition: background .2s;
+    }
+
+    .back-button:hover {
+      background: rgba(255, 255, 255, .12);
+    }
+
+    .header-title h1 {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+    }
+
+    .header-title p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #f2d7d7;
+    }
+
+    /* BACKGROUND */
+
+    .page-background {
+      min-height: calc(100vh - 76px);
+      position: relative;
+      padding: 35px 20px 55px;
+      isolation: isolate;
+    }
+
+    .page-background::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(255, 255, 255, .89),
+          rgba(255, 255, 255, .94)),
+        url("../../image/bg5.jpg") center / cover no-repeat;
+      z-index: -1;
+    }
+
+    .dashboard {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* INTRO */
+
+    .welcome {
+      margin-bottom: 26px;
+    }
+
+    .welcome h2 {
+      margin: 0 0 7px;
+      font-size: 27px;
+      font-weight: 700;
+      color: #222;
+    }
+
+    .welcome p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* DASHBOARD GRID */
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .feature-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .055);
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      transition: box-shadow .2s ease;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .085);
+    }
+
+    .card-heading {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--maroon-light);
+      color: var(--maroon);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .card-icon svg {
+      width: 25px;
+      height: 25px;
+    }
+
+    .card-heading h3 {
+      margin: 0;
+      font-size: 21px;
+      font-weight: 700;
+      color: #242424;
+    }
+
+    .card-description {
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--muted);
+      margin: 0 0 20px;
+    }
+
+    /* SCAN INSTRUCTIONS */
+
+    .scan-guide {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 0 0 22px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .scan-guide li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #475467;
+    }
+
+    .scan-guide li svg {
+      width: 17px;
+      height: 17px;
+      color: #15803d;
+      flex-shrink: 0;
+    }
+
+    /* MINI BALLOT */
+
+    .ballot-preview-box {
+      background: #f8f9fb;
+      border: 1px solid #e9eaee;
+      border-radius: 12px;
+      padding: 17px;
+      margin-bottom: 22px;
+    }
+
+    .preview-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .preview-heading h4 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .preview-tag {
+      background: #f0e3e3;
+      color: var(--maroon);
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 5px 9px;
+    }
+
+    .mini-ballot {
+      width: 100%;
+      max-width: 330px;
+      margin: 0 auto;
+      background: white;
+      border: 1px solid #d9dde4;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 7px rgba(0, 0, 0, .035);
+      color: #202124;
+    }
+
+    .mini-ballot-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .mini-ballot-year {
+      font-size: 10px;
+      color: #667085;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    .mini-ballot-divider {
+      height: 1px;
+      background: #d0d5dd;
+      margin: 11px 0;
+    }
+
+    .mini-position {
+      margin-bottom: 11px;
+    }
+
+    .mini-position:last-child {
+      margin-bottom: 0;
+    }
+
+    .mini-position-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .mini-position-title span:last-child {
+      color: #667085;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .mini-candidate {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 10px;
+      color: #475467;
+      margin: 5px 0;
+    }
+
+    .mini-circle {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 1px solid #344054;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .mini-empty {
+      padding: 30px 10px;
+      text-align: center;
+      color: #98a2b3;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .mini-empty svg {
+      width: 30px;
+      height: 30px;
+      margin: 0 auto 10px;
+    }
+
+    .preview-note {
+      font-size: 11px;
+      color: #98a2b3;
+      text-align: center;
+      margin: 12px 0 0;
+    }
+
+    /* BUTTONS */
+
+    .card-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      flex: 1 1 160px;
+      min-height: 48px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      transition: background .2s, transform .2s;
+    }
+
+    .action-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .action-button svg {
+      width: 19px;
+      height: 19px;
+      flex-shrink: 0;
+    }
+
+    .button-primary {
+      background: var(--maroon);
+      color: white;
+    }
+
+    .button-primary:hover {
+      background: var(--maroon-dark);
+    }
+
+    .button-outline {
+      background: white;
+      color: var(--maroon);
+      border: 1px solid #d8b5b5;
+    }
+
+    .button-outline:hover {
+      background: #fff5f5;
+    }
+
+    /* CREATE BALLOT DETAILS */
+
+    .ballot-feature-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 8px 0 25px;
+    }
+
+    .ballot-feature-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px;
+      border-radius: 10px;
+      background: #f8f9fb;
+      border: 1px solid #eef0f3;
+      font-size: 12px;
+      color: #475467;
+    }
+
+    .ballot-feature-item svg {
+      width: 18px;
+      height: 18px;
+      color: var(--maroon);
+      flex-shrink: 0;
+    }
+
+    .create-info {
+      padding: 18px;
+      background: #fff9f9;
+      border: 1px solid #f0dede;
+      border-radius: 12px;
+      margin-bottom: 22px;
+    }
+
+    .create-info h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #650000;
+    }
+
+    .create-info p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.7;
+      color: #6b5353;
+    }
+
+    /* FOOTER */
+
+    .dashboard-footer {
+      margin-top: 25px;
+      text-align: center;
+      font-size: 12px;
+      color: #98a2b3;
+    }
+
+    /* TABLET */
+
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-card {
+        padding: 23px;
+      }
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 600px) {
+      .header {
+        padding: 14px 16px;
+        gap: 10px;
+      }
+
+      .header-title h1 {
+        font-size: 17px;
+      }
+
+      .header-title p {
+        font-size: 10px;
+      }
+
+      .back-button {
+        width: 34px;
+        height: 34px;
+      }
+
+      .page-background {
+        padding: 20px 12px 35px;
+      }
+
+      .welcome {
+        margin-bottom: 20px;
+      }
+
+      .welcome h2 {
+        font-size: 22px;
+      }
+
+      .welcome p {
+        font-size: 13px;
+      }
+
+      .dashboard-grid {
+        gap: 15px;
+      }
+
+      .feature-card {
+        padding: 18px;
+        border-radius: 13px;
+      }
+
+      .card-icon {
+        width: 43px;
+        height: 43px;
+      }
+
+      .card-icon svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .card-heading h3 {
+        font-size: 18px;
+      }
+
+      .card-description {
+        font-size: 13px;
+      }
+
+      .ballot-feature-list {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .card-actions {
+        flex-direction: column;
+        gap: 9px;
+      }
+
+      .action-button {
+        flex: none;
+        width: 100%;
+        min-height: 46px;
+      }
+
+      .ballot-preview-box {
+        padding: 12px;
+      }
+
+      .mini-ballot {
+        max-width: 100%;
+      }
+    }
+
+    .header {
+      padding: 16px 28px;
+      gap: 15px;
+    }
+
+    .header-title h1 {
+      font-size: 23px;
+      margin: 0;
+    }
+
+    .header-title p {
+      font-size: 12px;
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+
+    .page-background {
+      padding-top: 25px;
+    }
+
+    @media (max-width: 600px) {
+      .header {
+        padding: 13px 15px;
+      }
+
+      .header-title h1 {
+        font-size: 18px;
+      }
+
+      .header-title p {
+        font-size: 11px;
+      }
+
+      .page-background {
+        padding-top: 15px;
+      }
+    }
+
+    .page-background {
+      min-height: calc(100vh - 76px);
+      padding: 24px 20px 45px;
+    }
+
+    .dashboard {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .page-background {
+        padding: 14px 12px 30px;
+      }
+
+      .dashboard-grid {
+        gap: 14px;
+      }
+    }
+
+    .committee-logout {
+      margin-left: auto;
+      padding: 10px 15px;
+      border: 1px solid #ffffff55;
+      border-radius: 8px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap
+    }
+
+    .committee-logout:hover {
+      background: #ffffff20
+    }
+
+    @media(max-width:600px) {
+      .committee-logout {
+        padding: 9px;
+        font-size: 12px
+      }
+    }
   </style>
 </head>
 
-<body class="min-h-screen w-full bg-black text-gray-800 font-sans flex flex-col overflow-y-auto">
+<body>
 
   <!-- HEADER -->
-  <header class="sticky top-0 z-50 w-full bg-[#8f0000] border-b border-red-900/50 py-5 px-3 flex items-center gap-3 shadow-md shrink-0">
-    <a href="Committeelogin.html" class="text-white hover:opacity-80 transition shrink-0" aria-label="Back">
-      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m12 19-7-7 7-7"></path>
-        <path d="M19 12H5"></path>
-      </svg>
+
+
+  <header class="header">
+
+    <a href="Committeelogin.html" class="back-button" aria-label="Back to Committee Login">
+      <i data-lucide="arrow-left"></i>
     </a>
-    <div class="flex flex-col">
-      <h2 class="text-[23px] font-serif font-bold text-white leading-none">Committee Dashboard</h2>
+
+    <div class="header-title">
+      <h1>Committee Dashboard</h1>
+      <p>
+        Manage ballot scanning, templates, and official ballots.
+      </p>
     </div>
+
+    <a href="Committeelogin.html" class="committee-logout">Log out</a>
+
   </header>
 
-  <main 
-    class="relative flex-1 w-full bg-cover bg-center flex items-center justify-center p-6 md:p-12 pt-20 sm:pt-24 pb-16 overflow-hidden"
-  >
-    <!-- Background Overlay -->
-    <div class="absolute inset-0 bg-[url('../image/bg5.jpg')] bg-cover bg-center opacity-30 pointer-events-none"></div>
+  <main class="page-background">
+    <div class="dashboard">
 
-    <!-- Main Card Container -->
-    <div class="relative z-10 w-full max-w-6xl bg-[#8f0000] rounded-3xl p-8 md:p-14 shadow-2xl space-y-12 text-[#efefef]">
+      <div class="dashboard-grid">
 
-      <div class="flex flex-col md:flex-row items-center justify-between gap-10">
-        
-        <div class="space-y-4 max-w-lg w-full text-left">
-          <div class="flex items-center space-x-4">
-            <i data-lucide="camera" class="w-12 h-12 text-[#efefef] shrink-0"></i>
-            <h2 class="text-3xl font-bold tracking-tight">Scan Physical Ballot</h2>
+        <!-- SCAN BALLOT CARD -->
+
+        <section class="feature-card">
+
+          <div class="card-heading">
+            <div class="card-icon">
+              <i data-lucide="scan-line"></i>
+            </div>
+
+            <h3>Scan Physical Ballot</h3>
           </div>
-          
-          <p class="text-lg font-medium text-[#efefef]/90">Use the rear camera or upload an image to scan the ballot.</p>
-          
-          <ul class="space-y-3 text-base pt-2">
-            <li class="flex items-center space-x-3">
-              <i data-lucide="check-circle-2" class="w-6 h-6 text-[#efefef]/90 shrink-0"></i>
-              <span>Position ballot within edges</span>
+
+          <p class="card-description">
+            Scan printed ballots using your device
+            camera or upload a ballot image for processing.
+          </p>
+
+          <ul class="scan-guide">
+            <li>
+              <i data-lucide="check-circle-2"></i>
+              Position the ballot within the edges.
             </li>
-            <li class="flex items-center space-x-3">
-              <i data-lucide="check-circle-2" class="w-6 h-6 text-[#efefef]/90 shrink-0"></i>
-              <span>Ensure good lighting</span>
+            <li>
+              <i data-lucide="check-circle-2"></i>
+              Ensure proper lighting and a clear image.
             </li>
-            <li class="flex items-center space-x-3">
-              <i data-lucide="check-circle-2" class="w-6 h-6 text-[#efefef]/90 shrink-0"></i>
-              <span>Review and submit captured votes</span>
+            <li>
+              <i data-lucide="check-circle-2"></i>
+              Review and submit captured votes.
             </li>
           </ul>
-        </div>
 
-        <!-- AUTO-ADJUSTING MINI BALLOT CARD (Tinanggal ang sagabal na timing marks) -->
-        <div class="w-64 h-fit min-h-[160px] bg-white rounded-2xl border-2 border-white/40 shadow-2xl overflow-hidden shrink-0 relative p-4 select-none pointer-events-none text-gray-900 transition-all duration-300">
-          <div id="ballotThumbnailCard" class="w-full h-auto flex flex-col space-y-2">
-            <!-- Dito ilalagay ang content ng JavaScript -->
+          <div class="ballot-preview-box">
+
+            <div class="preview-heading">
+              <h4>Ballot Preview</h4>
+              <span class="preview-tag">
+                Official Template
+              </span>
+            </div>
+
+            <div class="mini-ballot" id="ballotThumbnailCard">
+
+              <div class="mini-empty">
+                Loading ballot preview...
+              </div>
+
+            </div>
+
+            <p class="preview-note" id="previewSource">
+              Preview of the available ballot template
+            </p>
+
           </div>
-        </div>
 
-        <div class="flex flex-col space-y-4 w-full md:w-56">
-          <a href="scanner.html?mode=camera" class="bg-[#efefef] hover:bg-white text-[#8f0000] py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 font-bold text-lg shadow-lg transition active:scale-95 text-center">
-            <i data-lucide="scan" class="w-6 h-6"></i>
-            <span>Live Camera</span>
-          </a>
-          
-          <a href="scanner.html?mode=upload" class="bg-[#710000] hover:bg-[#5a0000] border border-white/20 text-[#efefef] py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 font-bold text-lg shadow-lg transition text-center leading-tight active:scale-95">
-            <i data-lucide="upload" class="w-6 h-6 shrink-0"></i>
-            <span>Upload Image</span>
-          </a>
-        </div>
+          <div class="card-actions">
+
+            <a href="scanner.html" class="action-button button-primary">
+              <i data-lucide="camera"></i>
+              Live Camera
+            </a>
+
+            <a href="scanner.html" class="action-button button-outline">
+              <i data-lucide="upload"></i>
+              Upload Image
+            </a>
+
+          </div>
+
+        </section>
+
+        <!-- CREATE BALLOT CARD -->
+
+        <section class="feature-card">
+
+          <div class="card-heading">
+            <div class="card-icon">
+              <i data-lucide="file-pen-line"></i>
+            </div>
+
+            <h3>Create Ballot</h3>
+          </div>
+
+          <p class="card-description">
+            Create, review, and manage official election
+            ballots using the CampusVote OMR Ballot Creator.
+          </p>
+
+          <div class="ballot-feature-list">
+
+            <div class="ballot-feature-item">
+              <i data-lucide="file-text"></i>
+              Ballot Templates
+            </div>
+
+            <div class="ballot-feature-item">
+              <i data-lucide="users"></i>
+              Candidates & Positions
+            </div>
+
+            <div class="ballot-feature-item">
+              <i data-lucide="qr-code"></i>
+              Unique QR Printing
+            </div>
+
+            <div class="ballot-feature-item">
+              <i data-lucide="printer"></i>
+              Reprint QR Batches
+            </div>
+
+          </div>
+
+          <div class="create-info">
+
+            <h4>Official Ballot Management</h4>
+
+            <p>
+              Review saved ballot templates, configure
+              the maximum votes per position, generate
+              unique QR ballots, and reprint existing
+              registered batches when needed.
+            </p>
+
+          </div>
+
+          <div class="card-actions">
+
+            <a href="ballot.html" class="action-button button-primary">
+              <i data-lucide="file-edit"></i>
+              Create / Review Ballot
+            </a>
+
+          </div>
+
+        </section>
+
       </div>
 
-      <div class="flex flex-col md:flex-row items-center justify-between gap-10 pt-8 border-t-2 border-white/20">
-        
-        <div class="space-y-3 max-w-lg w-full">
-          <div class="flex items-center space-x-4">
-            <i data-lucide="file-signature" class="w-12 h-12 text-[#efefef] shrink-0"></i>
-            <h2 class="text-3xl font-bold tracking-tight">Create Ballot</h2>
-          </div>
-          <p class="text-lg font-medium text-[#efefef]/90 pl-16">
-            Review, customize candidates, and generate the official ballot sheet.
-          </p>
-        </div>
-
-        <div class="w-full md:w-56">
-          <a href="ballot.html" class="w-full bg-[#efefef] hover:bg-white text-[#8f0000] py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 font-bold text-lg shadow-lg transition active:scale-95 text-center">
-            <i data-lucide="file-edit" class="w-6 h-6"></i>
-            <span>Create/Review</span>
-          </a>
-        </div>
-
+      <div class="dashboard-footer">
+        CampusVote | Committee Election Management
       </div>
 
     </div>
+
   </main>
 
   <script>
-    lucide.createIcons();
+    "use strict";
 
-    document.addEventListener('DOMContentLoaded', () => {
-      renderMiniBallotThumbnail();
-    });
+    const API_BASE = "http://localhost:3000/api";
 
-    function renderMiniBallotThumbnail() {
-      const container = document.getElementById('ballotThumbnailCard');
+    function getToken() {
+      return (
+        sessionStorage.getItem("voting_token") ||
+        localStorage.getItem("voting_token") ||
+        localStorage.getItem("token")
+      );
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function showEmptyPreview(message) {
+      const container =
+        document.getElementById("ballotThumbnailCard");
+
+      container.innerHTML = `
+                <div class="mini-empty">
+                    <div style="font-size:24px;margin-bottom:8px;">
+                        &#9633;
+                    </div>
+                    ${escapeHtml(message)}
+                </div>
+            `;
+    }
+
+    function normalizePositions(data) {
+      const rawPositions = Array.isArray(data)
+        ? data
+        : Array.isArray(data.positions)
+          ? data.positions
+          : [];
+
+      return rawPositions.map(position => ({
+        name: position.title ||
+          position.name ||
+          "Position",
+
+        maxChoices: Number(
+          position.max_selection ??
+          position.maxChoices ??
+          1
+        ),
+
+        candidates: Array.isArray(position.candidates)
+          ? position.candidates.map(candidate => ({
+            name: candidate.name ||
+              candidate.full_name ||
+              "Candidate"
+          }))
+          : []
+      }));
+    }
+
+    function renderMiniBallotThumbnail(config) {
+      const container =
+        document.getElementById("ballotThumbnailCard");
+
       if (!container) return;
 
-      let cfg = null;
-      try {
-        cfg = JSON.parse(localStorage.getItem('ballot_config'));
-      } catch (e) {
-        cfg = null;
-      }
-
-      if (!cfg || !Array.isArray(cfg.positions) || cfg.positions.length === 0) {
-        container.innerHTML = `
-          <div class="flex flex-col items-center justify-center py-6 text-center text-gray-400 space-y-1">
-            <i data-lucide="file-question" class="w-8 h-8 text-gray-300 mx-auto"></i>
-            <p class="text-[10px] font-bold text-gray-600">No Ballot Created</p>
-            <p class="text-[8px] text-gray-400">Click Create/Review to set up.</p>
-          </div>`;
-        lucide.createIcons();
+      if (
+        !config ||
+        !Array.isArray(config.positions) ||
+        !config.positions.length
+      ) {
+        showEmptyPreview("No ballot template available.");
         return;
       }
 
-      const yr = (cfg.academicYear || '----').replace(/\D/g, '').slice(0, 4) || '2026';
-      const ballotId = `MSEUFCI-${yr}`;
+      const positionsHtml = config.positions
+        .filter(position =>
+          Array.isArray(position.candidates) &&
+          position.candidates.length
+        )
+        .map(position => {
 
-      const positionsHTML = cfg.positions.map(p => `
-        <div class="border-b border-gray-100 pb-1">
-          <div class="flex justify-between items-center text-[7.5px] font-bold uppercase text-gray-900">
-            <span class="truncate max-w-[120px]">${escapeHtml(p.name)}</span>
-            <span class="text-[6.5px] text-gray-500 tracking-tight">Pick ${p.maxChoices}</span>
-          </div>
-          <div class="grid grid-cols-2 gap-x-2 gap-y-1 mt-0.5 text-[7px] text-gray-700">
-            ${p.candidates.map(c => `
-              <div class="flex items-center gap-1 min-w-0">
-                <div class="w-1.5 h-1.5 rounded-full border border-gray-800 shrink-0"></div>
-                <span class="truncate leading-none">${escapeHtml(c.name)}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `).join('');
+          const candidatesHtml = position.candidates
+            .map(candidate => `
+                            <div class="mini-candidate">
+                                <span class="mini-circle"></span>
+                                <span>${escapeHtml(candidate.name)}</span>
+                            </div>
+                        `)
+            .join("");
+
+          return `
+                        <div class="mini-position">
+                            <div class="mini-position-title">
+                                <span>${escapeHtml(position.name)}</span>
+                                <span>Pick ${escapeHtml(position.maxChoices)}</span>
+                            </div>
+
+                            ${candidatesHtml}
+                        </div>
+                    `;
+        })
+        .join("");
 
       container.innerHTML = `
-        <!-- Header: Malinis at walang harang -->
-        <div class="border-b border-gray-900 pb-1.5 flex items-start justify-between gap-1.5">
-          <div class="min-w-0 flex-1">
-            <p class="font-bold text-[9px] text-gray-950 font-serif leading-tight truncate">${escapeHtml(cfg.title || 'MSEUF-CI Ballot')}</p>
-            <p class="text-[7px] text-gray-500 font-medium">A.Y. ${escapeHtml(cfg.academicYear || '—')}</p>
-          </div>
-          <span class="font-mono text-[7px] bg-black/5 px-1 py-0.5 rounded border border-gray-300 shrink-0 font-bold leading-none">${ballotId}</span>
-        </div>
+                <div class="mini-ballot-title">
+                    ${escapeHtml(config.title || "Official Election Ballot")}
+                </div>
 
-        <!-- Dynamic Positions -->
-        <div class="space-y-1.5 pt-0.5">
-          ${positionsHTML}
-        </div>
+                <div class="mini-ballot-year">
+                    Academic Year:
+                    ${escapeHtml(config.academicYear || "—")}
+                </div>
 
-        <!-- Footer -->
-        <div class="pt-1.5 border-t border-dashed border-gray-300 text-center text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">
-          Official Ballot Preview
-        </div>
-      `;
+                <div class="mini-ballot-divider"></div>
+
+                ${positionsHtml || `
+                    <div class="mini-empty">
+                        No candidates available for preview.
+                    </div>
+                `}
+
+                <div class="mini-ballot-divider"></div>
+
+                <div style="
+                    font-size:9px;
+                    color:#98a2b3;
+                    text-align:center;
+                ">
+                    Official Ballot Preview
+                </div>
+            `;
     }
 
-    function escapeHtml(str) {
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    function loadLocalBallotPreview() {
+      try {
+        const config = JSON.parse(
+          localStorage.getItem("ballot_config")
+        );
+
+        if (
+          config &&
+          Array.isArray(config.positions) &&
+          config.positions.length
+        ) {
+          renderMiniBallotThumbnail(config);
+
+          document.getElementById(
+            "previewSource"
+          ).textContent =
+            "Local ballot preview";
+
+          return true;
+        }
+      } catch (error) {
+        console.warn(
+          "Local ballot preview unavailable:",
+          error
+        );
+      }
+
+      return false;
     }
+
+    async function loadDatabaseBallotPreview() {
+      const token = getToken();
+
+      if (!token) {
+        loadLocalBallotPreview() ||
+          showEmptyPreview("Please log in to view saved ballots.");
+        return;
+      }
+
+      try {
+        // Resolve current election
+        const electionResponse = await fetch(
+          API_BASE + "/election/current/status",
+          {
+            headers: {
+              Authorization: "Bearer " + token
+            }
+          }
+        );
+
+        if (!electionResponse.ok) {
+          throw new Error(
+            "Cannot load current election."
+          );
+        }
+
+        const electionData =
+          await electionResponse.json();
+
+        const election = electionData.election;
+
+        if (!election || !election.election_id) {
+          throw new Error("No current election.");
+        }
+
+        const electionId = Number(
+          election.election_id
+        );
+
+        // Load saved ballot templates
+        const templatesResponse = await fetch(
+          API_BASE +
+          "/ballots/templates/election/" +
+          electionId,
+          {
+            headers: {
+              Authorization: "Bearer " + token
+            }
+          }
+        );
+
+        if (!templatesResponse.ok) {
+          throw new Error(
+            "Cannot load saved ballot templates."
+          );
+        }
+
+        const templatesData =
+          await templatesResponse.json();
+
+        const templates = Array.isArray(templatesData)
+          ? templatesData
+          : Array.isArray(templatesData.templates)
+            ? templatesData.templates
+            : [];
+
+        if (!templates.length) {
+          if (!loadLocalBallotPreview()) {
+            showEmptyPreview(
+              "No saved ballot template found."
+            );
+          }
+          return;
+        }
+
+        // Latest template by ID
+        const latestTemplate = [...templates]
+          .sort(
+            (a, b) =>
+              Number(b.template_id) -
+              Number(a.template_id)
+          )[0];
+
+        // Get full template details
+        const detailResponse = await fetch(
+          API_BASE +
+          "/ballots/templates/" +
+          latestTemplate.template_id,
+          {
+            headers: {
+              Authorization: "Bearer " + token
+            }
+          }
+        );
+
+        if (!detailResponse.ok) {
+          throw new Error(
+            "Cannot load ballot template details."
+          );
+        }
+
+        const detailData =
+          await detailResponse.json();
+
+        const template =
+          detailData.template || detailData;
+
+        // Load election positions and candidates
+        const positionsResponse = await fetch(
+          API_BASE +
+          "/positions/election/" +
+          electionId,
+          {
+            headers: {
+              Authorization: "Bearer " + token
+            }
+          }
+        );
+
+        if (!positionsResponse.ok) {
+          throw new Error(
+            "Cannot load election positions."
+          );
+        }
+
+        const positionsData =
+          await positionsResponse.json();
+
+        const positions =
+          normalizePositions(positionsData);
+
+        renderMiniBallotThumbnail({
+          title:
+            template.template_name ||
+            latestTemplate.template_name ||
+            election.title ||
+            "Official Election Ballot",
+
+          academicYear:
+            election.academic_year ||
+            election.academicYear ||
+            "—",
+
+          positions
+        });
+
+        document.getElementById(
+          "previewSource"
+        ).textContent =
+          `Saved Template #${latestTemplate.template_id} · Current election`;
+
+      } catch (error) {
+        console.warn(
+          "Database ballot preview unavailable:",
+          error
+        );
+
+        if (!loadLocalBallotPreview()) {
+          showEmptyPreview(
+            "Ballot preview is currently unavailable."
+          );
+        }
+      }
+    }
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+
+        loadDatabaseBallotPreview();
+      }
+    );
   </script>
-<script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="committee"></script>
+
+  <!-- EXISTING AUTH GUARD -->
+  <script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="committee">
+  </script>
+
 </body>
+
 </html>

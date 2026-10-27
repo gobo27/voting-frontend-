@@ -1,954 +1,820 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CampusVote | Super Admin Dashboard</title>
-<link rel="stylesheet" href="../../dist/output.css">
-<style>
-:root {
-    --maroon: #4a151b;
-    --maroon-light: #70272e;
-    --primary: #841823;
-    --background: #f7f8fa;
-    --border: #e0e3e8;
-    --muted: #697586;
-}
-* { box-sizing: border-box; }
-body {
-    margin: 0;
-    background: var(--background);
-    color: #252932;
-    font-family: Arial, Helvetica, sans-serif;
-}
-button, input, select { font: inherit; }
-button { cursor: pointer; }
-button:disabled {
-    opacity: .6;
-    cursor: not-allowed;
-}
-/* SIDEBAR */
-.sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 285px;
-    padding: 35px 18px;
-    background: var(--maroon);
-    color: white;
-    display: flex;
-    flex-direction: column;
-}
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 10px 12px;
-}
-.brand-icon {
-    width: 45px;
-    height: 45px;
-    border: 1px solid #ffffff99;
-    border-radius: 12px;
-    display: grid;
-    place-items: center;
-}
-.brand strong { font-size: 23px; }
-.brand small {
-    display: block;
-    margin-top: 7px;
-    color: #dfc8ca;
-    font-size: 11px;
-    line-height: 1.7;
-    letter-spacing: 1px;
-}
-.nav-heading {
-    margin: 55px 16px 18px;
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: #c8aeb1;
-}
-.nav-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-    background: var(--maroon-light);
-    border-radius: 8px;
-    color: white;
-    text-decoration: none;
-    font-size: 15px;
-}
-.sidebar-bottom {
-    margin-top: auto;
-    padding: 22px 12px 0;
-    border-top: 1px solid #ffffff26;
-}
-.profile {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.avatar {
-    background: #fff0f1;
-    color: var(--primary);
-    border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    display: grid;
-    place-items: center;
-    font-weight: bold;
-}
-.profile small {
-    display: block;
-    margin-top: 5px;
-    color: #d7bfc1;
-}
-.logout {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 27px 0 0 60px;
-    color: #e2c8cb;
-    text-decoration: none;
-}
-/* MAIN CONTENT */
-.main {
-    margin-left: 285px;
-    padding: 24px 48px 60px;
-    max-width: 1800px;
-}
-.main h1 {
-    font-size: 34px;
-    letter-spacing: -1px;
-    margin: 0 0 35px;
-}
-/* STATISTICS */
-.stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 22px;
-    margin-bottom: 38px;
-}
-.stat, .panel {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 11px;
-    box-shadow: 0 2px 5px #18202c04;
-}
-.stat {
-    padding: 26px;
-    min-height: 145px;
-    position: relative;
-}
-.stat .caption {
-    color: #626c7a;
-    font-size: 14px;
-}
-.stat strong {
-    display: block;
-    font-size: 36px;
-    margin: 9px 0 4px;
-}
-.stat small { color: #66717e; }
-.stat-icon {
-    position: absolute;
-    right: 24px;
-    top: 25px;
-    width: 48px;
-    height: 48px;
-    background: #fcecee;
-    border-radius: 10px;
-    display: grid;
-    place-items: center;
-    color: var(--primary);
-}
-.section-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: bold;
-    color: var(--primary);
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 19px;
-    margin-bottom: 30px;
-}
-/* FORM */
-.panel {
-    padding: 28px;
-    margin-bottom: 34px;
-}
-.panel h2 {
-    font-size: 20px;
-    margin: 0 0 10px;
-}
-.sub {
-    color: #677381;
-    font-size: 14px;
-    margin: 0 0 32px;
-}
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 26px 30px;
-}
-.field label {
-    display: block;
-    font-size: 13px;
-    font-weight: bold;
-    margin-bottom: 11px;
-}
-.field input, .field select {
-    width: 100%;
-    height: 49px;
-    padding: 0 15px;
-    background: white;
-    border: 1px solid #dce0e6;
-    border-radius: 7px;
-    color: #222;
-}
-.field input:focus, .field select:focus {
-    outline: 2px solid #b75d66;
-    outline-offset: 1px;
-}
-.form-footer {
-    border-top: 1px solid var(--border);
-    margin-top: 26px;
-    padding-top: 24px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
-.btn {
-    padding: 12px 20px;
-    border-radius: 7px;
-    border: 1px solid var(--border);
-    font-weight: 600;
-}
-.btn-light {
-    background: #f8f9fa;
-    color: #333;
-}
-.btn-primary {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-}
-/* ACCOUNT LIST */
-.list-heading {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 18px;
-}
-.list-heading h2 {
-    margin: 0;
-    font-size: 20px;
-}
-.count {
-    background: #fbeaec;
-    color: var(--primary);
-    border-radius: 5px;
-    padding: 4px 8px;
-    font-size: 12px;
-}
-.table-panel {
-    padding: 0;
-    overflow-x: auto;
-}
-table {
-    width: 100%;
-    min-width: 650px;
-    border-collapse: collapse;
-}
-thead { background: #f4f5f6; }
-th {
-    text-align: left;
-    font-size: 13px;
-    color: #5e6977;
-    font-weight: 500;
-    padding: 21px;
-}
-td {
-    padding: 23px 21px;
-    border-top: 1px solid var(--border);
-    font-size: 14px;
-}
-th:last-child, td:last-child { text-align: right; }
-.user-cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.initials {
-    width: 45px;
-    height: 45px;
-    border-radius: 9px;
-    background: #fcecee;
-    color: var(--primary);
-    display: grid;
-    place-items: center;
-    font-weight: bold;
-    font-size: 12px;
-    flex-shrink: 0;
-}
-.user-cell small {
-    display: block;
-    color: #87909b;
-    margin-top: 6px;
-}
-.role {
-    padding: 9px 13px;
-    border-radius: 6px;
-    font-size: 12px;
-    display: inline-block;
-}
-.role.adviser {
-    background: #fcecee;
-    color: #891d29;
-}
-.role.committee {
-    background: #e0f6ea;
-    color: #13704b;
-}
-.email { color: #596473; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CampusVote | Account Management</title>
+    <link rel="stylesheet" href="../../dist/output.css">
+    <style>
+        :root {
+            --maroon: #4a151b;
+            --maroon-light: #70272e;
+            --primary: #72242b;
+            --background: #f7f8fa;
+            --border: #e0e3e8;
+        }
 
-.actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 15px;
-}
-.icon-btn {
-    border: none;
-    background: transparent;
-    color: #657180;
-    padding: 10px;
-    font-size: 28px; /* Laki ng icon */
-    width: 48px;
-    height: 48px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
+        * {
+            box-sizing: border-box;
+        }
 
-.icon-btn:hover {
-    color: #841823;
-    background: #fcecee;
-    border-radius: 8px;
-}
-.status.error {
-    background: #fff0f0;
-    color: #a3202d;
-}
+        body {
+            margin: 0;
+            background: var(--background);
+            color: #252932;
+            font-family: Arial, sans-serif;
+        }
 
-/* EDIT MODAL */
-.modal {
-    position: fixed;
-    inset: 0;
-    background: #0008;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    z-index: 100;
-}
+        button,
+        input,
+        select {
+            font: inherit;
+        }
 
-.modal.open { display: flex; }
+        button {
+            cursor: pointer;
+        }
 
-.modal-card {
-    background: white;
-    border-radius: 13px;
-    padding: 28px;
-    width: 100%;
-    max-width: 490px;
-    max-height: 90vh;
-    overflow: auto;
-}
+        button:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
 
-.modal-card h2 { margin-top: 0; }
-.modal-card .field { margin-top: 18px; }
+        .sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: 285px;
+            padding: 35px 18px;
+            background: var(--maroon);
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
 
-.hint {
-    color: #66717e;
-    font-size: 12px;
-    margin-top: 7px;
-}
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 12px;
+        }
 
-[hidden] { display: none !important; }
+        .brand-icon {
+            width: 45px;
+            height: 45px;
+            border: 1px solid #ffffff99;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-size: 24px;
+        }
 
-/* RESPONSIVE */
-@media (max-width: 1100px) {
-    .sidebar { width: 235px; }
-    .main { margin-left: 235px; padding: 25px; }
-    .stats { gap: 12px; }
-    .stat { padding: 20px; }
-    .stat-icon { right: 14px; }
-}
+        .brand strong {
+            font-size: 23px;
+        }
 
-@media (max-width: 760px) {
-    .sidebar {
-        position: static;
-        width: 100%;
-        padding: 15px;
-    }
+        .brand small {
+            display: block;
+            margin-top: 7px;
+            color: #dfc8ca;
+            font-size: 11px;
+            line-height: 1.7;
+            letter-spacing: 1px;
+        }
 
-    .brand { padding: 0; }
-    .nav-heading, .sidebar-bottom { display: none; }
-    .nav-link { margin-top: 12px; }
-    .main { margin-left: 0; padding: 20px 14px; }
-    .main h1 { font-size: 27px; }
-    .stats { grid-template-columns: 1fr; }
-    .stat { min-height: 110px; }
-    .form-grid { grid-template-columns: 1fr; }
-    .panel { padding: 18px; }
-    .table-panel { padding: 0; }
-}
-</style>
+        .nav-heading {
+            margin: 55px 16px 18px;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #c8aeb1;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: var(--maroon-light);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-size: 15px;
+        }
+
+        .nav-link.secondary {
+            background: transparent;
+            margin-top: 8px;
+        }
+
+        .nav-link:hover {
+            background: #80343d;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding: 22px 12px 0;
+            border-top: 1px solid #ffffff26;
+        }
+
+        .profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            background: #fff0f1;
+            color: var(--primary);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: grid;
+            place-items: center;
+            font-weight: bold;
+        }
+
+        .profile small {
+            display: block;
+            margin-top: 5px;
+            color: #d7bfc1;
+        }
+
+        .logout {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 27px 0 0 60px;
+            color: #e2c8cb;
+            text-decoration: none;
+        }
+
+        .main {
+            margin-left: 285px;
+            padding: 24px 48px 60px;
+            max-width: 1800px;
+        }
+
+        .main h1 {
+            font-size: 34px;
+            letter-spacing: -1px;
+            margin: 0 0 35px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+            margin-bottom: 38px;
+        }
+
+        .stat,
+        .panel {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            box-shadow: 0 2px 5px #18202c04;
+        }
+
+        .stat {
+            padding: 26px;
+            min-height: 145px;
+            position: relative;
+        }
+
+        .stat .caption {
+            color: #626c7a;
+            font-size: 14px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 36px;
+            margin: 9px 0 4px;
+        }
+
+        .stat small {
+            color: #626c7a;
+        }
+
+        .stat-icon {
+            position: absolute;
+            right: 24px;
+            top: 25px;
+            width: 48px;
+            height: 48px;
+            background: #fcecee;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            color: var(--primary);
+            font-size: 22px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 19px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            padding: 28px;
+            margin-bottom: 34px;
+        }
+
+        .panel h2 {
+            font-size: 20px;
+            margin: 0 0 10px;
+        }
+
+        .sub {
+            color: #677381;
+            font-size: 14px;
+            margin: 0 0 32px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 26px 30px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 11px;
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            min-width: 0;
+            height: 49px;
+            padding: 0 15px;
+            background: white;
+            border: 1px solid #dce0e6;
+            border-radius: 7px;
+            color: #222;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            outline: 2px solid #b75d66;
+            outline-offset: 1px;
+        }
+
+        .password-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .password-row input {
+            flex: 1;
+        }
+
+        .generate-btn {
+            flex-shrink: 0;
+            padding: 0 15px;
+            background: #fff0f1;
+            color: var(--primary);
+            border: 1px solid #e6c7cb;
+            border-radius: 7px;
+            font-weight: 600;
+        }
+
+        .generate-btn:hover {
+            background: #f8dfe2;
+        }
+
+        .hint {
+            color: #66717e;
+            font-size: 12px;
+            margin: 8px 0 0;
+            line-height: 1.5;
+        }
+
+        .form-footer {
+            border-top: 1px solid var(--border);
+            margin-top: 26px;
+            padding-top: 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 7px;
+            border: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .btn-light {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: #581920;
+        }
+
+        .list-heading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .list-heading h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .count {
+            background: #fbeaec;
+            color: var(--primary);
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .table-panel {
+            padding: 0;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 650px;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f4f5f6;
+        }
+
+        th {
+            text-align: left;
+            font-size: 13px;
+            color: #5e6977;
+            font-weight: 500;
+            padding: 21px;
+        }
+
+        td {
+            padding: 20px 21px;
+            border-top: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        th:last-child,
+        td:last-child {
+            text-align: right;
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .initials {
+            width: 42px;
+            height: 42px;
+            border-radius: 9px;
+            background: #fcecee;
+            color: var(--primary);
+            display: grid;
+            place-items: center;
+            font-weight: bold;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .role {
+            padding: 9px 13px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: inline-block;
+        }
+
+        .role.adviser {
+            background: #fcecee;
+            color: #891d29;
+        }
+
+        .role.committee {
+            background: #e0f6ea;
+            color: #13704b;
+        }
+
+        .role.super_admin {
+            background: #e8eafc;
+            color: #353c83;
+        }
+
+        .email {
+            color: #596473;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            border: none;
+            background: transparent;
+            padding: 10px;
+            width: 42px;
+            height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .icon-btn.edit {
+            color: #2563eb;
+        }
+
+        .icon-btn.delete {
+            color: #dc2626;
+        }
+
+        .icon-btn:hover {
+            background: #f3f4f6;
+        }
+
+        .icon-btn svg {
+            width: 19px;
+            height: 19px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: #0008;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 13px;
+            padding: 28px;
+            width: 100%;
+            max-width: 490px;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        .modal-card h2 {
+            margin-top: 0;
+        }
+
+        .modal-card .field {
+            margin-top: 18px;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @media (max-width: 1100px) {
+            .sidebar {
+                width: 235px;
+            }
+
+            .main {
+                margin-left: 235px;
+                padding: 25px;
+            }
+
+            .stats {
+                gap: 12px;
+            }
+
+            .stat {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .sidebar {
+                position: static;
+                width: 100%;
+                padding: 15px;
+            }
+
+            .brand {
+                padding: 0;
+            }
+
+            .nav-heading,
+            .sidebar-bottom {
+                display: none;
+            }
+
+            .nav-link {
+                margin-top: 12px;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 20px 14px;
+            }
+
+            .main h1 {
+                font-size: 27px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .panel {
+                padding: 18px;
+            }
+
+            .table-panel {
+                padding: 0;
+            }
+        }
+
+        .mobile-logout {
+            display: none
+        }
+
+        @media(max-width:760px) {
+            .mobile-logout {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: fixed;
+                right: 15px;
+                bottom: 20px;
+                z-index: 999;
+                padding: 12px 18px;
+                border-radius: 9px;
+                background: #4a151b;
+                color: #fff;
+                text-decoration: none;
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: 0 4px 15px #0003
+            }
+
+            .main {
+                padding-bottom: 85px
+            }
+        }
+    </style>
 </head>
 
 <body>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-
-    <div class="brand">
-        <span class="brand-icon">
-            <svg width="26" height="26" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor"
-                 stroke-width="1.8">
-                <path d="m2 10 10-5 10 5-10 5-10-5Z"/>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-                <path d="M22 10v7"/>
-            </svg>
-        </span>
-
-        <div>
-            <strong>CampusVote.</strong>
-            <small>STUDENT ELECTION<br>SYSTEM</small>
-        </div>
-    </div>
-
-    <div class="nav-heading">ADMINISTRATION</div>
-
-    <a class="nav-link" href="SuperAdmin.html">
-        <span>♙</span>
-        Account management
-    </a>
-
-    <div class="sidebar-bottom">
-        <div class="profile">
-            <span class="avatar">SA</span>
+    <aside class="sidebar">
+        <div class="brand">
             <div>
-                <strong>Super admin</strong>
-                <small>System administrator</small>
+                <strong>CampusVote.</strong>
+                <small>STUDENT ELECTION<br>SYSTEM</small>
             </div>
         </div>
 
-        <a class="logout" href="SuperAdminlog.html"
-           id="logoutLink">
-            ⇥ &nbsp; Log out
+        <div class="nav-heading">ADMINISTRATION</div>
+
+        <a class="nav-link" href="SuperAdmin.html">
+            <span>▣</span> Account management
         </a>
-    </div>
 
-</aside>
+        <a class="nav-link secondary" href="electionArchive.html">
+            <span>▤</span> Election Archive
+        </a>
 
-<!-- MAIN DASHBOARD -->
-<main class="main">
+        <div class="sidebar-bottom">
+            <div class="profile">
+                <span class="avatar">SA</span>
+                <div>
+                    <strong>Super admin</strong>
+                    <small>System administrator</small>
+                </div>
+            </div>
 
-    <h1>Super admin dashboard</h1>
+            <a class="logout" href="SuperAdminlog.html" id="logoutLink">
+                ⇥ &nbsp; Log out
+            </a>
+        </div>
+    </aside>
+    
+<a href="SuperAdminlog.html" class="mobile-logout">Log out</a>
 
-    <!-- STATISTICS -->
-    <section class="stats">
+    <main class="main">
+        <h1>Super admin dashboard</h1>
 
-        <div class="stat">
-            <span class="caption">System accounts</span>
-            <strong id="statTotal">00</strong>
-            <small>Your election team</small>
-            <span class="stat-icon">♙</span>
+        <section class="stats">
+            <div class="stat">
+                <span class="caption">System accounts</span>
+                <strong id="statTotal">00</strong>
+                <small>Your election team</small>
+                <span class="stat-icon">▣</span>
+            </div>
+
+            <div class="stat">
+                <span class="caption">Advisers</span>
+                <strong id="statAdvisers">00</strong>
+                <small>Candidate &amp; election management</small>
+                <span class="stat-icon">♧</span>
+            </div>
+
+            <div class="stat">
+                <span class="caption">Committee members</span>
+                <strong id="statCommittee">00</strong>
+                <small>Election committee accounts</small>
+                <span class="stat-icon">♢</span>
+            </div>
+        </section>
+
+        <div class="section-title">▣ &nbsp; Account management</div>
+        <section class="panel">
+            <h2>Create a system account</h2>
+            <p class="sub">
+                Add an adviser or committee member to your election team.
+            </p>
+
+            <form id="addAccountForm">
+                <div class="form-grid">
+
+                    <div class="field">
+                        <label for="userName">User name *</label>
+                        <input id="userName" required maxlength="100" placeholder="e.g. Juan Dela Cruz">
+                    </div>
+
+                    <div class="field">
+                        <label for="accountEmail">Email address *</label>
+                        <input id="accountEmail" type="email" required maxlength="150" placeholder="name@example.com">
+                    </div>
+
+                    <div class="field">
+                        <label for="password">Password *</label>
+                        <div class="password-row">
+                            <input id="password" type="text" required minlength="9" maxlength="9" autocomplete="off"
+                                spellcheck="false" readonly>
+                            <button type="button" class="generate-btn" id="generatePassword">
+                                Generate
+                            </button>
+                        </div>
+                        <p class="hint">
+                            Automatically generated 9-character password.
+                            Copy it securely before creating the account.
+                        </p>
+                    </div>
+
+                    <div class="field">
+                        <label for="role">Role</label>
+
+                        <select id="role" name="role" required>
+                            <option value="" disabled selected>Select Role</option>
+                            <option value="adviser">Adviser</option>
+                            <option value="committee">Committee</option>
+                            <option value="super_admin">
+                                Super Admin (Full Access)
+                            </option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="form-footer">
+                    <button class="btn btn-light" type="reset">
+                        ✕ &nbsp; Cancel
+                    </button>
+
+                    <button class="btn btn-primary" type="submit" id="createAccountButton">
+                        ＋ &nbsp; Create account
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <div class="list-heading">
+            <h2>System accounts</h2>
+            <span class="count" id="listCount">0</span>
         </div>
 
-        <div class="stat">
-            <span class="caption">Advisers</span>
-            <strong id="statAdvisers">00</strong>
-            <small>Candidate &amp; election management</small>
-            <span class="stat-icon">♧</span>
-        </div>
+        <section class="panel table-panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Email address</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
 
-        <div class="stat">
-            <span class="caption">Committee members</span>
-            <strong id="statCommittee">00</strong>
-            <small>Election committee accounts</small>
-            <span class="stat-icon">♢</span>
-        </div>
+                <tbody id="accountsTableBody">
+                    <tr>
+                        <td colspan="4">Loading accounts...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
 
-    </section>
+    <!-- EDIT ACCOUNT MODAL -->
+    <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
 
-    <div class="section-title">
-        ♙ &nbsp; Account management
-    </div>
+        <div class="modal-card">
+            <h2 id="editTitle">Edit account</h2>
 
-    <!-- CREATE ACCOUNT -->
-    <section class="panel">
-
-        <h2>Create a system account</h2>
-
-        <p class="sub">
-            Add an adviser or committee member to your election team.
-        </p>
-
-        <form id="addAccountForm">
-
-            <div class="form-grid">
+            <form id="editAccountForm">
+                <input type="hidden" id="editId">
 
                 <div class="field">
-                    <label for="userName">User name *</label>
-                    <input
-                        id="userName"
-                        required
-                        maxlength="100"
-                        placeholder="e.g. Juan Dela Cruz">
+                    <label for="editName">User name</label>
+                    <input id="editName" required maxlength="100">
                 </div>
+
                 <div class="field">
-                    <label for="accountEmail">Email address *</label>
-                    <input
-                        id="accountEmail"
-                        type="email"
-                        required
-                        maxlength="150"
-                        placeholder="name@example.com">
+                    <label for="editEmail">Email address</label>
+                    <input id="editEmail" type="email" required maxlength="150">
                 </div>
+
                 <div class="field">
-                    <label for="password">Password *</label>
-                    <input
-                        id="password"
-                        type="password"
-                        required
-                        minlength="6"
-                        placeholder="Enter a password">
-                </div>
-                <div class="field">
-                    <label for="role">Role *</label>
-                    <select id="role" required>
+                    <label for="editRole">Role</label>
+                    <select id="editRole" required>
                         <option value="adviser">Adviser</option>
                         <option value="committee">Committee</option>
                     </select>
                 </div>
-            </div>
-            <div class="form-footer">
-                <button class="btn btn-light" type="reset">
-                    ✕ &nbsp; Cancel
-                </button>
-                <button class="btn btn-primary" type="submit">
-                    ＋ &nbsp; Create account
-                </button>
-            </div>
-        </form>
-    </section>
-    <!-- ACCOUNT LIST -->
-    <div class="list-heading">
-        <h2>System accounts</h2>
-        <span class="count" id="listCount">0</span>
+
+                <div class="field">
+                    <label for="editPassword">
+                        New password (optional)
+                    </label>
+
+                    <div class="password-row">
+                        <input id="editPassword" type="text" minlength="9" maxlength="9" autocomplete="off"
+                            spellcheck="false" readonly>
+
+                        <button type="button" class="generate-btn" id="generateEditPassword">
+                            Generate
+                        </button>
+                    </div>
+
+                    <p class="hint">
+                        Leave blank to keep the existing password.
+                        Click Generate to create a new 9-character password.
+                    </p>
+                </div>
+
+                <div class="form-footer">
+                    <button class="btn btn-light" type="button" id="cancelEdit">
+                        Cancel
+                    </button>
+
+                    <button class="btn btn-primary" type="submit" id="saveEditButton">
+                        Save changes
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-    <div id="statusMessage"
-         class="status"
-         role="status"
-         hidden></div>
-    <section class="panel table-panel">
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Email address</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="accountsTableBody">
-                <tr>
-                    <td colspan="4">Loading accounts...</td>
-                </tr>
-            </tbody>
-        </table>
 
-    </section>
+    <script src="../sheared/toast.js"></script>
 
-</main>
+    <script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="super_admin"></script>
 
-<!-- EDIT ACCOUNT MODAL -->
-<div class="modal" id="editModal"
-     role="dialog" aria-modal="true"
-     aria-labelledby="editTitle">
+    <script src="./Manageacc.js"></script>
 
-    <div class="modal-card">
-
-        <h2 id="editTitle">Edit account</h2>
-
-        <form id="editAccountForm">
-
-            <input type="hidden" id="editId">
-
-            <div class="field">
-                <label for="editName">User name</label>
-                <input id="editName" required maxlength="100">
-            </div>
-            <div class="field">
-                <label for="editEmail">Email address</label>
-                <input id="editEmail" type="email"
-                       required maxlength="150">
-            </div>
-            <div class="field">
-                <label for="editRole">Role</label>
-                <select id="editRole" required>
-                    <option value="adviser">Adviser</option>
-                    <option value="committee">Committee</option>
-                </select>
-            </div>
-            <div class="field">
-                <label for="editPassword">
-                    New password (optional)
-                </label>
-                <input id="editPassword"
-                       type="password"
-                       minlength="6"
-                       placeholder="Leave blank to keep existing password">
-                <p class="hint">
-                    Leave blank if you do not want to change the password.
-                </p>
-            </div>
-            <div class="form-footer">
-                <button class="btn btn-light"
-                        type="button" id="cancelEdit">
-                    Cancel
-                </button>
-                <button class="btn btn-primary" type="submit">
-                    Save changes
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-<!-- AUTHENTICATION -->
-<script src="../sheared/auth.js?v=20261002-2"
-        data-mode="guard"
-        data-role="super_admin"></script>
-<script>
-(() => {
-    "use strict";
-    // Express API
-    // Live Server :5500 -> local Express :3000
-    // Otherwise -> same-origin API
-    const API_BASE =
-        window.location.port === "5500"
-            ? "http://localhost:3000/api/createAccount"
-            : "/api/createAccount";
-
-    const $ = id => document.getElementById(id);
-    function getToken() {
-        return (
-            sessionStorage.getItem("voting_token") ||
-            localStorage.getItem("voting_token") ||
-            localStorage.getItem("token")
-        );
-    }
-    function escapeHtml(value) {
-        return String(value ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-    }
-    let accounts = [];
-    function showStatus(message, isError = false) {
-        const element = $("statusMessage");
-        element.hidden = false;
-        element.textContent = message;
-        element.className =
-            "status" + (isError ? " error" : "");
-    }
-    // API REQUEST
-    async function apiRequest(path, options = {}) {
-        const token = getToken();
-        if (!token) {
-            throw new Error(
-                "Login token missing. Please sign in as Super Admin."
-            );
-        }
-        let response;
-        try {
-            response = await fetch(API_BASE + path, {
-                ...options,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
-                    ...(options.headers || {})
-                }
-            });
-        } catch (error) {
-            throw new Error(
-                "Cannot connect to API. Check Express server and API URL."
-            );
-        }
-        const raw = await response.text();
-        let data;
-        try {
-            data = raw ? JSON.parse(raw) : {};
-        } catch {
-            throw new Error(
-                `Invalid API response (HTTP ${response.status}).`
-            );
-        }
-        if (!response.ok) {
-            throw new Error(
-                data.message || `HTTP ${response.status}`
-            );
-        }
-        return data;
-    }
-    // UPDATE STATISTICS AND ACCOUNT TABLE
-    function renderAccounts() {
-        const advisers = accounts.filter(
-            account => account.role === "adviser"
-        ).length;
-        const committees = accounts.filter(
-            account => account.role === "committee"
-        ).length;
-        $("statTotal").textContent =
-            String(accounts.length).padStart(2, "0");
-        $("statAdvisers").textContent =
-            String(advisers).padStart(2, "0");
-        $("statCommittee").textContent =
-            String(committees).padStart(2, "0");
-        $("listCount").textContent = accounts.length;
-        const tbody = $("accountsTableBody");
-
-        if (accounts.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="4">No accounts found.</td>
-                </tr>
-            `;
-            return;
-        }
-        tbody.innerHTML = accounts.map(account => {
-            const initials = String(account.name)
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map(word => word[0] || "")
-                .join("")
-                .toUpperCase();
-
-            const isCommittee = account.role === "committee";
-
-            return `
-                <tr>
-                    <td>
-                        <div class="user-cell">
-                            <span class="initials">
-                                ${escapeHtml(initials)}
-                            </span>
-
-                            <div>
-                                <strong>
-                                    ${escapeHtml(account.name)}
-                                </strong>
-                                <small>System account</small>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td>
-                        <span class="role ${isCommittee ? "committee" : "adviser"}">
-                            ${isCommittee ? "♢ Committee" : "♧ Adviser"}
-                        </span>
-                    </td>
-
-                    <td class="email">
-                        ✉ &nbsp; ${escapeHtml(account.email)}
-                    </td>
-
-                    <td>
-                        <div class="actions">
-                            <button
-                                class="icon-btn"
-                                type="button"
-                                data-edit="${Number(account.id)}"
-                                title="Edit account"
-                                aria-label="Edit account">
-                                ✎
-                            </button>
-
-                            <button
-                                class="icon-btn"
-                                type="button"
-                                data-delete="${Number(account.id)}"
-                                title="Delete account"
-                                aria-label="Delete account">
-                                ▤
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join("");
-    }
-    // LOAD ACCOUNTS
-    async function loadAccounts() {
-        try {
-            const data = await apiRequest("/accounts");
-            accounts = Array.isArray(data.users)
-                ? data.users
-                : [];
-            renderAccounts();
-        } catch (error) {
-            console.error("LOAD ACCOUNTS:", error);
-            showStatus(error.message, true);
-            $("accountsTableBody").innerHTML = `
-                <tr>
-                    <td colspan="4">
-                        ${escapeHtml(error.message)}
-                    </td>
-                </tr>
-            `;
-        }
-    }
-    // CREATE ACCOUNT
-    $("addAccountForm").addEventListener(
-        "submit",
-        async event => {
-            event.preventDefault();
-            const form = event.currentTarget;
-            const button = form.querySelector(
-                'button[type="submit"]'
-            );
-            button.disabled = true;
-            try {
-                await apiRequest("/accounts", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        name: $("userName").value.trim(),
-                        email: $("accountEmail").value.trim(),
-                        password: $("password").value,
-                        role: $("role").value
-                    })
-                });
-                form.reset();
-                await loadAccounts();
-                showStatus("Account created successfully.");
-            } catch (error) {
-                showStatus(error.message, true);
-            } finally {
-                button.disabled = false;
-            }
-        }
-    );
-    // OPEN EDIT MODAL
-    function openEdit(id) {
-        const account = accounts.find(
-            item => Number(item.id) === Number(id)
-        );
-        if (!account) return;
-        $("editId").value = account.id;
-        $("editName").value = account.name;
-        $("editEmail").value = account.email;
-        $("editRole").value = account.role;
-        $("editPassword").value = "";
-        $("editModal").classList.add("open");
-        $("editName").focus();
-    }
-    function closeEdit() {
-        $("editModal").classList.remove("open");
-        $("editAccountForm").reset();
-    }
-    $("cancelEdit").addEventListener("click", closeEdit);
-    $("editModal").addEventListener("click", event => {
-        if (event.target === $("editModal")) {
-            closeEdit();
-        }
-    });
-    document.addEventListener("keydown", event => {
-        if (event.key === "Escape") {
-            closeEdit();
-        }
-    });
-    // SAVE EDIT
-    $("editAccountForm").addEventListener(
-        "submit",
-        async event => {
-            event.preventDefault();
-            const form = event.currentTarget;
-            const button = form.querySelector(
-                'button[type="submit"]'
-            );
-            button.disabled = true;
-            try {
-                const id = Number($("editId").value);
-                await apiRequest(`/accounts/${id}`, {
-                    method: "PUT",
-                    body: JSON.stringify({
-                        name: $("editName").value.trim(),
-                        email: $("editEmail").value.trim(),
-                        role: $("editRole").value,
-                        password: $("editPassword").value
-                    })
-                });
-                closeEdit();
-                await loadAccounts();
-                showStatus("Account updated successfully.");
-            } catch (error) {
-                alert("Update failed: " + error.message);
-            } finally {
-                button.disabled = false;
-            }
-        }
-    );
-    // DELETE ACCOUNT
-    async function deleteAccount(id) {
-        const account = accounts.find(
-            item => Number(item.id) === Number(id)
-        );
-        if (!account) return;
-        const confirmed = confirm(
-            `Are you sure you want to delete "${account.name}"?`
-        );
-        if (!confirmed) return;
-        try {
-            await apiRequest(`/accounts/${id}`, {
-                method: "DELETE"
-            });
-            await loadAccounts();
-            showStatus("Account deleted successfully.");
-        } catch (error) {
-            showStatus(error.message, true);
-        }
-    }
-    // TABLE ACTIONS
-    $("accountsTableBody").addEventListener(
-        "click",
-        event => {
-            const editButton =
-                event.target.closest("[data-edit]");
-            const deleteButton =
-                event.target.closest("[data-delete]");
-            if (editButton) {
-                openEdit(Number(editButton.dataset.edit));
-            }
-            if (deleteButton) {
-                deleteAccount(
-                    Number(deleteButton.dataset.delete)
-                );
-            }
-        }
-    );
-    // LOAD ON PAGE OPEN
-    loadAccounts();
-})();
-</script>
 </body>
+
 </html>

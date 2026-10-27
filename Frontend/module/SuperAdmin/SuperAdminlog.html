@@ -1,49 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Super Admin Access</title>
+
   <link href="../../dist/output.css" rel="stylesheet">
+  <link href="../sheared/login.css" rel="stylesheet">
 </head>
-<body class="min-h-screen bg-black text-white font-sans antialiased flex flex-col">
-  <header class="fixed top-0 left-0 right-0 z-50 w-full bg-[#8f0000] border-b border-[#710000]/50 py-5 px-3 flex items-center gap-3 shadow-md">
-    <a href="../../signin.html" class="text-[#efefef] hover:opacity-80 transition">
-     <svg xmlns="http://www.w3.org/2000/svg"width="40" height="38" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+
+<body>
+  <header class="login-header">
+    <a href="../../signin.html" class="back-button" aria-label="Go back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <path d="m12 19-7-7 7-7"></path>
+        <path d="M19 12H5"></path>
+      </svg>
     </a>
-    <div class="flex flex-col">
-      <h2 class="text-[23px] font-serif font-bold text-[#efefef] leading-none">Super Admin Access</h2>
-      <p class="text-[13px] text-[#efefef]/90 font-light mt-1">Secure Role-based Authentication</p>
+
+    <div class="header-text">
+      <h1>Super Admin Access</h1>
+      <p>Secure Role-Based Authentication</p>
     </div>
   </header>
-  <main 
-    class="relative flex-1 w-full bg-cover bg-center flex flex-col items-center justify-center p-6 overflow-hidden"
-    style="background-image: url('../../image/bg5.jpg');"
-  >
-    <div class="relative z-10 w-full max-w-md bg-red-950/40 backdrop-blur-md border border-[#efefef]/20 rounded-3xl p-8 flex flex-col items-center shadow-2xl">
-      <div class="w-20 h-20 bg-[#efefef] rounded-full flex items-center justify-center text-[#8f0000] shadow-md mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-10 h-10">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+
+  <main class="login-main">
+    <section class="login-card">
+
+      <div class="login-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M12 2 20 6v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4Z"></path>
+          <path d="m9 12 2 2 4-4"></path>
         </svg>
       </div>
-      <h1 class="text-[25px] font-bold text-[#efefef] font-serif mb-8">Log-in</h1>
-      <form id="loginForm" class="w-full flex flex-col gap-6">
-        <div class="w-full">
-          <input type="email" id="email" autocomplete="username" placeholder="Email" required
-            class="w-full bg-transparent border-b border-[#efefef]/70 py-2 px-1 text-[#efefef] placeholder-[#efefef] focus:outline-none focus:border-[#efefef] text-[15px] transition" />
+
+      <h2 class="login-title">Log-in</h2>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="Enter your email" autocomplete="username"
+            required>
         </div>
-        <div class="w-full">
-          <input type="password" id="password" autocomplete="current-password" placeholder="Password" required
-            class="w-full bg-transparent border-b border-[#efefef]/70 py-2 px-1 text-[#efefef] placeholder-[#efefef] focus:outline-none focus:border-[#efefef] text-[15px] transition" />
+
+        <div class="form-group">
+          <label for="password">Password</label>
+
+          <div class="password-wrapper">
+            <input type="password" id="password" class="form-input" placeholder="Enter your password"
+              autocomplete="current-password" required>
+
+            <button type="button" id="togglePassword" class="toggle-password" aria-label="Show password"
+              aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
         </div>
-        <button type="submit"
-          class="w-full mt-4 bg-gradient-to-r from-[#710000] to-[#8f0000] text-[#efefef] font-medium py-3 rounded-xl border border-[#efefef]/20 shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-60">
+
+        <button type="submit" class="login-button">
           Log-in
         </button>
       </form>
-    </div>
+
+      <button type="button" id="forgotPasswordBtn" class="forgot-password-btn">
+        Forgot Password?
+      </button>
+    </section>
   </main>
 
-<script src="../sheared/auth.js?v=20261002-2" data-mode="login" data-role="super_admin"></script>
+  <script>
+    const togglePassword =
+      document.getElementById("togglePassword");
+
+    const passwordInput =
+      document.getElementById("password");
+
+    togglePassword.addEventListener("click", () => {
+      const hidden = passwordInput.type === "password";
+
+      passwordInput.type = hidden ? "text" : "password";
+
+      togglePassword.setAttribute(
+        "aria-label",
+        hidden ? "Hide password" : "Show password"
+      );
+
+      togglePassword.setAttribute(
+        "aria-pressed",
+        String(hidden)
+      );
+    });
+  </script>
+
+  <script src="../sheared/auth.js?v=20261025-1" data-mode="login" data-role="super_admin"></script>
+
+  <script src="../sheared/toast.js"></script>
+  <script src="../sheared/forgot-password.js?v=1"></script>
 </body>
+
 </html>

@@ -1,0 +1,122 @@
+/* Sidebar logout */
+.logout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 25px;
+    color: #e2c8cb;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.logout:hover {
+    color: white;
+}
+
+/* Hidden floating logout on desktop */
+.floating-logout {
+    display: none;
+}
+
+/* Mobile and tablet */
+@media (max-width: 900px) {
+    .sidebar-bottom .logout {
+        display: none;
+    }
+
+    .floating-logout {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        padding: 13px 20px;
+        background: #800000;
+        color: white;
+        border-radius: 9px;
+
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 5px 16px #00000030;
+    }
+
+    .floating-logout:hover {
+        background: #5c0000;
+    }
+
+    .main {
+        padding-bottom: 95px;
+    }
+}
+/*   CAMPUSVOTE - RESPONSIVE LOGOUT*/
+
+/* Desktop sidebar logout */
+.sidebar-bottom .logout,
+.logout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 25px;
+    color: #e2c8cb;
+    text-decoration: none;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.sidebar-bottom .logout:hover,
+.logout:hover {
+    color: #ffffff;
+}
+
+/* Hide floating logout on desktop */
+.floating-logout {
+    display: none;
+}
+
+/*   MOBILE / TABLET*/
+
+@media (max-width: 900px) {
+
+    /* Keep existing sidebar logout visible */
+    .sidebar-bottom .logout {
+        display: flex;
+    }
+
+    /* Floating logout for mobile */
+    .floating-logout {
+        position: fixed;
+        bottom: max(20px, env(safe-area-inset-bottom));
+        right: 16px;
+        z-index: 9999;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        padding: 12px 18px;
+        background: #800000;
+        color: white;
+        border-radius: 10px;
+
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 5px 16px rgba(0, 0, 0, .20);
+    }
+
+    .floating-logout:hover {
+        background: #650000;
+        color: white;
+    }
+
+    .main {
+        padding-bottom: 90px;
+    }
+}

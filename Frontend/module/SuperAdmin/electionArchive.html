@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusVote | Election Archive</title>
+<link rel="stylesheet" href="../../dist/output.css">
+
+<style>
+:root {
+    --maroon: #4b151b;
+    --maroon-light: #702830;
+    --primary: #792832;
+    --background: #f7f8fa;
+    --border: #e0e4e9;
+    --text: #252a34;
+    --muted: #667085;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+}
+
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+
+.sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 260px;
+    background: var(--maroon);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 18px;
+}
+
+.brand {
+    padding: 5px 12px;
+}
+
+.brand strong {
+    font-size: 22px;
+}
+
+.brand small {
+    display: block;
+    margin-top: 8px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #e0c9cb;
+}
+
+.nav-heading {
+    margin: 55px 15px 18px;
+    color: #d4b8bb;
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+
+.nav-link {
+    display: block;
+    padding: 14px 17px;
+    margin-bottom: 5px;
+    border-radius: 7px;
+    color: #e8d6d8;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: var(--maroon-light);
+    color: white;
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+    padding: 20px 12px 0;
+    border-top: 1px solid #ffffff29;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.avatar {
+    width: 43px;
+    height: 43px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #fff0f1;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.profile small {
+    display: block;
+    margin-top: 5px;
+    color: #d6bdc0;
+    font-size: 11px;
+}
+
+.logout {
+    display: block;
+    margin: 24px 0 0 55px;
+    color: #e2c8cb;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.main {
+    margin-left: 260px;
+    padding: 35px 42px 60px;
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 31px;
+}
+
+.page-header p {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    box-shadow: 0 2px 5px #00000005;
+}
+
+.create-card {
+    padding: 26px;
+    margin-bottom: 35px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.card-header h2 {
+    margin: 0 0 10px;
+    font-size: 19px;
+}
+
+.card-header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.header-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 9px;
+    background: #fcecee;
+    color: var(--primary);
+    display: grid;
+    place-items: center;
+    font-size: 25px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.required { color: #b42332; }
+
+.field input,
+.field select {
+    width: 100%;
+    min-width: 0;
+    height: 47px;
+    padding: 0 15px;
+    border: 1px solid #dce1e7;
+    border-radius: 7px;
+    background: white;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 11px;
+    padding-top: 24px;
+    margin-top: 26px;
+    border-top: 1px solid var(--border);
+}
+
+.btn {
+    padding: 11px 16px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover { background: #591c24; }
+
+.btn-light {
+    background: #f8f9fa;
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.msg {
+    font-size: 13px;
+    margin-top: 13px;
+}
+
+.msg:empty { display: none; }
+
+.history-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.history-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.history-count {
+    background: #fcecee;
+    color: var(--primary);
+    border-radius: 5px;
+    padding: 5px 9px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.table-card {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #f5f6f8;
+}
+
+th {
+    padding: 17px;
+    text-align: left;
+    font-size: 12px;
+    color: #667085;
+}
+
+td {
+    padding: 17px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+}
+
+tbody tr:hover {
+    background: #fcfcfd;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 7px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+}
+
+.status-badge.archived {
+    background: #fcebec;
+    color: #a52230;
+}
+
+.status-badge.current {
+    background: #e8f5ed;
+    color: #167347;
+}
+
+.status-badge.pending {
+    background: #fff3df;
+    color: #a36b0c;
+}
+
+.status-badge.completed {
+    background: #e6efff;
+    color: #2453a5;
+}
+
+.archive-btn,
+.view-btn {
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.archive-btn {
+    background: #fcecee;
+    border: 1px solid #f0c5c9;
+    color: #a3202c;
+}
+
+.view-btn {
+    background: #f1f4fa;
+    border: 1px solid #d7dfed;
+    color: #34547b;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.read-only {
+    color: #7b8492;
+    font-size: 12px;
+}
+
+.table-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border);
+    color: #667085;
+    font-size: 12px;
+}
+
+.empty-row {
+    text-align: center;
+    color: var(--muted);
+    padding: 32px;
+}
+
+/* ELECTION DETAILS */
+
+.details-card {
+    margin-top: 30px;
+    padding: 25px;
+}
+
+.details-card[hidden] {
+    display: none;
+}
+
+.details-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 18px;
+}
+
+.details-heading h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin: 20px 0;
+}
+
+.summary-box {
+    padding: 17px;
+    background: #faf8f8;
+    border: 1px solid #eee3e4;
+    border-radius: 8px;
+}
+
+.summary-box strong {
+    display: block;
+    font-size: 24px;
+    color: var(--primary);
+}
+
+.summary-box small {
+    display: block;
+    margin-top: 8px;
+    color: var(--muted);
+}
+
+.details-section {
+    margin-top: 28px;
+}
+
+.details-section h3 {
+    margin: 0 0 14px;
+    font-size: 16px;
+}
+
+.details-table {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.details-table table {
+    min-width: 550px;
+}
+
+.details-note {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+@media (max-width: 1050px) {
+    .sidebar { width: 220px; }
+    .main {
+        margin-left: 220px;
+        padding: 25px;
+    }
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 750px) {
+    .sidebar {
+        position: static;
+        width: 100%;
+        padding: 20px;
+    }
+
+    .nav-heading,
+    .sidebar-bottom {
+        display: none;
+    }
+
+    .main {
+        margin-left: 0;
+        padding: 22px 15px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-footer {
+        flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+        font-size: 26px;
+    }
+
+    .create-card,
+    .details-card {
+        padding: 19px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+    <div class="brand">
+        <strong>CampusVote.</strong>
+        <small>STUDENT ELECTION SYSTEM</small>
+    </div>
+
+    <div class="nav-heading">ADMINISTRATION</div>
+
+    <nav>
+        <a href="Manageacc.html" class="nav-link">
+            Account management
+        </a>
+
+        <a href="electionArchive.html" class="nav-link active">
+            Election archive
+        </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+        <div class="profile">
+            <span class="avatar">SA</span>
+            <div>
+                <strong>Super admin</strong>
+                <small>System administrator</small>
+            </div>
+        </div>
+
+        <a href="SuperAdminlog.html" class="logout" id="logoutLink">
+            Log out
+        </a>
+    </div>
+</aside>
+
+<main class="main">
+
+    <div class="page-header">
+        <h1>Election archive</h1>
+        <p>Every election. A clear record. A fresh start.</p>
+    </div>
+
+    <section class="card create-card">
+
+        <div class="card-header">
+            <div>
+                <h2>Create new election</h2>
+                <p>
+                    Archive the current completed election first.
+                    New elections start without candidates or votes.
+                </p>
+            </div>
+
+            <div class="header-icon">＋</div>
+        </div>
+
+        <form id="createForm">
+
+            <div class="form-grid">
+
+                <div class="field">
+                    <label for="title">
+                        Election title <span class="required">*</span>
+                    </label>
+                    <input
+                        id="title"
+                        maxlength="150"
+                        placeholder="e.g. Student Council Election 2027"
+                        required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="copy">Positions</label>
+                    <select id="copy">
+                        <option value="">
+                            Start with no positions
+                        </option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="start">
+                        Starting date &amp; time
+                        <span class="required">*</span>
+                    </label>
+                    <input id="start" type="datetime-local" required>
+                </div>
+
+                <div class="field">
+                    <label for="end">
+                        Closing date &amp; time
+                        <span class="required">*</span>
+                    </label>
+                    <input id="end" type="datetime-local" required>
+                </div>
+
+            </div>
+
+            <div class="form-footer">
+                <button type="button" class="btn btn-light" id="reload">
+                    Refresh
+                </button>
+
+                <button type="reset" class="btn btn-light">
+                    Clear
+                </button>
+
+                <button type="submit" class="btn btn-primary">
+                    Create new election
+                </button>
+            </div>
+
+        </form>
+
+        <p id="message" class="msg" role="status"></p>
+
+    </section>
+
+    <div class="history-header">
+        <h2>Election history</h2>
+        <span class="history-count" id="historyCount">0</span>
+    </div>
+
+    <section class="card table-card">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Election</th>
+                    <th>Status</th>
+                    <th>Positions</th>
+                    <th>Candidates</th>
+                    <th>Ballots scanned</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody id="history">
+                <tr>
+                    <td colspan="7" class="empty-row">
+                        Loading election history...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="table-footer" id="historyFooter">
+            Loading...
+        </div>
+
+    </section>
+
+    <!-- ELECTION HISTORY DETAILS -->
+
+    <section class="card details-card" id="detailsCard" hidden>
+
+        <div class="details-heading">
+            <div>
+                <h2 id="detailsTitle">Election details</h2>
+                <p class="details-note" id="detailsStatus"></p>
+            </div>
+
+            <button type="button" class="btn btn-light" id="closeDetails">
+                Close
+            </button>
+        </div>
+
+        <div class="summary-grid" id="summaryGrid"></div>
+
+        <div class="details-section">
+            <h3>Election results</h3>
+            <div class="details-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Candidate</th>
+                            <th>Party list</th>
+                            <th>Votes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="details-section">
+            <h3>Ballot templates</h3>
+            <div class="details-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Template ID</th>
+                            <th>Template name</th>
+                            <th>Paper size</th>
+                        </tr>
+                    </thead>
+                    <tbody id="templatesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="details-section">
+            <h3>Candidates</h3>
+            <div class="details-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Position</th>
+                            <th>Course</th>
+                            <th>Grade</th>
+                            <th>Party list</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidatesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <p class="details-note">
+            Historical information is read-only.
+            Vote counts are based on saved COUNTED ballot records.
+        </p>
+
+    </section>
+
+</main>
+
+<script src="../sheared/toast.js"></script>
+<script src="./electionArchive.js"></script>
+
+</body>
+</html>
