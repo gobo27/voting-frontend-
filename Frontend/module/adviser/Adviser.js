@@ -1,7 +1,7 @@
 
 "use strict";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
 const $ = id => document.getElementById(id);
 const getToken = () => sessionStorage.getItem("voting_token") || localStorage.getItem("voting_token") || localStorage.getItem("token");
 

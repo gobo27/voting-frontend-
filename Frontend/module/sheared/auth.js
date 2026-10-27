@@ -4,7 +4,7 @@
   const base = new URL("../../", script.src);
   const role = script.dataset.role;
 
-  const api = "http://localhost:3000/api";
+  const api = "https://voting-backend-cdrj.onrender.com/api";
 
   const pages = {
     adviser: "module/adviser/Adviser.html",

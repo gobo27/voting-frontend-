@@ -9,7 +9,7 @@ const BallotAPI = (() => {
         (
             location.port === "5500" ||
             location.port === "5501"
-                ? "http://localhost:3000/api"
+                ? "https://voting-backend-cdrj.onrender.com/api"
                 : location.origin + "/api"
         );
 

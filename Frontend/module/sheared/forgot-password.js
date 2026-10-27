@@ -2,7 +2,7 @@
 "use strict";
 
 (() => {
-    const API_BASE = "http://localhost:3000/api";
+    const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
     const TEST_EMAIL = "vmaldea27@gmail.com";
 
     const forgotBtn = document.getElementById("forgotPasswordBtn");

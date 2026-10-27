@@ -3,7 +3,7 @@
 
 // CONFIGURATION
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
 
 const urlParams = new URLSearchParams(
     window.location.search
