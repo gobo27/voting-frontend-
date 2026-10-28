@@ -3,16 +3,7 @@
 
 
 const BallotAPI = (() => {
-
-    const API_BASE =
-        window.CAMPUSVOTE_API_BASE ||
-        (
-            location.port === "5500" ||
-            location.port === "5501"
-                ? "https://voting-backend-cdrj.onrender.com/api"
-                : location.origin + "/api"
-        );
-
+    const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
     function getToken() {
         return (
             sessionStorage.getItem("voting_token") ||
