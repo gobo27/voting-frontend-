@@ -1,7 +1,7 @@
 
 "use strict";
 
-const API_BASE = "http://127.0.0.1:3000/api";
+const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
 
 const ELECTION_ID =
     new URLSearchParams(window.location.search)
