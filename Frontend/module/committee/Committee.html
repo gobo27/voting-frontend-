@@ -2,1201 +2,845 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampusVote | Committee Dashboard</title>
+<link rel="stylesheet" href="../../dist/output.css">
+<script src="https://unpkg.com/lucide@latest"></script>
 
-  <title>CampusVote | Committee Dashboard</title>
+<style>
+:root {
+    --maroon: #800000;
+    --maroon-dark: #650000;
+    --maroon-light: #fff1f2;
+    --background: #f4f5f7;
+    --white: #ffffff;
+    --text: #202124;
+    --muted: #667085;
+    --border: #e5e7eb;
+}
 
-  <link rel="stylesheet" href="../../dist/output.css">
-  <script src="https://unpkg.com/lucide@latest"></script>
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--background);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+button { font-family: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+[hidden] { display: none !important; }
 
-  <style>
-    :root {
-      --maroon: #800000;
-      --maroon-dark: #650000;
-      --maroon-light: #fff1f2;
-      --background: #f4f5f7;
-      --white: #ffffff;
-      --text: #202124;
-      --muted: #667085;
-      --border: #e5e7eb;
-    }
+/* HEADER */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    padding: 16px 28px;
+    background: var(--maroon);
+    color: white;
+    box-shadow: 0 2px 12px rgba(0,0,0,.12);
+}
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 0 12px;
+    color: white;
+    text-decoration: none;
+    border: 1px solid #ffffff44;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.back-button:hover { background: #ffffff20; }
+.back-button svg { width: 18px; height: 18px; }
+.header-title h1 { margin: 0; font-size: 23px; font-weight: 700; }
+.header-title p {
+    margin: 5px 0 0;
+    color: #f2d7d7;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.committee-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    padding: 10px 15px;
+    border: 1px solid #ffffff55;
+    border-radius: 8px;
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.committee-logout:hover { background: #ffffff20; }
+.committee-logout svg { width: 17px; height: 17px; }
 
-    * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--background);
-      color: var(--text);
-      font-family: Arial, sans-serif;
-    }
-
-    button, a {
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    button {
-      font-family: inherit;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-
-    /* HEADER */
-
-    .header {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      width: 100%;
-      background: var(--maroon);
-      color: white;
-      padding: 16px 28px;
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.12);
-    }
-
-    .back-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      color: white;
-      text-decoration: none;
-      border-radius: 9px;
-    }
-
-    .back-button:hover {
-      background: rgba(255,255,255,.12);
-    }
-
-    .header-title h1 {
-      margin: 0;
-      font-size: 23px;
-      font-weight: 700;
-    }
-
-    .header-title p {
-      margin: 5px 0 0;
-      font-size: 12px;
-      color: #f2d7d7;
-      line-height: 1.4;
-    }
-
-    .committee-logout {
-      margin-left: auto;
-      padding: 10px 15px;
-      border: 1px solid #ffffff55;
-      border-radius: 8px;
-      color: white;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .committee-logout:hover {
-      background: #ffffff20;
-    }
-
-    /* BACKGROUND */
-
-    .page-background {
-      min-height: calc(100vh - 76px);
-      position: relative;
-      padding: 24px 20px 45px;
-      isolation: isolate;
-    }
-
-    .page-background::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(
-          rgba(255,255,255,.89),
-          rgba(255,255,255,.94)
-        ),
+/* BACKGROUND */
+.page-background {
+    position: relative;
+    isolation: isolate;
+    min-height: calc(100vh - 76px);
+    padding: 24px 20px 45px;
+}
+.page-background::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(rgba(255,255,255,.89), rgba(255,255,255,.94)),
         url("../../image/bg5.jpg") center / cover no-repeat;
-      z-index: -1;
-    }
-
-    .dashboard {
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    /* BALLOT PRINTING MONITOR */
-
-    .void-panel {
-      margin-bottom: 22px;
-      padding: 0 !important;
-      overflow: hidden;
-      background: #17191e !important;
-      border: 1px solid #353942 !important;
-      color: white;
-    }
-
-    .print-monitor-header {
-      background: var(--maroon);
-      padding: 17px 22px;
-      display: flex;
-      align-items: center;
-      gap: 11px;
-    }
-
-    .print-monitor-header h3 {
-      margin: 0;
-      color: white;
-      font-size: 19px;
-      font-weight: 700;
-    }
-
-    .print-monitor-header svg {
-      width: 23px;
-      height: 23px;
-    }
-
-    .print-monitor-body {
-      padding: 26px;
-    }
-
-    .print-monitor-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0,1fr));
-      gap: 14px;
-    }
-
-    .print-monitor-grid > div {
-      padding: 20px 12px;
-      text-align: center;
-      background: #24272e;
-      border: 1px solid #383c45;
-      border-radius: 12px;
-    }
-
-    .print-monitor-grid strong {
-      display: block;
-      font-size: 30px;
-      font-weight: 800;
-      color: white;
-      margin-bottom: 8px;
-    }
-
-    .print-monitor-grid span {
-      font-size: 12px;
-      color: #c4c8d0;
-    }
-
-    .print-monitor-total {
-      margin: 26px 0 21px;
-      text-align: center;
-    }
-
-    .print-monitor-total strong {
-      display: block;
-      font-size: 37px;
-      font-weight: 800;
-      color: white;
-      margin-bottom: 7px;
-    }
-
-    .print-monitor-total span {
-      color: #b7beca;
-      font-size: 13px;
-    }
-
-    .print-monitor-finalize {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 9px;
-      width: 100%;
-      max-width: 320px;
-      margin: 0 auto;
-      padding: 13px 17px;
-      border: 1px solid #c6c8cf;
-      border-radius: 10px;
-      color: white;
-      background: transparent;
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .print-monitor-finalize:hover {
-      background: #2c3039;
-    }
-
-    .print-monitor-finalize svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .void-help {
-      color: #aeb6c3;
-      text-align: center;
-      font-size: 12px;
-      line-height: 1.7;
-      margin: 15px 0 0;
-    }
-
-    .monitor-divider {
-      border: 0;
-      border-top: 1px solid #3b3e47;
-      margin: 25px 0;
-    }
-
-    #voidDetails h3 {
-      font-size: 18px;
-      margin: 0 0 16px;
-      color: white;
-    }
-
-    .void-stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0,1fr));
-      gap: 10px;
-    }
-
-    .void-stats span {
-      background: #252932;
-      border: 1px solid #3b414c;
-      border-radius: 9px;
-      padding: 12px;
-      text-align: center;
-      color: #cbd0d9;
-      font-size: 12px;
-    }
-
-    .void-stats strong {
-      color: white;
-      font-size: 16px;
-    }
-
-    .void-controls {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 15px;
-      margin: 18px 0 12px;
-      color: #e5e7eb;
-      font-size: 13px;
-    }
-
-    .void-controls label {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      cursor: pointer;
-    }
-
-    .void-controls input,
-    .void-verify input,
-    .void-list input {
-      accent-color: #a50000;
-      width: 16px;
-      height: 16px;
-    }
-
-    .void-list {
-      background: #202329;
-      border: 1px solid #3c414b;
-      border-radius: 10px;
-      max-height: 265px;
-      overflow-y: auto;
-      padding: 10px;
-      margin-bottom: 18px;
-      color: #e5e7eb;
-      font-size: 12px;
-    }
-
-    .void-ballot-item {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      padding: 11px 10px;
-      border-bottom: 1px solid #353941;
-      cursor: pointer;
-    }
-
-    .void-ballot-item:last-child {
-      border-bottom: 0;
-    }
-
-    .void-ballot-item span {
-      overflow-wrap: anywhere;
-    }
-
-    .void-form-label {
-      display: block;
-      margin: 14px 0 8px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #e5e7eb;
-    }
-
-    .void-reason {
-      width: 100%;
-      min-height: 90px;
-      padding: 12px;
-      resize: vertical;
-      border: 1px solid #505560;
-      border-radius: 9px;
-      background: #252932;
-      color: white;
-      font-family: inherit;
-      font-size: 13px;
-      outline: none;
-    }
-
-    .void-reason:focus {
-      border-color: #e5b2b2;
-    }
-
-    .void-verify {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      color: #d6d9e0;
-      font-size: 12px;
-      line-height: 1.6;
-      margin: 16px 0;
-      cursor: pointer;
-    }
-
-    .void-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 17px;
-    }
-
-    .void-button {
-      background: var(--maroon);
-      border: 1px solid var(--maroon);
-      color: white;
-      padding: 12px 16px;
-      border-radius: 9px;
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    .void-button:not(:disabled):hover {
-      background: #a00000;
-    }
-
-    .void-button.secondary {
-      background: transparent;
-      border-color: #747a86;
-      color: white;
-    }
-
-    .void-button.secondary:not(:disabled):hover {
-      background: #333741;
-    }
-
-    /* EXISTING DASHBOARD */
-
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(2,minmax(0,1fr));
-      gap: 20px;
-      align-items: stretch;
-    }
-
-    .feature-card {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: 0 6px 24px rgba(0,0,0,.055);
-      padding: 26px;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      transition: box-shadow .2s ease;
-    }
-
-    .feature-card:hover {
-      box-shadow: 0 10px 28px rgba(0,0,0,.085);
-    }
-
-    .card-heading {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 14px;
-    }
-
-    .card-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: var(--maroon-light);
-      color: var(--maroon);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .card-icon svg {
-      width: 25px;
-      height: 25px;
-    }
-
-    .card-heading h3 {
-      margin: 0;
-      font-size: 21px;
-      font-weight: 700;
-      color: #242424;
-    }
-
-    .card-description {
-      font-size: 14px;
-      line-height: 1.65;
-      color: var(--muted);
-      margin: 0 0 20px;
-    }
-
-    .scan-guide {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin: 0 0 22px;
-      padding: 0;
-      list-style: none;
-    }
-
-    .scan-guide li {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #475467;
-    }
-
-    .scan-guide li svg {
-      width: 17px;
-      height: 17px;
-      color: #15803d;
-      flex-shrink: 0;
-    }
-
-    .ballot-preview-box {
-      background: #f8f9fb;
-      border: 1px solid #e9eaee;
-      border-radius: 12px;
-      padding: 17px;
-      margin-bottom: 22px;
-    }
-
-    .preview-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    .preview-heading h4 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .preview-tag {
-      background: #f0e3e3;
-      color: var(--maroon);
-      border-radius: 20px;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 5px 9px;
-    }
-
-    .mini-ballot {
-      width: 100%;
-      max-width: 330px;
-      margin: 0 auto;
-      background: white;
-      border: 1px solid #d9dde4;
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 2px 7px rgba(0,0,0,.035);
-      color: #202124;
-    }
-
-    .mini-ballot-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-align: center;
-      overflow-wrap: anywhere;
-    }
-
-    .mini-ballot-year {
-      font-size: 10px;
-      color: #667085;
-      text-align: center;
-      margin-top: 4px;
-    }
-
-    .mini-ballot-divider {
-      height: 1px;
-      background: #d0d5dd;
-      margin: 11px 0;
-    }
-
-    .mini-position {
-      margin-bottom: 11px;
-    }
-
-    .mini-position:last-child {
-      margin-bottom: 0;
-    }
-
-    .mini-position-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      font-size: 10px;
-      font-weight: 700;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-    }
-
-    .mini-position-title span:last-child {
-      color: #667085;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-
-    .mini-candidate {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 10px;
-      color: #475467;
-      margin: 5px 0;
-    }
-
-    .mini-circle {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border: 1px solid #344054;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .mini-empty {
-      padding: 30px 10px;
-      text-align: center;
-      color: #98a2b3;
-      font-size: 12px;
-      line-height: 1.7;
-    }
-
-    .preview-note {
-      font-size: 11px;
-      color: #98a2b3;
-      text-align: center;
-      margin: 12px 0 0;
-    }
-
-    .card-actions {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: auto;
-    }
-
-    .action-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      flex: 1 1 160px;
-      min-height: 48px;
-      padding: 12px 16px;
-      border-radius: 10px;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 700;
-      text-align: center;
-      transition: background .2s, transform .2s;
-    }
-
-    .action-button:hover {
-      transform: translateY(-1px);
-    }
-
-    .action-button svg {
-      width: 19px;
-      height: 19px;
-      flex-shrink: 0;
-    }
-
-    .button-primary {
-      background: var(--maroon);
-      color: white;
-    }
-
-    .button-primary:hover {
-      background: var(--maroon-dark);
-    }
-
-    .button-outline {
-      background: white;
-      color: var(--maroon);
-      border: 1px solid #d8b5b5;
-    }
-
-    .button-outline:hover {
-      background: #fff5f5;
-    }
-
-    .ballot-feature-list {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin: 8px 0 25px;
-    }
-
-    .ballot-feature-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 13px;
-      border-radius: 10px;
-      background: #f8f9fb;
-      border: 1px solid #eef0f3;
-      font-size: 12px;
-      color: #475467;
-    }
-
-    .ballot-feature-item svg {
-      width: 18px;
-      height: 18px;
-      color: var(--maroon);
-      flex-shrink: 0;
-    }
-
-    .create-info {
-      padding: 18px;
-      background: #fff9f9;
-      border: 1px solid #f0dede;
-      border-radius: 12px;
-      margin-bottom: 22px;
-    }
-
-    .create-info h4 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      color: #650000;
-    }
-
-    .create-info p {
-      margin: 0;
-      font-size: 12px;
-      line-height: 1.7;
-      color: #6b5353;
-    }
-
-    .dashboard-footer {
-      margin-top: 25px;
-      text-align: center;
-      font-size: 12px;
-      color: #98a2b3;
-    }
-
-    /* RESPONSIVE */
-
-    @media (max-width: 900px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 600px) {
-      .header {
-        padding: 13px 15px;
-        gap: 10px;
-      }
-
-      .header-title h1 {
-        font-size: 18px;
-      }
-
-      .header-title p {
-        font-size: 11px;
-      }
-
-      .back-button {
-        width: 34px;
-        height: 34px;
-      }
-
-      .committee-logout {
-        padding: 9px;
-        font-size: 12px;
-      }
-
-      .page-background {
-        padding: 14px 12px 30px;
-      }
-
-      .dashboard-grid {
-        gap: 14px;
-      }
-
-      .feature-card {
-        padding: 18px;
-        border-radius: 13px;
-      }
-
-      .void-panel {
-        padding: 0;
-      }
-
-      .print-monitor-body {
-        padding: 16px;
-      }
-
-      .print-monitor-header {
-        padding: 14px 16px;
-      }
-
-      .print-monitor-header h3 {
-        font-size: 16px;
-      }
-
-      .print-monitor-grid {
-        gap: 7px;
-      }
-
-      .print-monitor-grid > div {
-        padding: 13px 5px;
-      }
-
-      .print-monitor-grid strong {
-        font-size: 22px;
-      }
-
-      .print-monitor-grid span {
-        font-size: 10px;
-      }
-
-      .print-monitor-total strong {
-        font-size: 30px;
-      }
-
-      .void-stats {
-        grid-template-columns: repeat(2,minmax(0,1fr));
-      }
-
-      .void-actions {
-        flex-direction: column;
-      }
-
-      .void-actions button {
-        width: 100%;
-      }
-
-      .card-icon {
-        width: 43px;
-        height: 43px;
-      }
-
-      .card-heading h3 {
-        font-size: 18px;
-      }
-
-      .card-description {
-        font-size: 13px;
-      }
-
-      .ballot-feature-list {
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-
-      .card-actions {
-        flex-direction: column;
-        gap: 9px;
-      }
-
-      .action-button {
-        flex: none;
-        width: 100%;
-        min-height: 46px;
-      }
-
-      .ballot-preview-box {
-        padding: 12px;
-      }
-
-      .mini-ballot {
-        max-width: 100%;
-      }
-    }
-  </style>
+}
+.dashboard { width: 100%; max-width: 1200px; margin: auto; }
+
+/* SHARED CARDS */
+.feature-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 26px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.055);
+    transition: box-shadow .2s;
+}
+.feature-card:hover { box-shadow: 0 10px 28px rgba(0,0,0,.085); }
+
+/* PRINT MONITOR */
+.void-panel {
+    margin-bottom: 22px;
+    padding: 0;
+    overflow: hidden;
+    background: white;
+    border: 1px solid #eadada;
+    color: var(--text);
+}
+.print-monitor-header {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 17px 22px;
+    background: var(--maroon);
+    color: white;
+}
+.print-monitor-header h3 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: white;
+}
+.print-monitor-header svg { width: 23px; height: 23px; }
+.print-monitor-body { padding: 24px; }
+.print-monitor-grid {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 14px;
+}
+.print-monitor-grid > div {
+    padding: 20px 12px;
+    text-align: center;
+    background: #fff7f7;
+    border: 1px solid #f0dddd;
+    border-radius: 12px;
+}
+.print-monitor-grid strong {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--maroon);
+    font-size: 30px;
+    font-weight: 800;
+}
+.print-monitor-grid span { color: #765b5b; font-size: 12px; }
+.print-monitor-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin: 22px 0;
+    padding: 15px 17px;
+    background: #fafafa;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+.print-monitor-total strong {
+    order: 2;
+    color: var(--maroon);
+    font-size: 25px;
+    font-weight: 800;
+    text-align: right;
+}
+.print-monitor-total span {
+    color: #475467;
+    font-size: 13px;
+    font-weight: 600;
+}
+.print-monitor-finalize {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    padding: 13px 17px;
+    background: var(--maroon);
+    border: 1px solid var(--maroon);
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+}
+.print-monitor-finalize:hover { background: var(--maroon-dark); }
+.print-monitor-finalize svg { width: 18px; height: 18px; }
+.void-help {
+    margin: 15px 0 0;
+    color: #667085;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+/* VOID DETAILS */
+.monitor-divider {
+    margin: 25px 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+}
+#voidDetails h3 {
+    margin: 0 0 16px;
+    color: var(--maroon);
+    font-size: 18px;
+}
+.void-stats {
+    display: grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 10px;
+}
+.void-stats span {
+    padding: 12px;
+    background: #fff7f7;
+    border: 1px solid #f0dddd;
+    border-radius: 9px;
+    color: #765b5b;
+    text-align: center;
+    font-size: 12px;
+}
+.void-stats strong { color: var(--maroon); font-size: 16px; }
+.void-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 18px 0 12px;
+    color: #475467;
+    font-size: 13px;
+}
+.void-controls label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+}
+.void-controls input,
+.void-verify input,
+.void-list input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--maroon);
+}
+.void-list {
+    max-height: 265px;
+    overflow-y: auto;
+    margin-bottom: 18px;
+    padding: 10px;
+    background: #fafafa;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: #475467;
+    font-size: 12px;
+}
+.void-ballot-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+.void-ballot-item:last-child { border-bottom: 0; }
+.void-ballot-item span { overflow-wrap: anywhere; }
+.void-form-label {
+    display: block;
+    margin: 14px 0 8px;
+    color: #344054;
+    font-size: 13px;
+    font-weight: 700;
+}
+.void-reason {
+    width: 100%;
+    min-height: 90px;
+    padding: 12px;
+    resize: vertical;
+    background: white;
+    border: 1px solid #d0d5dd;
+    border-radius: 9px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+}
+.void-reason:focus { border-color: var(--maroon); }
+.void-verify {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 16px 0;
+    color: #475467;
+    font-size: 12px;
+    line-height: 1.6;
+    cursor: pointer;
+}
+.void-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 17px;
+}
+.void-button {
+    padding: 12px 16px;
+    background: var(--maroon);
+    border: 1px solid var(--maroon);
+    border-radius: 9px;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+}
+.void-button:not(:disabled):hover { background: var(--maroon-dark); }
+.void-button.secondary {
+    background: white;
+    border-color: #d8b5b5;
+    color: var(--maroon);
+}
+.void-button.secondary:not(:disabled):hover { background: #fff5f5; }
+
+/* DASHBOARD GRID */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    align-items: stretch;
+    gap: 20px;
+}
+.card-heading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    background: var(--maroon-light);
+    border-radius: 12px;
+    color: var(--maroon);
+}
+.card-icon svg { width: 25px; height: 25px; }
+.card-heading h3 {
+    margin: 0;
+    color: #242424;
+    font-size: 21px;
+    font-weight: 700;
+}
+.card-description {
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.65;
+}
+.scan-guide {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 22px;
+    padding: 0;
+    list-style: none;
+}
+.scan-guide li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #475467;
+    font-size: 13px;
+}
+.scan-guide li svg {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    color: #15803d;
+}
+
+/* BALLOT PREVIEW */
+.ballot-preview-box {
+    margin-bottom: 22px;
+    padding: 17px;
+    background: #f8f9fb;
+    border: 1px solid #e9eaee;
+    border-radius: 12px;
+}
+.preview-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.preview-heading h4 { margin: 0; font-size: 14px; font-weight: 700; }
+.preview-tag {
+    padding: 5px 9px;
+    background: #f0e3e3;
+    border-radius: 20px;
+    color: var(--maroon);
+    font-size: 10px;
+    font-weight: 700;
+}
+.mini-ballot {
+    width: 100%;
+    max-width: 330px;
+    margin: 0 auto;
+    padding: 16px;
+    background: white;
+    border: 1px solid #d9dde4;
+    border-radius: 8px;
+    box-shadow: 0 2px 7px rgba(0,0,0,.035);
+    color: #202124;
+}
+.mini-ballot-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.mini-ballot-year {
+    margin-top: 4px;
+    color: #667085;
+    text-align: center;
+    font-size: 10px;
+}
+.mini-ballot-divider {
+    height: 1px;
+    margin: 11px 0;
+    background: #d0d5dd;
+}
+.mini-position { margin-bottom: 11px; }
+.mini-position:last-child { margin-bottom: 0; }
+.mini-position-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.mini-position-title span:last-child {
+    color: #667085;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.mini-candidate {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 5px 0;
+    color: #475467;
+    font-size: 10px;
+}
+.mini-circle {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border: 1px solid #344054;
+    border-radius: 50%;
+}
+.mini-empty {
+    padding: 30px 10px;
+    color: #98a2b3;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.7;
+}
+.preview-note {
+    margin: 12px 0 0;
+    color: #98a2b3;
+    text-align: center;
+    font-size: 11px;
+}
+
+/* ACTION BUTTONS */
+.card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: auto;
+}
+.action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 160px;
+    gap: 9px;
+    min-height: 48px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    text-decoration: none;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    transition: background .2s, transform .2s;
+}
+.action-button:hover { transform: translateY(-1px); }
+.action-button svg { width: 19px; height: 19px; flex-shrink: 0; }
+.button-primary { background: var(--maroon); color: white; }
+.button-primary:hover { background: var(--maroon-dark); }
+.button-outline {
+    background: white;
+    border: 1px solid #d8b5b5;
+    color: var(--maroon);
+}
+.button-outline:hover { background: #fff5f5; }
+
+/* CREATE BALLOT */
+.ballot-feature-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 8px 0 25px;
+}
+.ballot-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px;
+    background: #f8f9fb;
+    border: 1px solid #eef0f3;
+    border-radius: 10px;
+    color: #475467;
+    font-size: 12px;
+}
+.ballot-feature-item svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    color: var(--maroon);
+}
+.create-info {
+    margin-bottom: 22px;
+    padding: 18px;
+    background: #fff9f9;
+    border: 1px solid #f0dede;
+    border-radius: 12px;
+}
+.create-info h4 { margin: 0 0 8px; color: #650000; font-size: 14px; }
+.create-info p {
+    margin: 0;
+    color: #6b5353;
+    font-size: 12px;
+    line-height: 1.7;
+}
+.dashboard-footer {
+    margin-top: 25px;
+    color: #98a2b3;
+    text-align: center;
+    font-size: 12px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .header { padding: 13px 12px; gap: 9px; }
+    .header-title h1 { font-size: 17px; }
+    .header-title p { font-size: 10px; }
+    .back-button { min-height: 35px; padding: 0 9px; font-size: 11px; }
+    .committee-logout { padding: 9px; font-size: 11px; }
+    .committee-logout svg { display: none; }
+    .page-background { padding: 14px 12px 30px; }
+    .dashboard-grid { gap: 14px; }
+    .feature-card { padding: 18px; border-radius: 13px; }
+    .void-panel { padding: 0; }
+    .print-monitor-body { padding: 16px; }
+    .print-monitor-header { padding: 14px 16px; }
+    .print-monitor-header h3 { font-size: 16px; }
+    .print-monitor-grid { gap: 7px; }
+    .print-monitor-grid > div { padding: 13px 5px; }
+    .print-monitor-grid strong { font-size: 22px; }
+    .print-monitor-grid span { font-size: 10px; }
+    .print-monitor-total strong { font-size: 19px; }
+    .void-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .void-actions { flex-direction: column; }
+    .void-actions button { width: 100%; }
+    .card-icon { width: 43px; height: 43px; }
+    .card-heading h3 { font-size: 18px; }
+    .card-description { font-size: 13px; }
+    .ballot-feature-list { grid-template-columns: 1fr; gap: 8px; }
+    .card-actions { flex-direction: column; gap: 9px; }
+    .action-button { flex: none; width: 100%; min-height: 46px; }
+    .ballot-preview-box { padding: 12px; }
+    .mini-ballot { max-width: 100%; }
+}
+</style>
 </head>
 
 <body>
 
-  <!-- HEADER -->
-
-  <header class="header">
-
-    <a href="Committeelogin.html"
-       class="back-button"
-       aria-label="Back to Committee Login">
-      <i data-lucide="arrow-left"></i>
+<header class="header">
+    <a href="Committeelogin.html" class="back-button" aria-label="Back to Committee Login">
+        <i data-lucide="arrow-left"></i>
+        <span>Back</span>
     </a>
 
     <div class="header-title">
-      <h1>Committee Dashboard</h1>
-      <p>
-        Manage ballot scanning, templates, and official ballots.
-      </p>
+        <h1>Committee Dashboard</h1>
+        <p>Manage ballot scanning, templates, and official ballots.</p>
     </div>
 
-    <a href="Committeelogin.html"
-       class="committee-logout">
-      Log out
+    <a href="Committeelogin.html" class="committee-logout">
+        <i data-lucide="log-out"></i>
+        Log out
     </a>
+</header>
 
-  </header>
+<main class="page-background">
+<div class="dashboard">
 
-  <main class="page-background">
-    <div class="dashboard">
-
-      <!-- BALLOT PRINTING MONITOR - TOP -->
-
-      <section class="feature-card void-panel"
-               id="unusedBallotPanel">
-
+    <section class="feature-card void-panel" id="unusedBallotPanel">
         <div class="print-monitor-header">
-          <i data-lucide="printer"></i>
-          <h3>Ballot Printing Monitor</h3>
+            <i data-lucide="printer"></i>
+            <h3>Ballot Printing Monitor</h3>
         </div>
 
         <div class="print-monitor-body">
-
-          <div class="print-monitor-grid">
-
-            <div>
-              <strong id="monitorOriginal">—</strong>
-              <span>Original</span>
+            <div class="print-monitor-grid">
+                <div>
+                    <strong id="monitorOriginal">—</strong>
+                    <span>Original</span>
+                </div>
+                <div>
+                    <strong id="monitorReprints">—</strong>
+                    <span>Reprints</span>
+                </div>
+                <div>
+                    <strong id="monitorTotal">—</strong>
+                    <span>Overall Printed</span>
+                </div>
             </div>
 
-            <div>
-              <strong id="monitorReprints">—</strong>
-              <span>Reprints</span>
+            <div class="print-monitor-total">
+                <strong id="monitorPhysical">— / —</strong>
+                <span>Total Scan Ballot</span>
             </div>
 
-            <div>
-              <strong id="monitorTotal">—</strong>
-              <span>Total Printed</span>
-            </div>
+            <button type="button" class="print-monitor-finalize" id="openVoidPanel">
+                <i data-lucide="clipboard-check"></i>
+                Finalize Unused Ballots
+            </button>
 
-          </div>
-
-          <div class="print-monitor-total">
-            <strong id="monitorPhysical">— / —</strong>
-            <span>Total Physical Ballots Printed</span>
-          </div>
-
-          <button type="button"
-                  class="print-monitor-finalize"
-                  id="openVoidPanel">
-            <i data-lucide="check-circle-2"></i>
-            Finalize Unused Ballots
-          </button>
-
-          <p class="void-help" id="monitorNote">
-            Loading registered ballot counts.
-          </p>
-
-          <!-- VOID DETAILS -->
-
-          <div id="voidDetails" hidden>
-
-            <hr class="monitor-divider">
-
-            <h3>Verify and Void Unused Ballots</h3>
-
-            <div class="void-stats">
-              <span>
-                Issued:
-                <strong id="voidIssued">—</strong>
-              </span>
-
-              <span>
-                Received:
-                <strong id="voidCast">—</strong>
-              </span>
-
-              <span>
-                Counted:
-                <strong id="voidCounted">—</strong>
-              </span>
-
-              <span>
-                Voided:
-                <strong id="voidVoided">—</strong>
-              </span>
-            </div>
-
-            <p class="void-help" id="voidElectionState">
-              Loading election status...
+            <p class="void-help" id="monitorNote">
+                Loading confirmed print counts...
             </p>
 
-            <div class="void-controls">
+            <div id="voidDetails" hidden>
+                <hr class="monitor-divider">
+                <h3>Verify and Void Unused Ballots</h3>
 
-              <button type="button"
-                      class="void-button secondary"
-                      id="voidRefresh">
-                Refresh Ballots
-              </button>
+                <div class="void-stats">
+                    <span>Issued: <strong id="voidIssued">—</strong></span>
+                    <span>Received: <strong id="voidCast">—</strong></span>
+                    <span>Counted: <strong id="voidCounted">—</strong></span>
+                    <span>Voided: <strong id="voidVoided">—</strong></span>
+                </div>
 
-              <label>
-                <input type="checkbox"
-                       id="voidSelectAll">
-                Select first 100
-              </label>
+                <p class="void-help" id="voidElectionState">
+                    Loading election status...
+                </p>
 
-              <span id="voidSelectedCount">
-                0 selected
-              </span>
+                <div class="void-controls">
+                    <button type="button" class="void-button secondary" id="voidRefresh">
+                        Refresh Ballots
+                    </button>
+                    <label>
+                        <input type="checkbox" id="voidSelectAll">
+                        Select first 100
+                    </label>
+                    <span id="voidSelectedCount">0 selected</span>
+                </div>
 
+                <div class="void-list" id="voidBallotList">
+                    Loading unused ballots...
+                </div>
+
+                <label class="void-form-label" for="voidReason">
+                    Reason for voiding
+                </label>
+
+                <textarea class="void-reason" id="voidReason" maxlength="500"
+                    placeholder="Explain why these ballots were unused"></textarea>
+
+                <label class="void-verify">
+                    <input type="checkbox" id="voidVerified">
+                    <span>I physically verified each selected ballot was never cast or received.</span>
+                </label>
+
+                <div class="void-actions">
+                    <button type="button" class="void-button" id="voidSubmit" disabled>
+                        Void Selected Ballots
+                    </button>
+                    <button type="button" class="void-button secondary"
+                        id="finishScanCommittee" disabled>
+                        Finish Scanning
+                    </button>
+                </div>
             </div>
-
-            <div class="void-list" id="voidBallotList">
-              Loading unused ballots...
-            </div>
-
-            <label class="void-form-label"
-                   for="voidReason">
-              Reason for voiding
-            </label>
-
-            <textarea
-              class="void-reason"
-              id="voidReason"
-              maxlength="500"
-              placeholder="Explain why these ballots were unused"
-            ></textarea>
-
-            <label class="void-verify">
-              <input type="checkbox" id="voidVerified">
-
-              <span>
-                I physically verified each selected ballot
-                was never cast or received.
-              </span>
-            </label>
-
-            <div class="void-actions">
-
-              <button type="button"
-                      class="void-button"
-                      id="voidSubmit"
-                      disabled>
-                Void Selected Ballots
-              </button>
-
-              <button type="button"
-                      class="void-button secondary"
-                      id="finishScanCommittee"
-                      disabled>
-                Finish Scanning
-              </button>
-
-            </div>
-
-          </div>
         </div>
-      </section>
+    </section>
 
-      <!-- EXISTING COMMITTEE CARDS -->
-
-      <div class="dashboard-grid">
-
-        <!-- SCAN BALLOT CARD -->
+    <div class="dashboard-grid">
 
         <section class="feature-card">
-
-          <div class="card-heading">
-            <div class="card-icon">
-              <i data-lucide="scan-line"></i>
+            <div class="card-heading">
+                <div class="card-icon">
+                    <i data-lucide="scan-line"></i>
+                </div>
+                <h3>Scan Physical Ballot</h3>
             </div>
 
-            <h3>Scan Physical Ballot</h3>
-          </div>
-
-          <p class="card-description">
-            Scan printed ballots using your device
-            camera or upload a ballot image for processing.
-          </p>
-
-          <ul class="scan-guide">
-
-            <li>
-              <i data-lucide="check-circle-2"></i>
-              Position the ballot within the edges.
-            </li>
-
-            <li>
-              <i data-lucide="check-circle-2"></i>
-              Ensure proper lighting and a clear image.
-            </li>
-
-            <li>
-              <i data-lucide="check-circle-2"></i>
-              Review and submit captured votes.
-            </li>
-
-          </ul>
-
-          <div class="ballot-preview-box">
-
-            <div class="preview-heading">
-              <h4>Ballot Preview</h4>
-              <span class="preview-tag">
-                Official Template
-              </span>
-            </div>
-
-            <div class="mini-ballot"
-                 id="ballotThumbnailCard">
-              <div class="mini-empty">
-                Loading ballot preview...
-              </div>
-            </div>
-
-            <p class="preview-note"
-               id="previewSource">
-              Preview of the available ballot template
+            <p class="card-description">
+                Scan printed ballots using your device camera or upload a ballot image for processing.
             </p>
 
-          </div>
+            <ul class="scan-guide">
+                <li><i data-lucide="check-circle-2"></i>Position the ballot within the edges.</li>
+                <li><i data-lucide="check-circle-2"></i>Ensure proper lighting and a clear image.</li>
+                <li><i data-lucide="check-circle-2"></i>Review and submit captured votes.</li>
+            </ul>
 
-          <div class="card-actions">
+            <div class="ballot-preview-box">
+                <div class="preview-heading">
+                    <h4>Ballot Preview</h4>
+                    <span class="preview-tag">Official Template</span>
+                </div>
 
-            <a href="scanner.html"
-               class="action-button button-primary">
-              <i data-lucide="camera"></i>
-              Live Camera
-            </a>
+                <div class="mini-ballot" id="ballotThumbnailCard">
+                    <div class="mini-empty">Loading ballot preview...</div>
+                </div>
 
-            <a href="scanner.html"
-               class="action-button button-outline">
-              <i data-lucide="upload"></i>
-              Upload Image
-            </a>
+                <p class="preview-note" id="previewSource">
+                    Preview of the available ballot template
+                </p>
+            </div>
 
-          </div>
-
+            <div class="card-actions">
+                <a href="scanner.html" class="action-button button-primary">
+                    <i data-lucide="camera"></i>
+                    Live Camera
+                </a>
+                <a href="scanner.html" class="action-button button-outline">
+                    <i data-lucide="upload"></i>
+                    Upload Image
+                </a>
+            </div>
         </section>
-
-        <!-- CREATE BALLOT CARD -->
 
         <section class="feature-card">
-
-          <div class="card-heading">
-            <div class="card-icon">
-              <i data-lucide="file-pen-line"></i>
+            <div class="card-heading">
+                <div class="card-icon">
+                    <i data-lucide="file-pen-line"></i>
+                </div>
+                <h3>Create Ballot</h3>
             </div>
 
-            <h3>Create Ballot</h3>
-          </div>
-
-          <p class="card-description">
-            Create, review, and manage official election
-            ballots using the CampusVote OMR Ballot Creator.
-          </p>
-
-          <div class="ballot-feature-list">
-
-            <div class="ballot-feature-item">
-              <i data-lucide="file-text"></i>
-              Ballot Templates
-            </div>
-
-            <div class="ballot-feature-item">
-              <i data-lucide="users"></i>
-              Candidates & Positions
-            </div>
-
-            <div class="ballot-feature-item">
-              <i data-lucide="qr-code"></i>
-              Unique QR Printing
-            </div>
-
-            <div class="ballot-feature-item">
-              <i data-lucide="printer"></i>
-              Reprint QR Batches
-            </div>
-
-          </div>
-
-          <div class="create-info">
-
-            <h4>Official Ballot Management</h4>
-
-            <p>
-              Review saved ballot templates, configure
-              the maximum votes per position, generate
-              unique QR ballots, and reprint existing
-              registered batches when needed.
+            <p class="card-description">
+                Create, review, and manage official election ballots using the CampusVote OMR Ballot Creator.
             </p>
 
-          </div>
+            <div class="ballot-feature-list">
+                <div class="ballot-feature-item">
+                    <i data-lucide="file-text"></i>
+                    Ballot Templates
+                </div>
+                <div class="ballot-feature-item">
+                    <i data-lucide="users"></i>
+                    Candidates & Positions
+                </div>
+                <div class="ballot-feature-item">
+                    <i data-lucide="qr-code"></i>
+                    Unique QR Printing
+                </div>
+                <div class="ballot-feature-item">
+                    <i data-lucide="printer"></i>
+                    Reprint QR Batches
+                </div>
+            </div>
 
-          <div class="card-actions">
+            <div class="create-info">
+                <h4>Official Ballot Management</h4>
+                <p>
+                    Review saved ballot templates, configure maximum votes per position,
+                    generate unique QR ballots, and reprint existing registered batches when needed.
+                </p>
+            </div>
 
-            <a href="ballot.html"
-               class="action-button button-primary">
-              <i data-lucide="file-edit"></i>
-              Create / Review Ballot
-            </a>
-
-          </div>
-
+            <div class="card-actions">
+                <a href="ballot.html" class="action-button button-primary">
+                    <i data-lucide="file-edit"></i>
+                    Create / Review Ballot
+                </a>
+            </div>
         </section>
-
-      </div>
-
-      <div class="dashboard-footer">
-        CampusVote | Committee Election Management
-      </div>
 
     </div>
-  </main>
 
-  <!-- TOAST -->
-  <script src="../sheared/toast.js"></script>
+    <div class="dashboard-footer">
+        CampusVote | Committee Election Management
+    </div>
 
-  <!-- COMMITTEE FUNCTIONALITY -->
-  <script src="./committee.js"></script>
+</div>
+</main>
 
-  <!-- EXISTING AUTH GUARD -->
-  <script
-    src="../sheared/auth.js?v=20261002-2"
-    data-mode="guard"
-    data-role="committee">
-  </script>
+<script src="../sheared/toast.js"></script>
+<script src="./committee.js"></script>
+<script src="../sheared/auth.js?v=20261002-2"
+    data-mode="guard" data-role="committee"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
+    } else {
+        console.warn("Lucide icons could not be loaded.");
+    }
+});
+</script>
 
 </body>
 </html>
