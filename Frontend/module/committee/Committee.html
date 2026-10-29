@@ -1,6 +1,6 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,6 @@
   <title>CampusVote | Committee Dashboard</title>
 
   <link rel="stylesheet" href="../../dist/output.css">
-
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
@@ -23,13 +22,9 @@
       --border: #e5e7eb;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html {
-      scroll-behavior: smooth;
-    }
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
@@ -39,9 +34,18 @@
       font-family: Arial, sans-serif;
     }
 
-    button,
-    a {
+    button, a {
       -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
     }
 
     /* HEADER */
@@ -53,11 +57,11 @@
       width: 100%;
       background: var(--maroon);
       color: white;
-      padding: 17px 30px;
+      padding: 16px 28px;
       display: flex;
       align-items: center;
-      gap: 18px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+      gap: 15px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.12);
     }
 
     .back-button {
@@ -69,24 +73,39 @@
       color: white;
       text-decoration: none;
       border-radius: 9px;
-      transition: background .2s;
     }
 
     .back-button:hover {
-      background: rgba(255, 255, 255, .12);
+      background: rgba(255,255,255,.12);
     }
 
     .header-title h1 {
       margin: 0;
       font-size: 23px;
       font-weight: 700;
-      letter-spacing: -.3px;
     }
 
     .header-title p {
-      margin: 4px 0 0;
+      margin: 5px 0 0;
       font-size: 12px;
       color: #f2d7d7;
+      line-height: 1.4;
+    }
+
+    .committee-logout {
+      margin-left: auto;
+      padding: 10px 15px;
+      border: 1px solid #ffffff55;
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .committee-logout:hover {
+      background: #ffffff20;
     }
 
     /* BACKGROUND */
@@ -94,7 +113,7 @@
     .page-background {
       min-height: calc(100vh - 76px);
       position: relative;
-      padding: 35px 20px 55px;
+      padding: 24px 20px 45px;
       isolation: isolate;
     }
 
@@ -103,43 +122,295 @@
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(rgba(255, 255, 255, .89),
-          rgba(255, 255, 255, .94)),
+        linear-gradient(
+          rgba(255,255,255,.89),
+          rgba(255,255,255,.94)
+        ),
         url("../../image/bg5.jpg") center / cover no-repeat;
       z-index: -1;
     }
 
     .dashboard {
+      width: 100%;
       max-width: 1200px;
       margin: 0 auto;
     }
 
-    /* INTRO */
+    /* BALLOT PRINTING MONITOR */
 
-    .welcome {
-      margin-bottom: 26px;
+    .void-panel {
+      margin-bottom: 22px;
+      padding: 0 !important;
+      overflow: hidden;
+      background: #17191e !important;
+      border: 1px solid #353942 !important;
+      color: white;
     }
 
-    .welcome h2 {
-      margin: 0 0 7px;
-      font-size: 27px;
-      font-weight: 700;
-      color: #222;
+    .print-monitor-header {
+      background: var(--maroon);
+      padding: 17px 22px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
     }
 
-    .welcome p {
+    .print-monitor-header h3 {
       margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.6;
+      color: white;
+      font-size: 19px;
+      font-weight: 700;
     }
 
-    /* DASHBOARD GRID */
+    .print-monitor-header svg {
+      width: 23px;
+      height: 23px;
+    }
+
+    .print-monitor-body {
+      padding: 26px;
+    }
+
+    .print-monitor-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 14px;
+    }
+
+    .print-monitor-grid > div {
+      padding: 20px 12px;
+      text-align: center;
+      background: #24272e;
+      border: 1px solid #383c45;
+      border-radius: 12px;
+    }
+
+    .print-monitor-grid strong {
+      display: block;
+      font-size: 30px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 8px;
+    }
+
+    .print-monitor-grid span {
+      font-size: 12px;
+      color: #c4c8d0;
+    }
+
+    .print-monitor-total {
+      margin: 26px 0 21px;
+      text-align: center;
+    }
+
+    .print-monitor-total strong {
+      display: block;
+      font-size: 37px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 7px;
+    }
+
+    .print-monitor-total span {
+      color: #b7beca;
+      font-size: 13px;
+    }
+
+    .print-monitor-finalize {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      padding: 13px 17px;
+      border: 1px solid #c6c8cf;
+      border-radius: 10px;
+      color: white;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .print-monitor-finalize:hover {
+      background: #2c3039;
+    }
+
+    .print-monitor-finalize svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .void-help {
+      color: #aeb6c3;
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.7;
+      margin: 15px 0 0;
+    }
+
+    .monitor-divider {
+      border: 0;
+      border-top: 1px solid #3b3e47;
+      margin: 25px 0;
+    }
+
+    #voidDetails h3 {
+      font-size: 18px;
+      margin: 0 0 16px;
+      color: white;
+    }
+
+    .void-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 10px;
+    }
+
+    .void-stats span {
+      background: #252932;
+      border: 1px solid #3b414c;
+      border-radius: 9px;
+      padding: 12px;
+      text-align: center;
+      color: #cbd0d9;
+      font-size: 12px;
+    }
+
+    .void-stats strong {
+      color: white;
+      font-size: 16px;
+    }
+
+    .void-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin: 18px 0 12px;
+      color: #e5e7eb;
+      font-size: 13px;
+    }
+
+    .void-controls label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+    }
+
+    .void-controls input,
+    .void-verify input,
+    .void-list input {
+      accent-color: #a50000;
+      width: 16px;
+      height: 16px;
+    }
+
+    .void-list {
+      background: #202329;
+      border: 1px solid #3c414b;
+      border-radius: 10px;
+      max-height: 265px;
+      overflow-y: auto;
+      padding: 10px;
+      margin-bottom: 18px;
+      color: #e5e7eb;
+      font-size: 12px;
+    }
+
+    .void-ballot-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 10px;
+      border-bottom: 1px solid #353941;
+      cursor: pointer;
+    }
+
+    .void-ballot-item:last-child {
+      border-bottom: 0;
+    }
+
+    .void-ballot-item span {
+      overflow-wrap: anywhere;
+    }
+
+    .void-form-label {
+      display: block;
+      margin: 14px 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #e5e7eb;
+    }
+
+    .void-reason {
+      width: 100%;
+      min-height: 90px;
+      padding: 12px;
+      resize: vertical;
+      border: 1px solid #505560;
+      border-radius: 9px;
+      background: #252932;
+      color: white;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .void-reason:focus {
+      border-color: #e5b2b2;
+    }
+
+    .void-verify {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: #d6d9e0;
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 16px 0;
+      cursor: pointer;
+    }
+
+    .void-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 17px;
+    }
+
+    .void-button {
+      background: var(--maroon);
+      border: 1px solid var(--maroon);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 9px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .void-button:not(:disabled):hover {
+      background: #a00000;
+    }
+
+    .void-button.secondary {
+      background: transparent;
+      border-color: #747a86;
+      color: white;
+    }
+
+    .void-button.secondary:not(:disabled):hover {
+      background: #333741;
+    }
+
+    /* EXISTING DASHBOARD */
 
     .dashboard-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 22px;
+      grid-template-columns: repeat(2,minmax(0,1fr));
+      gap: 20px;
       align-items: stretch;
     }
 
@@ -147,7 +418,7 @@
       background: white;
       border: 1px solid var(--border);
       border-radius: 16px;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, .055);
+      box-shadow: 0 6px 24px rgba(0,0,0,.055);
       padding: 26px;
       display: flex;
       flex-direction: column;
@@ -156,7 +427,7 @@
     }
 
     .feature-card:hover {
-      box-shadow: 0 10px 28px rgba(0, 0, 0, .085);
+      box-shadow: 0 10px 28px rgba(0,0,0,.085);
     }
 
     .card-heading {
@@ -197,8 +468,6 @@
       margin: 0 0 20px;
     }
 
-    /* SCAN INSTRUCTIONS */
-
     .scan-guide {
       display: flex;
       flex-direction: column;
@@ -222,8 +491,6 @@
       color: #15803d;
       flex-shrink: 0;
     }
-
-    /* MINI BALLOT */
 
     .ballot-preview-box {
       background: #f8f9fb;
@@ -264,7 +531,7 @@
       border: 1px solid #d9dde4;
       border-radius: 8px;
       padding: 16px;
-      box-shadow: 0 2px 7px rgba(0, 0, 0, .035);
+      box-shadow: 0 2px 7px rgba(0,0,0,.035);
       color: #202124;
     }
 
@@ -339,20 +606,12 @@
       line-height: 1.7;
     }
 
-    .mini-empty svg {
-      width: 30px;
-      height: 30px;
-      margin: 0 auto 10px;
-    }
-
     .preview-note {
       font-size: 11px;
       color: #98a2b3;
       text-align: center;
       margin: 12px 0 0;
     }
-
-    /* BUTTONS */
 
     .card-actions {
       display: flex;
@@ -406,8 +665,6 @@
       background: #fff5f5;
     }
 
-    /* CREATE BALLOT DETAILS */
-
     .ballot-feature-list {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -455,8 +712,6 @@
       color: #6b5353;
     }
 
-    /* FOOTER */
-
     .dashboard-footer {
       margin-top: 25px;
       text-align: center;
@@ -464,32 +719,26 @@
       color: #98a2b3;
     }
 
-    /* TABLET */
+    /* RESPONSIVE */
 
     @media (max-width: 900px) {
       .dashboard-grid {
         grid-template-columns: 1fr;
       }
-
-      .feature-card {
-        padding: 23px;
-      }
     }
-
-    /* MOBILE */
 
     @media (max-width: 600px) {
       .header {
-        padding: 14px 16px;
+        padding: 13px 15px;
         gap: 10px;
       }
 
       .header-title h1 {
-        font-size: 17px;
+        font-size: 18px;
       }
 
       .header-title p {
-        font-size: 10px;
+        font-size: 11px;
       }
 
       .back-button {
@@ -497,24 +746,17 @@
         height: 34px;
       }
 
+      .committee-logout {
+        padding: 9px;
+        font-size: 12px;
+      }
+
       .page-background {
-        padding: 20px 12px 35px;
-      }
-
-      .welcome {
-        margin-bottom: 20px;
-      }
-
-      .welcome h2 {
-        font-size: 22px;
-      }
-
-      .welcome p {
-        font-size: 13px;
+        padding: 14px 12px 30px;
       }
 
       .dashboard-grid {
-        gap: 15px;
+        gap: 14px;
       }
 
       .feature-card {
@@ -522,14 +764,57 @@
         border-radius: 13px;
       }
 
+      .void-panel {
+        padding: 0;
+      }
+
+      .print-monitor-body {
+        padding: 16px;
+      }
+
+      .print-monitor-header {
+        padding: 14px 16px;
+      }
+
+      .print-monitor-header h3 {
+        font-size: 16px;
+      }
+
+      .print-monitor-grid {
+        gap: 7px;
+      }
+
+      .print-monitor-grid > div {
+        padding: 13px 5px;
+      }
+
+      .print-monitor-grid strong {
+        font-size: 22px;
+      }
+
+      .print-monitor-grid span {
+        font-size: 10px;
+      }
+
+      .print-monitor-total strong {
+        font-size: 30px;
+      }
+
+      .void-stats {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+      }
+
+      .void-actions {
+        flex-direction: column;
+      }
+
+      .void-actions button {
+        width: 100%;
+      }
+
       .card-icon {
         width: 43px;
         height: 43px;
-      }
-
-      .card-icon svg {
-        width: 22px;
-        height: 22px;
       }
 
       .card-heading h3 {
@@ -564,101 +849,6 @@
         max-width: 100%;
       }
     }
-
-    .header {
-      padding: 16px 28px;
-      gap: 15px;
-    }
-
-    .header-title h1 {
-      font-size: 23px;
-      margin: 0;
-    }
-
-    .header-title p {
-      font-size: 12px;
-      margin-top: 5px;
-      line-height: 1.4;
-    }
-
-    .page-background {
-      padding-top: 25px;
-    }
-
-    @media (max-width: 600px) {
-      .header {
-        padding: 13px 15px;
-      }
-
-      .header-title h1 {
-        font-size: 18px;
-      }
-
-      .header-title p {
-        font-size: 11px;
-      }
-
-      .page-background {
-        padding-top: 15px;
-      }
-    }
-
-    .page-background {
-      min-height: calc(100vh - 76px);
-      padding: 24px 20px 45px;
-    }
-
-    .dashboard {
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 20px;
-      align-items: stretch;
-    }
-
-    @media (max-width: 900px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 600px) {
-      .page-background {
-        padding: 14px 12px 30px;
-      }
-
-      .dashboard-grid {
-        gap: 14px;
-      }
-    }
-
-    .committee-logout {
-      margin-left: auto;
-      padding: 10px 15px;
-      border: 1px solid #ffffff55;
-      border-radius: 8px;
-      color: #fff;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap
-    }
-
-    .committee-logout:hover {
-      background: #ffffff20
-    }
-
-    @media(max-width:600px) {
-      .committee-logout {
-        padding: 9px;
-        font-size: 12px
-      }
-    }
   </style>
 </head>
 
@@ -666,10 +856,11 @@
 
   <!-- HEADER -->
 
-
   <header class="header">
 
-    <a href="Committeelogin.html" class="back-button" aria-label="Back to Committee Login">
+    <a href="Committeelogin.html"
+       class="back-button"
+       aria-label="Back to Committee Login">
       <i data-lucide="arrow-left"></i>
     </a>
 
@@ -680,12 +871,165 @@
       </p>
     </div>
 
-    <a href="Committeelogin.html" class="committee-logout">Log out</a>
+    <a href="Committeelogin.html"
+       class="committee-logout">
+      Log out
+    </a>
 
   </header>
 
   <main class="page-background">
     <div class="dashboard">
+
+      <!-- BALLOT PRINTING MONITOR - TOP -->
+
+      <section class="feature-card void-panel"
+               id="unusedBallotPanel">
+
+        <div class="print-monitor-header">
+          <i data-lucide="printer"></i>
+          <h3>Ballot Printing Monitor</h3>
+        </div>
+
+        <div class="print-monitor-body">
+
+          <div class="print-monitor-grid">
+
+            <div>
+              <strong id="monitorOriginal">—</strong>
+              <span>Original</span>
+            </div>
+
+            <div>
+              <strong id="monitorReprints">—</strong>
+              <span>Reprints</span>
+            </div>
+
+            <div>
+              <strong id="monitorTotal">—</strong>
+              <span>Total Printed</span>
+            </div>
+
+          </div>
+
+          <div class="print-monitor-total">
+            <strong id="monitorPhysical">— / —</strong>
+            <span>Total Physical Ballots Printed</span>
+          </div>
+
+          <button type="button"
+                  class="print-monitor-finalize"
+                  id="openVoidPanel">
+            <i data-lucide="check-circle-2"></i>
+            Finalize Unused Ballots
+          </button>
+
+          <p class="void-help" id="monitorNote">
+            Loading registered ballot counts.
+          </p>
+
+          <!-- VOID DETAILS -->
+
+          <div id="voidDetails" hidden>
+
+            <hr class="monitor-divider">
+
+            <h3>Verify and Void Unused Ballots</h3>
+
+            <div class="void-stats">
+              <span>
+                Issued:
+                <strong id="voidIssued">—</strong>
+              </span>
+
+              <span>
+                Received:
+                <strong id="voidCast">—</strong>
+              </span>
+
+              <span>
+                Counted:
+                <strong id="voidCounted">—</strong>
+              </span>
+
+              <span>
+                Voided:
+                <strong id="voidVoided">—</strong>
+              </span>
+            </div>
+
+            <p class="void-help" id="voidElectionState">
+              Loading election status...
+            </p>
+
+            <div class="void-controls">
+
+              <button type="button"
+                      class="void-button secondary"
+                      id="voidRefresh">
+                Refresh Ballots
+              </button>
+
+              <label>
+                <input type="checkbox"
+                       id="voidSelectAll">
+                Select first 100
+              </label>
+
+              <span id="voidSelectedCount">
+                0 selected
+              </span>
+
+            </div>
+
+            <div class="void-list" id="voidBallotList">
+              Loading unused ballots...
+            </div>
+
+            <label class="void-form-label"
+                   for="voidReason">
+              Reason for voiding
+            </label>
+
+            <textarea
+              class="void-reason"
+              id="voidReason"
+              maxlength="500"
+              placeholder="Explain why these ballots were unused"
+            ></textarea>
+
+            <label class="void-verify">
+              <input type="checkbox" id="voidVerified">
+
+              <span>
+                I physically verified each selected ballot
+                was never cast or received.
+              </span>
+            </label>
+
+            <div class="void-actions">
+
+              <button type="button"
+                      class="void-button"
+                      id="voidSubmit"
+                      disabled>
+                Void Selected Ballots
+              </button>
+
+              <button type="button"
+                      class="void-button secondary"
+                      id="finishScanCommittee"
+                      disabled>
+                Finish Scanning
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- EXISTING COMMITTEE CARDS -->
 
       <div class="dashboard-grid">
 
@@ -707,18 +1051,22 @@
           </p>
 
           <ul class="scan-guide">
+
             <li>
               <i data-lucide="check-circle-2"></i>
               Position the ballot within the edges.
             </li>
+
             <li>
               <i data-lucide="check-circle-2"></i>
               Ensure proper lighting and a clear image.
             </li>
+
             <li>
               <i data-lucide="check-circle-2"></i>
               Review and submit captured votes.
             </li>
+
           </ul>
 
           <div class="ballot-preview-box">
@@ -730,15 +1078,15 @@
               </span>
             </div>
 
-            <div class="mini-ballot" id="ballotThumbnailCard">
-
+            <div class="mini-ballot"
+                 id="ballotThumbnailCard">
               <div class="mini-empty">
                 Loading ballot preview...
               </div>
-
             </div>
 
-            <p class="preview-note" id="previewSource">
+            <p class="preview-note"
+               id="previewSource">
               Preview of the available ballot template
             </p>
 
@@ -746,12 +1094,14 @@
 
           <div class="card-actions">
 
-            <a href="scanner.html" class="action-button button-primary">
+            <a href="scanner.html"
+               class="action-button button-primary">
               <i data-lucide="camera"></i>
               Live Camera
             </a>
 
-            <a href="scanner.html" class="action-button button-outline">
+            <a href="scanner.html"
+               class="action-button button-outline">
               <i data-lucide="upload"></i>
               Upload Image
             </a>
@@ -816,7 +1166,8 @@
 
           <div class="card-actions">
 
-            <a href="ballot.html" class="action-button button-primary">
+            <a href="ballot.html"
+               class="action-button button-primary">
               <i data-lucide="file-edit"></i>
               Create / Review Ballot
             </a>
@@ -832,358 +1183,20 @@
       </div>
 
     </div>
-
   </main>
 
-  <script>
-    "use strict";
+  <!-- TOAST -->
+  <script src="../sheared/toast.js"></script>
 
-    const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
-
-    function getToken() {
-      return (
-        sessionStorage.getItem("voting_token") ||
-        localStorage.getItem("voting_token") ||
-        localStorage.getItem("token")
-      );
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    }
-
-    function showEmptyPreview(message) {
-      const container =
-        document.getElementById("ballotThumbnailCard");
-
-      container.innerHTML = `
-                <div class="mini-empty">
-                    <div style="font-size:24px;margin-bottom:8px;">
-                        &#9633;
-                    </div>
-                    ${escapeHtml(message)}
-                </div>
-            `;
-    }
-
-    function normalizePositions(data) {
-      const rawPositions = Array.isArray(data)
-        ? data
-        : Array.isArray(data.positions)
-          ? data.positions
-          : [];
-
-      return rawPositions.map(position => ({
-        name: position.title ||
-          position.name ||
-          "Position",
-
-        maxChoices: Number(
-          position.max_selection ??
-          position.maxChoices ??
-          1
-        ),
-
-        candidates: Array.isArray(position.candidates)
-          ? position.candidates.map(candidate => ({
-            name: candidate.name ||
-              candidate.full_name ||
-              "Candidate"
-          }))
-          : []
-      }));
-    }
-
-    function renderMiniBallotThumbnail(config) {
-      const container =
-        document.getElementById("ballotThumbnailCard");
-
-      if (!container) return;
-
-      if (
-        !config ||
-        !Array.isArray(config.positions) ||
-        !config.positions.length
-      ) {
-        showEmptyPreview("No ballot template available.");
-        return;
-      }
-
-      const positionsHtml = config.positions
-        .filter(position =>
-          Array.isArray(position.candidates) &&
-          position.candidates.length
-        )
-        .map(position => {
-
-          const candidatesHtml = position.candidates
-            .map(candidate => `
-                            <div class="mini-candidate">
-                                <span class="mini-circle"></span>
-                                <span>${escapeHtml(candidate.name)}</span>
-                            </div>
-                        `)
-            .join("");
-
-          return `
-                        <div class="mini-position">
-                            <div class="mini-position-title">
-                                <span>${escapeHtml(position.name)}</span>
-                                <span>Pick ${escapeHtml(position.maxChoices)}</span>
-                            </div>
-
-                            ${candidatesHtml}
-                        </div>
-                    `;
-        })
-        .join("");
-
-      container.innerHTML = `
-                <div class="mini-ballot-title">
-                    ${escapeHtml(config.title || "Official Election Ballot")}
-                </div>
-
-                <div class="mini-ballot-year">
-                    Academic Year:
-                    ${escapeHtml(config.academicYear || "—")}
-                </div>
-
-                <div class="mini-ballot-divider"></div>
-
-                ${positionsHtml || `
-                    <div class="mini-empty">
-                        No candidates available for preview.
-                    </div>
-                `}
-
-                <div class="mini-ballot-divider"></div>
-
-                <div style="
-                    font-size:9px;
-                    color:#98a2b3;
-                    text-align:center;
-                ">
-                    Official Ballot Preview
-                </div>
-            `;
-    }
-
-    function loadLocalBallotPreview() {
-      try {
-        const config = JSON.parse(
-          localStorage.getItem("ballot_config")
-        );
-
-        if (
-          config &&
-          Array.isArray(config.positions) &&
-          config.positions.length
-        ) {
-          renderMiniBallotThumbnail(config);
-
-          document.getElementById(
-            "previewSource"
-          ).textContent =
-            "Local ballot preview";
-
-          return true;
-        }
-      } catch (error) {
-        console.warn(
-          "Local ballot preview unavailable:",
-          error
-        );
-      }
-
-      return false;
-    }
-
-    async function loadDatabaseBallotPreview() {
-      const token = getToken();
-
-      if (!token) {
-        loadLocalBallotPreview() ||
-          showEmptyPreview("Please log in to view saved ballots.");
-        return;
-      }
-
-      try {
-        // Resolve current election
-        const electionResponse = await fetch(
-          API_BASE + "/election/current/status",
-          {
-            headers: {
-              Authorization: "Bearer " + token
-            }
-          }
-        );
-
-        if (!electionResponse.ok) {
-          throw new Error(
-            "Cannot load current election."
-          );
-        }
-
-        const electionData =
-          await electionResponse.json();
-
-        const election = electionData.election;
-
-        if (!election || !election.election_id) {
-          throw new Error("No current election.");
-        }
-
-        const electionId = Number(
-          election.election_id
-        );
-
-        // Load saved ballot templates
-        const templatesResponse = await fetch(
-          API_BASE +
-          "/ballots/templates/election/" +
-          electionId,
-          {
-            headers: {
-              Authorization: "Bearer " + token
-            }
-          }
-        );
-
-        if (!templatesResponse.ok) {
-          throw new Error(
-            "Cannot load saved ballot templates."
-          );
-        }
-
-        const templatesData =
-          await templatesResponse.json();
-
-        const templates = Array.isArray(templatesData)
-          ? templatesData
-          : Array.isArray(templatesData.templates)
-            ? templatesData.templates
-            : [];
-
-        if (!templates.length) {
-          if (!loadLocalBallotPreview()) {
-            showEmptyPreview(
-              "No saved ballot template found."
-            );
-          }
-          return;
-        }
-
-        // Latest template by ID
-        const latestTemplate = [...templates]
-          .sort(
-            (a, b) =>
-              Number(b.template_id) -
-              Number(a.template_id)
-          )[0];
-
-        // Get full template details
-        const detailResponse = await fetch(
-          API_BASE +
-          "/ballots/templates/" +
-          latestTemplate.template_id,
-          {
-            headers: {
-              Authorization: "Bearer " + token
-            }
-          }
-        );
-
-        if (!detailResponse.ok) {
-          throw new Error(
-            "Cannot load ballot template details."
-          );
-        }
-
-        const detailData =
-          await detailResponse.json();
-
-        const template =
-          detailData.template || detailData;
-
-        // Load election positions and candidates
-        const positionsResponse = await fetch(
-          API_BASE +
-          "/positions/election/" +
-          electionId,
-          {
-            headers: {
-              Authorization: "Bearer " + token
-            }
-          }
-        );
-
-        if (!positionsResponse.ok) {
-          throw new Error(
-            "Cannot load election positions."
-          );
-        }
-
-        const positionsData =
-          await positionsResponse.json();
-
-        const positions =
-          normalizePositions(positionsData);
-
-        renderMiniBallotThumbnail({
-          title:
-            template.template_name ||
-            latestTemplate.template_name ||
-            election.title ||
-            "Official Election Ballot",
-
-          academicYear:
-            election.academic_year ||
-            election.academicYear ||
-            "—",
-
-          positions
-        });
-
-        document.getElementById(
-          "previewSource"
-        ).textContent =
-          `Saved Template #${latestTemplate.template_id} · Current election`;
-
-      } catch (error) {
-        console.warn(
-          "Database ballot preview unavailable:",
-          error
-        );
-
-        if (!loadLocalBallotPreview()) {
-          showEmptyPreview(
-            "Ballot preview is currently unavailable."
-          );
-        }
-      }
-    }
-
-    document.addEventListener(
-      "DOMContentLoaded",
-      () => {
-        if (window.lucide) {
-          lucide.createIcons();
-        }
-
-        loadDatabaseBallotPreview();
-      }
-    );
-  </script>
+  <!-- COMMITTEE FUNCTIONALITY -->
+  <script src="./committee.js"></script>
 
   <!-- EXISTING AUTH GUARD -->
-  <script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="committee">
+  <script
+    src="../sheared/auth.js?v=20261002-2"
+    data-mode="guard"
+    data-role="committee">
   </script>
 
 </body>
-
 </html>
