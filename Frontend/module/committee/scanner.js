@@ -56,6 +56,7 @@ async function request(path, options = {}) {
 
     if (!response.ok) {
         const error = new Error(data.message || `API error ${response.status}`);
+        error.status = response.status;
         error.data = data;
         throw error;
     }
@@ -677,8 +678,7 @@ async function backendPreview() {
             );
         }
 
-        const countingEnabled =
-            window.confirmedOMRCounting === true;
+        const countingEnabled =true;
 
         const blob = await imageToBlob();
         const form = new FormData();
@@ -736,35 +736,65 @@ async function backendPreview() {
                     `Template: #${templateId}\n` +
                     `Backend counting successful.`;
             }
+
+            window.showToast?.(
+                "Ballot counted successfully! Votes saved to Live Results.",
+                "success"
+            );
         }
 
         status(
             "analysisStatus",
             data.message ||
-                (countingEnabled
-                    ? "Ballot counted successfully."
-                    : "OMR preview complete."),
+            (countingEnabled
+                ? "Ballot counted successfully."
+                : "OMR preview complete."),
             data.valid === false
         );
     } catch (error) {
-        const duplicate = error.data?.duplicate === true;
+        const duplicate =
+            error.data?.duplicate === true ||
+            error.status === 409;
 
-        const message = duplicate
-            ? "DUPLICATE BALLOT — Already counted. No votes saved."
-            : "OMR analysis failed: " + error.message;
+        const blankBallot =
+            error.status === 422 &&
+            error.message?.includes("Blank ballot detected");
 
-        status("analysisStatus", message, true);
+        let message;
+
+        if (blankBallot) {
+            message =
+                "Blank ballot detected. No votes saved. " +
+                "This ballot can still be used.";
+
+            window.showToast?.(message, "warning");
+
+        } else if (duplicate) {
+            message =
+                "Duplicate or unavailable ballot. No new votes saved.";
+
+            window.showToast?.(message, "error");
+
+        } else {
+            message = "OMR scan failed: " + error.message;
+
+            window.showToast?.(message, "error");
+        }
+
+        status(
+            "analysisStatus",
+            message,
+            !blankBallot
+        );
 
         debug(
-            "OMR ANALYSIS FAILED\n" +
-            error.message +
-            "\n\nNo new vote should be saved for a failed scan.\n" +
-            "Retake or upload a clearer image and analyze again."
+            "OMR SCAN RESULT\n" +
+            message
         );
+
     } finally {
         busy = false;
-        $("analyzeBtn").disabled = !template || !sourceImage;
-        disableSubmission();
+        updateAnalyzeButton();
     }
 }
 
@@ -837,20 +867,6 @@ function setupScanner() {
 
         $("sensitivityValue").textContent =
             names[$("sensitivity").value] || "Balanced";
-    });
-
-    $("liveCount")?.addEventListener("change", event => {
-        if (
-            event.target.checked &&
-            !confirm(
-                "Enable LIVE COUNTING? Valid votes will be saved permanently."
-            )
-        ) {
-            event.target.checked = false;
-        }
-
-        window.confirmedOMRCounting =
-            event.target.checked;
     });
 
     disableSubmission();

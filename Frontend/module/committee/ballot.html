@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -113,7 +112,7 @@
 
         @media screen and (min-width: 1101px) {
 
-            .layout > .controls {
+            .layout>.controls {
                 position: sticky;
                 top: 16px;
                 height: calc(100vh - 32px);
@@ -125,7 +124,7 @@
                 scrollbar-color: #c7c9cf transparent;
             }
 
-            .layout > .preview-panel {
+            .layout>.preview-panel {
                 position: sticky;
                 top: 16px;
                 height: calc(100vh - 32px);
@@ -434,29 +433,53 @@
            PRINT SHEET
            */
 
+
+        /* PRINT SHEET: 1 A4 portrait or 2 A5 portrait */
         .print-sheet {
-            width: 210mm;
-            height: 297mm;
+            width: 297mm;
+            height: 210mm;
             position: relative;
+            display: flex;
+            flex-direction: row;
             background: white;
             overflow: hidden;
         }
 
         .ballot-half {
-            width: 210mm;
-            height: 148.5mm;
+            width: 148.5mm;
+            height: 210mm;
+            flex: 0 0 148.5mm;
             position: relative;
             overflow: hidden;
             background: white;
         }
 
         .ballot-half.full {
+            width: 210mm;
             height: 297mm;
+            flex: 0 0 210mm;
         }
 
         .ballot-half:not(.full):first-child {
-            border-bottom: .25mm dashed #999;
+            border-right: .25mm dashed #999;
+            border-bottom: 0;
         }
+
+        #ballotPage.layout-a5 {
+            width: 297mm;
+            height: 210mm;
+        }
+
+        #ballotPage.layout-a4 {
+            width: 210mm;
+            height: 297mm;
+        }
+
+        .print-sheet.layout-a4 {
+            width: 210mm;
+            height: 297mm;
+        }
+
 
         /*
            BALLOT CONTENT
@@ -551,8 +574,7 @@
            TABLET
            */
 
-        @media screen and (min-width: 601px)
-        and (max-width: 1100px) {
+        @media screen and (min-width: 601px) and (max-width: 1100px) {
 
             .layout {
                 display: flex;
@@ -561,7 +583,7 @@
                 max-width: 950px;
             }
 
-            .layout > .controls {
+            .layout>.controls {
                 order: 2;
                 width: 100%;
                 height: auto;
@@ -569,7 +591,7 @@
                 overflow: visible;
             }
 
-            .layout > .preview-panel {
+            .layout>.preview-panel {
                 order: 1;
                 width: 100%;
                 position: relative;
@@ -623,7 +645,7 @@
                 border-radius: 10px;
             }
 
-            .layout > .preview-panel {
+            .layout>.preview-panel {
                 order: 1;
                 position: relative;
                 height: auto;
@@ -632,7 +654,7 @@
                 padding: 12px;
             }
 
-            .layout > .controls {
+            .layout>.controls {
                 order: 2;
                 height: auto;
                 max-height: none;
@@ -718,17 +740,20 @@
             }
         }
 
-        /*
-           PRINT SETTINGS
-           */
+        /* PRINT SETTINGS  */
 
-        @page {
+
+        @page portraitBallot {
             size: A4 portrait;
             margin: 0;
         }
 
-        @media print {
+        @page landscapeBallot {
+            size: A4 landscape;
+            margin: 0;
+        }
 
+        @media print {
             body * {
                 visibility: hidden !important;
             }
@@ -742,15 +767,15 @@
             body {
                 margin: 0 !important;
                 padding: 0 !important;
-                width: 210mm !important;
-                height: auto !important;
                 background: white !important;
             }
 
             header,
             .no-print,
             .controls,
-            .preview-title {
+            .preview-title,
+            #toastContainer,
+            #campusToastContainer {
                 display: none !important;
             }
 
@@ -764,7 +789,7 @@
                 border: 0 !important;
                 box-shadow: none !important;
                 background: transparent !important;
-                width: 210mm !important;
+                width: auto !important;
                 max-width: none !important;
                 height: auto !important;
                 max-height: none !important;
@@ -775,7 +800,6 @@
                 position: absolute !important;
                 top: 0 !important;
                 left: 0 !important;
-                width: 210mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 box-shadow: none !important;
@@ -784,34 +808,52 @@
                 -webkit-print-color-adjust: exact;
             }
 
+            #ballotPage.layout-a4 {
+                width: 210mm !important;
+            }
+
+            #ballotPage.layout-a5 {
+                width: 297mm !important;
+            }
+
             .print-sheet {
+                display: flex !important;
+                flex-direction: row !important;
+                width: 297mm !important;
+                height: 210mm !important;
+                page: landscapeBallot;
+                break-after: page;
+                overflow: hidden !important;
+            }
+
+            .print-sheet.layout-a4 {
                 width: 210mm !important;
                 height: 297mm !important;
-                break-after: page;
-                page-break-after: always;
-                overflow: hidden !important;
+                page: portraitBallot;
             }
 
             .print-sheet:last-child {
                 break-after: auto;
-                page-break-after: auto;
             }
 
             .ballot-half {
-                width: 210mm !important;
+                width: 148.5mm !important;
+                height: 210mm !important;
+                flex: 0 0 148.5mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 overflow: hidden !important;
             }
 
             .ballot-half.full {
+                width: 210mm !important;
                 height: 297mm !important;
+                flex: 0 0 210mm !important;
             }
-
-            #toastContainer,
-            #campusToastContainer {
-                display: none !important;
-            }
+        }
+        #toastContainer,
+        #campusToastContainer {
+            display: none !important;
         }
     </style>
 </head>
@@ -822,10 +864,8 @@
 
     <header class="no-print">
 
-        <a href="Committee.html"
-           class="back-arrow"
-           aria-label="Back to Committee Dashboard"
-           title="Back to Committee Dashboard">
+        <a href="Committee.html" class="back-arrow" aria-label="Back to Committee Dashboard"
+            title="Back to Committee Dashboard">
             &#8592;
         </a>
 
@@ -849,42 +889,35 @@
                 Ballot Title
             </label>
 
-            <input
-                id="titleInput"
-                placeholder="Student Council Election"
-            >
+            <input id="titleInput" placeholder="Student Council Election">
 
             <label for="yearInput">
                 Academic Year
             </label>
 
-            <input
-                id="yearInput"
-                value="2026-2027"
-            >
+            <input id="yearInput" value="2026-2027">
 
             <label for="instructionsInput">
                 Voting Instructions
             </label>
 
-            <textarea
-                id="instructionsInput"
-                rows="3"
-            >Shade the circle beside your chosen candidate completely.</textarea>
+            <textarea id="instructionsInput"
+                rows="3">Shade the circle beside your chosen candidate completely.</textarea>
 
             <label for="copiesInput">
                 Ballots Per A4 Paper
             </label>
 
-            <select id="copiesInput">
-                <option value="1">
-                    1 Ballot per A4
-                </option>
 
-                <option value="2" selected>
-                    2 Ballots per A4
-                </option>
+            <label for="copiesInput">Ballot Printing Layout</label>
+            <select id="copiesInput">
+                <option value="1">1 Ballot — A4 Portrait (Full Page)</option>
+                <option value="2" selected>2 Ballots — A5 Portrait (A4 Landscape)</option>
             </select>
+            <small style="display:block;margin-top:6px;color:#667085;font-size:12px;">
+                Each printed ballot has its own unique QR code.
+            </small>
+
 
             <!-- MAXIMUM VOTES -->
 
@@ -904,19 +937,11 @@
 
             <div class="buttons">
 
-                <button
-                    id="reloadButton"
-                    class="secondary"
-                    type="button"
-                >
+                <button id="reloadButton" class="secondary" type="button">
                     Reload Database
                 </button>
 
-                <button
-                    id="saveButton"
-                    class="primary"
-                    type="button"
-                >
+                <button id="saveButton" class="primary" type="button">
                     Save Ballot
                 </button>
 
@@ -940,18 +965,10 @@
                     Select Saved Ballot
                 </label>
 
-                <div
-                    class="saved-dropdown"
-                    id="savedDropdown"
-                >
+                <div class="saved-dropdown" id="savedDropdown">
 
-                    <button
-                        type="button"
-                        id="savedTemplateToggle"
-                        class="saved-dropdown-toggle"
-                        aria-expanded="false"
-                        aria-controls="savedTemplateMenu"
-                    >
+                    <button type="button" id="savedTemplateToggle" class="saved-dropdown-toggle" aria-expanded="false"
+                        aria-controls="savedTemplateMenu">
 
                         <span id="selectedTemplateLabel">
                             Select saved ballot
@@ -963,19 +980,11 @@
 
                     </button>
 
-                    <div
-                        id="savedTemplateMenu"
-                        class="saved-dropdown-menu"
-                        hidden
-                    ></div>
+                    <div id="savedTemplateMenu" class="saved-dropdown-menu" hidden></div>
 
                 </div>
 
-                <button
-                    id="refreshTemplatesButton"
-                    type="button"
-                    class="secondary full-button"
-                >
+                <button id="refreshTemplatesButton" type="button" class="secondary full-button">
                     Refresh Saved Ballots
                 </button>
 
@@ -1003,21 +1012,11 @@
                 Number of Ballots
             </label>
 
-            <input
-                id="ballotQuantity"
-                type="number"
-                min="1"
-                max="500"
-                value="100"
-            >
+            <input id="ballotQuantity" type="number" min="1" max="500" value="100">
 
             <div class="buttons">
 
-                <button
-                    id="generatePrintButton"
-                    class="primary"
-                    type="button"
-                >
+                <button id="generatePrintButton" class="primary" type="button">
                     Generate &amp; Print Ballots
                 </button>
 
@@ -1047,44 +1046,26 @@
 
             <div class="buttons">
 
-                <button
-                    id="refreshBatchesButton"
-                    type="button"
-                    class="secondary"
-                >
+                <button id="refreshBatchesButton" type="button" class="secondary">
                     Refresh Batches
                 </button>
 
-                <button
-                    id="reprintBatchButton"
-                    type="button"
-                    class="primary"
-                >
+                <button id="reprintBatchButton" type="button" class="primary">
                     Reprint Selected Batch
                 </button>
 
             </div>
 
-            <p
-                class="helper"
-                id="batchInfo"
-            >
+            <p class="helper" id="batchInfo">
                 Select a batch to see its details.
             </p>
 
             <!-- Compatibility with existing JS -->
-            <input
-                id="reprintBatchId"
-                type="hidden"
-                value=""
-            >
+            <input id="reprintBatchId" type="hidden" value="">
 
             <!-- STATUS -->
 
-            <p
-                id="status"
-                role="status"
-            ></p>
+            <p id="status" role="status"></p>
 
         </section>
 
@@ -1106,15 +1087,14 @@
 
     <!-- TOAST NOTIFICATIONS -->
 
-    <div
-        id="toastContainer"
-        aria-live="polite"></div>
+    <div id="toastContainer" aria-live="polite"></div>
 
-    
-<script src="../sheared/toast.js"></script>
-<script src="./ballot.js?v=20261027-fixed"></script>
-<script src="./ballot_create.js?v=20261027-fixed"></script>
+
+    <script src="../sheared/toast.js"></script>
+    <script src="./ballot.js?v=20261027-fixed"></script>
+    <script src="./ballot_create.js?v=20261027-fixed"></script>
 
 
 </body>
+
 </html>

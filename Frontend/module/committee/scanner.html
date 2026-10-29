@@ -16,7 +16,9 @@
     --muted: #667085;
 }
 
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
 html, body {
     margin: 0;
@@ -29,8 +31,6 @@ body {
     font: 14px Arial, sans-serif;
     overflow-x: hidden;
 }
-
-/* HEADER */
 
 header {
     background: var(--maroon);
@@ -64,8 +64,6 @@ header p {
     font-size: 12px;
     color: #f1d4d4;
 }
-
-/* MAIN LAYOUT */
 
 main {
     width: 100%;
@@ -103,7 +101,7 @@ label {
     margin: 13px 0 7px;
 }
 
-input:not([type="checkbox"]):not([type="range"]),
+input:not([type="range"]),
 select {
     width: 100%;
     min-height: 43px;
@@ -145,8 +143,6 @@ input[type="file"]::file-selector-button {
     background: #e5e7eb;
     cursor: pointer;
 }
-
-/* BUTTONS */
 
 .buttons {
     display: flex;
@@ -192,19 +188,13 @@ button:not(:disabled):hover {
 
 #analyzeBtn {
     width: 100%;
-    font-size: 14px;
     min-height: 48px;
+    font-size: 14px;
 }
 
 #retakeBtn {
     width: 100%;
 }
-
-#submitBtn {
-    display: none;
-}
-
-/* TEXT */
 
 .status,
 .note {
@@ -214,25 +204,34 @@ button:not(:disabled):hover {
     overflow-wrap: anywhere;
 }
 
-.status { margin: 10px 0; }
-.note { color: var(--muted); }
+.status {
+    margin: 10px 0;
+}
+
+.note {
+    color: var(--muted);
+}
 
 .error,
-.overvote { color: #a00000; }
+.overvote {
+    color: #a00000;
+}
 
 .success,
-.valid { color: #176b36; }
+.valid {
+    color: #176b36;
+}
 
 .valid,
-.overvote { font-weight: 600; }
+.overvote {
+    font-weight: 600;
+}
 
 .divider {
     border: 0;
     border-top: 1px solid var(--border);
     margin: 20px 0;
 }
-
-/* CAMERA */
 
 .camera-box {
     border-radius: 10px;
@@ -248,8 +247,6 @@ button:not(:disabled):hover {
     object-fit: contain;
     background: #111;
 }
-
-/* PREVIEW */
 
 .preview-panel {
     min-width: 0;
@@ -310,7 +307,8 @@ button:not(:disabled):hover {
     color: #98a2b3;
 }
 
-.canvas-wrap:has(#scanCanvas[width="1"]) .preview-placeholder {
+.canvas-wrap:has(#scanCanvas[width="1"])
+.preview-placeholder {
     display: flex;
 }
 
@@ -324,8 +322,6 @@ button:not(:disabled):hover {
     font-size: 13px;
     line-height: 1.6;
 }
-
-/* RESULTS */
 
 .results-area {
     margin-top: 20px;
@@ -360,45 +356,16 @@ button:not(:disabled):hover {
     font-size: 13px;
 }
 
-/* OMR SETTINGS */
-
-.toggle-box {
-    background: #fff8f8;
-    border: 1px solid #e7c5c5;
+.counting-note {
+    background: #f8fafc;
+    border: 1px solid var(--border);
     border-radius: 9px;
-    padding: 13px;
-    margin-top: 15px;
+    padding: 12px;
+    margin: 15px 0;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #475467;
 }
-
-.toggle-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    margin: 0;
-}
-
-.toggle-row input {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--maroon);
-    flex-shrink: 0;
-}
-
-.toggle-row span {
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.toggle-box small {
-    display: block;
-    margin: 8px 0 0 28px;
-    font-size: 11px;
-    color: #666;
-    line-height: 1.6;
-}
-
-/* COLLAPSIBLE DIAGNOSTICS */
 
 .debug {
     margin-top: 18px;
@@ -431,8 +398,6 @@ button:not(:disabled):hover {
     max-height: 300px;
     overflow: auto;
 }
-
-/* STICKY DESKTOP LAYOUT */
 
 @media screen and (min-width: 1001px) {
     .scanner-controls {
@@ -469,8 +434,6 @@ button:not(:disabled):hover {
     }
 }
 
-/* TABLET */
-
 @media screen and (min-width: 601px)
 and (max-width: 1000px) {
     main {
@@ -490,8 +453,6 @@ and (max-width: 1000px) {
         max-height: 480px;
     }
 }
-
-/* MOBILE */
 
 @media screen and (max-width: 600px) {
     header {
@@ -569,24 +530,13 @@ and (max-width: 1000px) {
         width: 100%;
     }
 
-    input:not([type="checkbox"]):not([type="range"]),
+    input:not([type="range"]),
     select {
         font-size: 16px;
     }
 
     .results-area {
         margin-top: 15px;
-    }
-
-    .toggle-box {
-        padding: 12px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        scroll-behavior: auto !important;
-        transition: none !important;
     }
 }
 </style>
@@ -603,14 +553,11 @@ and (max-width: 1000px) {
 
     <div>
         <h1>CampusVote — OMR Scanner</h1>
-        <p>QR Verification • Ballot Analysis • Vote Counting</p>
+        <p>QR Verification • A5 Ballot Scanning • Automatic Vote Counting</p>
     </div>
 </header>
 
 <main>
-
-    <!-- SCANNER CONTROLS -->
-
     <section class="panel scanner-controls">
         <h2>Scanner Controls</h2>
 
@@ -623,14 +570,15 @@ and (max-width: 1000px) {
         >
 
         <div class="buttons">
-            <button id="loadBtn"
-                    type="button"
-                    class="secondary">
+            <button
+                id="loadBtn"
+                type="button"
+                class="secondary">
                 Load Templates
             </button>
         </div>
 
-        <label for="templateSelect">Ballot Template</label>
+        <label for="templateSelect">A5 Ballot Template</label>
         <select id="templateSelect">
             <option value="">Select a template</option>
         </select>
@@ -640,8 +588,6 @@ and (max-width: 1000px) {
            role="status"></p>
 
         <hr class="divider">
-
-        <!-- BALLOT IMAGE -->
 
         <h3>Ballot Image</h3>
 
@@ -656,23 +602,26 @@ and (max-width: 1000px) {
         >
 
         <div class="buttons">
-            <button id="cameraBtn"
-                    type="button"
-                    class="secondary">
+            <button
+                id="cameraBtn"
+                type="button"
+                class="secondary">
                 Open Camera
             </button>
 
-            <button id="captureBtn"
-                    type="button"
-                    class="primary"
-                    disabled>
+            <button
+                id="captureBtn"
+                type="button"
+                class="primary"
+                disabled>
                 Capture
             </button>
 
-            <button id="stopCameraBtn"
-                    type="button"
-                    class="outline"
-                    disabled>
+            <button
+                id="stopCameraBtn"
+                type="button"
+                class="outline"
+                disabled>
                 Stop Camera
             </button>
         </div>
@@ -682,8 +631,8 @@ and (max-width: 1000px) {
                 id="video"
                 autoplay
                 playsinline
-                muted
-            ></video>
+                muted>
+            </video>
         </div>
 
         <p id="imageStatus"
@@ -691,48 +640,30 @@ and (max-width: 1000px) {
            role="status"></p>
 
         <div class="buttons">
-            <button id="retakeBtn"
-                    type="button"
-                    class="outline">
+            <button
+                id="retakeBtn"
+                type="button"
+                class="outline">
                 Retake Photo / Clear Image
             </button>
         </div>
 
         <hr class="divider">
 
-        <!-- OMR SETTINGS -->
-
         <h3>OMR Settings</h3>
 
-        <label for="sensitivity">
-            Shade Sensitivity:
-            <span id="sensitivityValue">Balanced</span>
-        </label>
-
-        <input
-            id="sensitivity"
-            type="range"
-            min="1"
-            max="3"
-            step="1"
-            value="2"
-        >
-
         <p class="note">
-            1 = Strict · 2 = Balanced · 3 = Light Shade
+            A5 portrait ballot • One ballot per scan •
+            Balanced shade detection
         </p>
 
-        <div class="toggle-box">
-            <label class="toggle-row" for="liveCount">
-                <input id="liveCount" type="checkbox">
-                <span>Enable Live Counting</span>
-            </label>
-
-            <small>
-                When enabled, Analyze Ballot will attempt
-                to save valid votes. Requires backend
-                counting permission.
-            </small>
+        <div class="counting-note">
+            <strong>Automatic Vote Counting</strong>
+            <p>
+                After scanning, valid ballots will be counted
+                automatically. Duplicate or invalid ballots
+                will be rejected. No checkbox is required.
+            </p>
         </div>
 
         <div class="buttons">
@@ -741,29 +672,20 @@ and (max-width: 1000px) {
                 type="button"
                 class="primary"
                 disabled>
-                Analyze Ballot
+                Scan &amp; Count Ballot
             </button>
         </div>
 
         <p id="analysisStatus"
            class="status"
-           role="status"></p>
+           role="status"
+           aria-live="polite"></p>
 
         <p class="note">
-            Keep the entire ballot and all four registration
-            squares visible. If alignment fails, retake
-            the photo. Overvoted or unclear positions
-            will be skipped while valid positions continue.
+            Keep the entire A5 ballot and all four
+            registration squares visible. If alignment
+            fails, retake the photo.
         </p>
-
-        <!-- Retained for scanner.js compatibility -->
-        <button id="submitBtn"
-                type="button"
-                disabled>
-            Submit Votes
-        </button>
-
-        <!-- DEBUG DIAGNOSTICS -->
 
         <details class="debug">
             <summary>Debug &amp; QR Diagnostics</summary>
@@ -772,7 +694,7 @@ and (max-width: 1000px) {
                 <strong>Debug Diagnostics</strong>
 
                 <div id="debugInfo">
-                    Load a template and image, then analyze.
+                    Load a template and image, then scan.
                 </div>
 
                 <hr class="divider">
@@ -786,22 +708,18 @@ and (max-width: 1000px) {
         </details>
     </section>
 
-    <!-- BALLOT PREVIEW -->
-
     <section class="panel preview-panel">
-
         <div class="preview-heading">
             <h2>Ballot Preview</h2>
-            <span class="preview-tag">Live Preview</span>
+            <span class="preview-tag">A5 Scanner</span>
         </div>
 
         <div class="canvas-wrap">
-
             <canvas
                 id="scanCanvas"
                 width="1"
-                height="1"
-            ></canvas>
+                height="1">
+            </canvas>
 
             <div class="preview-placeholder">
                 <div class="placeholder-icon">&#9635;</div>
@@ -810,7 +728,6 @@ and (max-width: 1000px) {
                     to display it here.
                 </p>
             </div>
-
         </div>
 
         <div class="results-area">
@@ -820,19 +737,11 @@ and (max-width: 1000px) {
                 <p>No ballot analyzed yet.</p>
             </div>
         </div>
-
     </section>
-
 </main>
 
-<script>
-
-    window.CAMPUSVOTE_API_BASE =
-        window.CAMPUSVOTE_API_BASE || "";
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="./scanner.js?v=20261027-responsive"></script>
+<script src="./scanner.js?v=20261030-auto-count"></script>
 
 </body>
 </html>
