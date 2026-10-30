@@ -30,16 +30,25 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
     "'": "&#39;"
 }[ch]));
 
+
 function status(message, error = false, notify = true) {
     const element = el("status");
 
+    // Huwag ipakita ang notification sa ilalim ng page.
     if (element) {
-        element.textContent = message;
-        element.style.color = error ? "#b91c1c" : "#555";
+        element.textContent = "";
+        element.style.display = "none";
     }
 
+    // Floating toast notification.
     if (notify && typeof window.showToast === "function") {
-        window.showToast(message, error ? "error" : "success");
+        window.showToast(
+            message,
+            error ? "error" : "success",
+            5000
+        );
+    } else if (notify) {
+        console.warn("Toast unavailable:", message);
     }
 }
 
