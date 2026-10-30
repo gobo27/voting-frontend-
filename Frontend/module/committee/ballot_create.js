@@ -1911,25 +1911,59 @@ async function deleteSavedTemplate(templateId) {
         return;
     }
 
-    
-if (
-    registeredPrintBatches.some(
-        batch => Number(batch.template_id) === templateId
-    )
-) {
-    const message =
-        `Can't delete Ballot #${templateId} because this ballot ` +
-        "is currently being used and has registered QR ballots.";
 
-    status(message, true);
+    if (
+        registeredPrintBatches.some(
+            batch => Number(batch.template_id) === templateId
+        )
+    ) {
+        const message =
+            `Can't delete Ballot #${templateId} because this ballot ` +
+            "is currently being used and has registered QR ballots.";
 
-    if (typeof window.showToast !== "function") {
-        alert(message);
+        status(message, true);
+
+        if (typeof window.showToast !== "function") {
+            alert(message);
+        }
+
+        return;
     }
 
-    return;
-}
+    try {
+        // Kunin ang latest registered QR batches sa database.
+        const batchResult = await BallotAPI.getQRBatches(
+            state.electionId
+        );
 
+        const batches = Array.isArray(batchResult.batches)
+            ? batchResult.batches
+            : [];
+
+        registeredPrintBatches = batches;
+
+        const isBallotInUse = batches.some(
+            batch => Number(batch.template_id) === templateId
+        );
+
+        if (isBallotInUse) {
+            const message =
+                `Can't delete Ballot #${templateId}. ` +
+                "This ballot is currently being used for registered QR ballots.";
+
+            status(message, true);
+            return;
+        }
+
+    } catch (error) {
+        console.error("Ballot usage check failed:", error);
+
+        status(
+            "Unable to verify whether this ballot is in use. Deletion cancelled.",
+            true
+        );
+        return;
+    }
 
     const confirmed = await confirmSavedBallotDeletion(template);
 
