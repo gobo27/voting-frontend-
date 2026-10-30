@@ -1072,6 +1072,13 @@ async function handleMaskToggle() {
             );
             return;
         }
+        if (electionStatus() === "OPEN" || votingIsOpen()) {
+            showElectionNotice(
+                "The election is currently in progress. Candidate names cannot be unmasked while voting is ongoing.",
+                "warning"
+            );
+            return;
+        }
 
         actionPending = true;
         refreshStatusUI();
@@ -1384,7 +1391,7 @@ document.addEventListener(
                 openLiveDashboard
             );
         }
-        
+
         // ELECTION CONTROL BUTTONS
 
         const scheduleButton = $("saveScheduleBtn");
