@@ -1314,12 +1314,6 @@ async function generateAndPrintBallots() {
 }
 
 
-/* ============================================================
-   REPRINT EXISTING REGISTERED QR BATCH
-   Reuses original QR codes.
-   Does not generate new ballot IDs.
-   ============================================================ */
-
 async function reprintRegisteredBatch() {
     if (
         state.printing ||
@@ -1792,6 +1786,93 @@ async function selectSavedTemplate(templateId) {
    DELETE SAVED BALLOT TEMPLATE
    ============================================================ */
 
+function confirmSavedBallotDeletion(template) {
+    return new Promise(resolve => {
+        const backdrop = document.createElement("div");
+        backdrop.style.cssText =
+            "position:fixed;inset:0;z-index:2147483646;" +
+            "background:rgba(0,0,0,.52);display:flex;" +
+            "align-items:center;justify-content:center;padding:16px";
+
+        const dialog = document.createElement("div");
+        dialog.setAttribute("role", "alertdialog");
+        dialog.setAttribute("aria-modal", "true");
+        dialog.setAttribute("aria-label", "Delete Saved Ballot");
+        dialog.style.cssText =
+            "width:min(440px,100%);background:white;color:#222;" +
+            "border-radius:14px;padding:24px;" +
+            "box-shadow:0 15px 45px rgba(0,0,0,.25);font-family:inherit";
+
+        const title = document.createElement("h3");
+        title.textContent = "Delete Saved Ballot?";
+        title.style.cssText = "margin:0 0 12px;font-size:20px";
+
+        const description = document.createElement("p");
+        description.textContent =
+            `Are you sure you want to delete ballot #${template.template_id} ` +
+            `(${template.template_name})? This action cannot be undone.`;
+        description.style.cssText =
+            "margin:0 0 22px;line-height:1.5";
+
+        const actions = document.createElement("div");
+        actions.style.cssText =
+            "display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap";
+
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.textContent = "Cancel";
+        cancel.style.cssText =
+            "padding:10px 18px;border:1px solid #ddd;" +
+            "border-radius:8px;background:#f5f5f5;" +
+            "color:#222;cursor:pointer";
+
+        const confirm = document.createElement("button");
+        confirm.type = "button";
+        confirm.textContent = "Delete Ballot";
+        confirm.style.cssText =
+            "padding:10px 18px;border:0;border-radius:8px;" +
+            "background:#b91c1c;color:white;cursor:pointer";
+
+        const previousFocus = document.activeElement;
+        let finished = false;
+
+        const finish = answer => {
+            if (finished) return;
+            finished = true;
+            document.removeEventListener("keydown", onKeydown, true);
+            backdrop.remove();
+            if (previousFocus?.isConnected) previousFocus.focus();
+            resolve(answer);
+        };
+
+        const onKeydown = event => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                finish(false);
+            }
+
+            if (event.key === "Tab") {
+                event.preventDefault();
+                (document.activeElement === cancel ? confirm : cancel).focus();
+            }
+        };
+
+        cancel.addEventListener("click", () => finish(false));
+        confirm.addEventListener("click", () => finish(true));
+
+        backdrop.addEventListener("click", event => {
+            if (event.target === backdrop) finish(false);
+        });
+
+        actions.append(cancel, confirm);
+        dialog.append(title, description, actions);
+        backdrop.appendChild(dialog);
+        document.body.appendChild(backdrop);
+        document.addEventListener("keydown", onKeydown, true);
+        cancel.focus();
+    });
+}
+
 async function deleteSavedTemplate(templateId) {
     if (
         state.deleting ||
@@ -1799,13 +1880,18 @@ async function deleteSavedTemplate(templateId) {
         state.saving ||
         state.loadingTemplate
     ) {
+        status(
+            "Please wait until the current ballot operation is complete.",
+            true
+        );
         return;
     }
 
     templateId = Number(templateId);
 
     if (!Number.isSafeInteger(templateId) || templateId < 1) {
-        return status("Invalid saved ballot ID.", true);
+        status("Invalid saved ballot ID.", true);
+        return;
     }
 
     const template = state.savedTemplates.find(
@@ -1813,42 +1899,31 @@ async function deleteSavedTemplate(templateId) {
     );
 
     if (!template) {
-        return status("Saved ballot template not found.", true);
+        status("Saved ballot template not found. Refresh the list.", true);
+        return;
     }
 
     if (!canDeleteTemplates()) {
-        return status(
-            "This ballot cannot be deleted because the election is no longer eligible for ballot deletion.",
+        status(
+            "This ballot cannot be deleted because the election is archived, completed, or is not the current election.",
             true
         );
+        return;
     }
 
-    const usedInBatch = registeredPrintBatches.some(
-        batch => Number(batch.template_id) === templateId
-    );
-
-    if (usedInBatch) {
-        return status(
-            "This ballot cannot be deleted because it is already associated with a registered QR print batch.",
+    if (
+        registeredPrintBatches.some(
+            batch => Number(batch.template_id) === templateId
+        )
+    ) {
+        status(
+            "This ballot cannot be deleted because it already has registered QR print batches.",
             true
         );
+        return;
     }
 
-    const message =
-        `Are you sure you want to delete ballot #${templateId} ` +
-        `(${template.template_name})? This action cannot be undone.`;
-
-    let confirmed = false;
-
-    if (typeof window.showConfirmToast === "function") {
-        confirmed = await window.showConfirmToast(message, {
-            title: "Delete Saved Ballot",
-            confirmText: "Delete Ballot",
-            cancelText: "Cancel"
-        });
-    } else {
-        confirmed = window.confirm(message);
-    }
+    const confirmed = await confirmSavedBallotDeletion(template);
 
     if (!confirmed) return;
 
@@ -1858,7 +1933,7 @@ async function deleteSavedTemplate(templateId) {
     try {
         const result = await BallotAPI.deleteTemplate(templateId);
 
-        if (state.savedTemplateId === templateId) {
+        if (Number(state.savedTemplateId) === templateId) {
             state.savedTemplateId = null;
             state.printBatchId = null;
         }
@@ -1868,7 +1943,7 @@ async function deleteSavedTemplate(templateId) {
         render();
 
         status(
-            result.message ||
+            result?.message ||
             `Ballot #${templateId} has been deleted successfully.`
         );
 
@@ -1885,7 +1960,6 @@ async function deleteSavedTemplate(templateId) {
         updateActionButtons();
     }
 }
-
 
 /* ============================================================
    REGISTERED PRINT BATCHES
