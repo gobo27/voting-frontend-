@@ -1064,6 +1064,7 @@ async function handleMaskToggle() {
 
     try {
         await resolveCurrentElection();
+        await refreshDashboard();
 
         if (isArchived()) {
             showElectionNotice(

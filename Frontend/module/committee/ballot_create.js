@@ -90,7 +90,7 @@ function updateActionButtons() {
 
     document.querySelectorAll(".saved-template-delete")
         .forEach(button => {
-            button.disabled = !canDeleteTemplates() || busy;
+            button.disabled = busy;
         });
 }
 
@@ -1804,62 +1804,51 @@ async function deleteSavedTemplate(templateId) {
 
     templateId = Number(templateId);
 
-    if (
-        !Number.isSafeInteger(templateId) ||
-        templateId < 1
-    ) {
-        return status(
-            "Invalid saved ballot ID.",
-            true
-        );
+    if (!Number.isSafeInteger(templateId) || templateId < 1) {
+        return status("Invalid saved ballot ID.", true);
+    }
+
+    const template = state.savedTemplates.find(
+        item => Number(item.template_id) === templateId
+    );
+
+    if (!template) {
+        return status("Saved ballot template not found.", true);
     }
 
     if (!canDeleteTemplates()) {
         return status(
-            "Cannot delete templates from " +
-            "completed or archived elections.",
+            "This ballot cannot be deleted because the election is no longer eligible for ballot deletion.",
             true
         );
     }
 
-    const template =
-        state.savedTemplates.find(
-            item =>
-                Number(item.template_id) ===
-                templateId
-        );
+    const usedInBatch = registeredPrintBatches.some(
+        batch => Number(batch.template_id) === templateId
+    );
 
-    if (!template) {
+    if (usedInBatch) {
         return status(
-            "Saved ballot template not found.",
+            "This ballot cannot be deleted because it is already associated with a registered QR print batch.",
             true
         );
     }
 
-    if (
-        typeof window.showConfirmToast !==
-        "function"
-    ) {
-        return status(
-            "Confirmation toast is not available.",
-            true
-        );
+    const message =
+        `Are you sure you want to delete ballot #${templateId} ` +
+        `(${template.template_name})? This action cannot be undone.`;
+
+    let confirmed = false;
+
+    if (typeof window.showConfirmToast === "function") {
+        confirmed = await window.showConfirmToast(message, {
+            title: "Delete Saved Ballot",
+            confirmText: "Delete Ballot",
+            cancelText: "Cancel"
+        });
+    } else {
+        confirmed = window.confirm(message);
     }
-
-    const confirmed =
-        await window.showConfirmToast(
-            "Only unused templates without registered " +
-            "QR batches can be deleted. " +
-            "This action cannot be undone.",
-            {
-                title:
-                    `Delete Saved Ballot #${templateId} ` +
-                    `(${template.template_name})?`,
-
-                confirmText: "Delete Ballot",
-                cancelText: "Cancel"
-            }
-        );
 
     if (!confirmed) return;
 
@@ -1867,38 +1856,27 @@ async function deleteSavedTemplate(templateId) {
     updateActionButtons();
 
     try {
-        const result =
-            await BallotAPI.deleteTemplate(
-                templateId
-            );
+        const result = await BallotAPI.deleteTemplate(templateId);
 
-        if (
-            state.savedTemplateId ===
-            templateId
-        ) {
+        if (state.savedTemplateId === templateId) {
             state.savedTemplateId = null;
             state.printBatchId = null;
         }
 
         await loadSavedTemplates();
-
         updateSelectedTemplateLabel();
         render();
 
         status(
             result.message ||
-            `Unused ballot #${templateId} ` +
-            `deleted successfully.`
+            `Ballot #${templateId} has been deleted successfully.`
         );
 
     } catch (error) {
-        console.error(
-            "Delete template error:",
-            error
-        );
+        console.error("Delete template error:", error);
 
         status(
-            `Delete failed: ${error.message}`,
+            `Unable to delete the ballot: ${error.message}`,
             true
         );
 
