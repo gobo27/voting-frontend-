@@ -207,6 +207,15 @@
             document.body.appendChild(container);
         }
 
+        container.style.setProperty("display", "flex", "important");
+        container.style.setProperty("position", "fixed", "important");
+        container.style.setProperty("top", "22px", "important");
+        container.style.setProperty("right", "22px", "important");
+        container.style.setProperty("z-index", "2147483647", "important");
+        container.style.setProperty("visibility", "visible", "important");
+        container.style.setProperty("opacity", "1", "important");
+
+
         return container;
     }
 
