@@ -1911,17 +1911,25 @@ async function deleteSavedTemplate(templateId) {
         return;
     }
 
-    if (
-        registeredPrintBatches.some(
-            batch => Number(batch.template_id) === templateId
-        )
-    ) {
-        status(
-            "This ballot cannot be deleted because it already has registered QR print batches.",
-            true
-        );
-        return;
+    
+if (
+    registeredPrintBatches.some(
+        batch => Number(batch.template_id) === templateId
+    )
+) {
+    const message =
+        `Can't delete Ballot #${templateId} because this ballot ` +
+        "is currently being used and has registered QR ballots.";
+
+    status(message, true);
+
+    if (typeof window.showToast !== "function") {
+        alert(message);
     }
+
+    return;
+}
+
 
     const confirmed = await confirmSavedBallotDeletion(template);
 
