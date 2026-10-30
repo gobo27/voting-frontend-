@@ -255,11 +255,12 @@ function renderCandidatesTable() {
     if (window.lucide) lucide.createIcons();
 }
 
+// Protected live results para sa Adviser
 async function loadLiveResults() {
     const status = $("votesStatus");
 
     try {
-        const data = await apiRequest("/dashboard/current/overview");
+        const data = await apiRequest("/dashboard/current/admin-overview");
         const statistics = data.statistics || {};
         const positions = Array.isArray(data.positions) ? data.positions : [];
         const scanned = Number(statistics.scanned_ballots || 0);
@@ -289,13 +290,10 @@ async function loadLiveResults() {
     }
 }
 
+// Highest votes muna, real names para sa authorized Adviser
 function renderLiveResults(positions = [], election = {}) {
     const sidebar = $("dynamicSidebarPositions");
     if (!sidebar) return;
-
-    const revealNames =
-        String(election.status || "").toLowerCase() === "completed" &&
-        !Boolean(Number(election.mask_names));
 
     if (!positions.length) {
         sidebar.innerHTML = `<p class="muted">No election results available.</p>`;
@@ -304,7 +302,16 @@ function renderLiveResults(positions = [], election = {}) {
     }
 
     sidebar.innerHTML = positions.map(position => {
-        const candidates = position.candidates || [];
+        const candidates = Array.isArray(position.candidates)
+            ? [...position.candidates]
+            : [];
+
+        candidates.sort((a, b) =>
+            Number(b.total_votes || 0) - Number(a.total_votes || 0) ||
+            Number(a.display_order || 0) - Number(b.display_order || 0) ||
+            Number(a.candidate_id || 0) - Number(b.candidate_id || 0)
+        );
+
         const totalVotes = candidates.reduce(
             (sum, candidate) => sum + Number(candidate.total_votes || 0), 0
         );
@@ -313,9 +320,7 @@ function renderLiveResults(positions = [], election = {}) {
             const votes = Number(candidate.total_votes || 0);
             const percentage = totalVotes > 0 ? votes / totalVotes * 100 : 0;
             const safePercentage = Math.max(0, Math.min(100, percentage));
-            const name = revealNames
-                ? candidate.name
-                : `Candidate #${candidate.candidate_id}`;
+            const name = candidate.name || `Candidate #${candidate.candidate_id}`;
 
             return `
             <div class="mb-3">

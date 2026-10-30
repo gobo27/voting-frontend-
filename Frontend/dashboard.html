@@ -1,326 +1,324 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Results - MSEUF Election System</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --maroon: #801224;
-      --maroon-dark: #650d1c;
-      --background: #f6f7f9;
-      --border: #e0e3e8;
-      --muted: #747b87;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Results - MSEUF Election System</title>
 
-    * {
-      box-sizing: border-box;
-    }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    body {
-      margin: 0;
-      background: var(--background);
-      color: #252a34;
-      font-family: Inter, Arial, sans-serif;
-    }
+    <style>
+        :root {
+            --maroon: #801224;
+            --maroon-dark: #650d1c;
+            --background: #f6f7f9;
+            --border: #e0e3e8;
+            --muted: #747b87;
+        }
 
-    .dashboard-header {
-      background: var(--maroon);
-      color: white;
-      padding: 17px 35px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      box-shadow: 0 2px 8px #00000012;
-    }
+        * {
+            box-sizing: border-box;
+        }
 
-    .back-link {
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity .2s;
-    }
+        body {
+            margin: 0;
+            background: var(--background);
+            color: #252a34;
+            font-family: Inter, Arial, sans-serif;
+        }
 
-    .back-link:hover {
-      opacity: .75;
-    }
+        .dashboard-header {
+            background: var(--maroon);
+            color: white;
+            padding: 17px 35px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 2px 8px #00000012;
+        }
 
-    .dashboard-logo {
-      width: 43px;
-      height: 43px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
+        .back-link {
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity .2s;
+        }
 
-    .dashboard-header h1 {
-      margin: 0;
-      font-size: 23px;
-      font-weight: 700;
-    }
+        .back-link:hover {
+            opacity: .75;
+        }
 
-    .dashboard-main {
-      max-width: 1600px;
-      margin: 0 auto;
-      padding: 28px 35px 50px;
-    }
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 23px;
+            font-weight: 700;
+        }
 
-    #statusBanner {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 20px;
-      border-radius: 10px;
-      border: 1px solid #dce0e6;
-      background: white;
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 7px #00000005;
-      transition: background-color .2s, border-color .2s;
-    }
+        .dashboard-main {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 28px 35px 50px;
+        }
 
-    #statusIcon {
-      font-size: 18px;
-      flex-shrink: 0;
-    }
+        #statusBanner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-radius: 10px;
+            border: 1px solid #dce0e6;
+            background: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 7px #00000005;
+        }
 
-    .results-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 18px;
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      padding: 23px 26px;
-      margin-bottom: 18px;
-      box-shadow: 0 3px 9px #00000004;
-    }
+        #statusIcon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
 
-    .results-heading h2 {
-      font-size: 23px;
-      font-weight: 700;
-      margin: 0 0 7px;
-      color: #252a34;
-    }
+        .results-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            padding: 23px 26px;
+            margin-bottom: 18px;
+            box-shadow: 0 3px 9px #00000004;
+        }
 
-    .results-subtitle {
-      color: var(--muted);
-      font-size: 13px;
-      margin: 0;
-    }
+        .results-heading h2 {
+            font-size: 23px;
+            font-weight: 700;
+            margin: 0 0 7px;
+        }
 
-    .sort-group {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+        .results-subtitle {
+            color: var(--muted);
+            font-size: 13px;
+            margin: 0;
+        }
 
-    .sort-group label {
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
-    }
+        #resultsContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            width: 100%;
+        }
 
-    .sort-wrapper {
-      position: relative;
-    }
+        .position-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 3px 12px #00000006;
+            min-width: 0;
+        }
 
-    #sortSelect {
-      appearance: none;
-      background: #fbedee;
-      color: var(--maroon);
-      border: 1px solid #f0d9de;
-      border-radius: 9px;
-      padding: 12px 38px 12px 15px;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      outline: none;
-      min-width: 205px;
-    }
+        .position-header {
+            border-left: 4px solid #8f0000;
+            padding-left: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
 
-    #sortSelect:focus {
-      border-color: var(--maroon);
-    }
+        .position-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+        }
 
-    .sort-arrow {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      color: var(--maroon);
-    }
+        .position-limit {
+            font-size: 12px;
+            color: #747b87;
+            white-space: nowrap;
+        }
 
-    #resultsContainer {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      width: 100%;
-    }
+        .candidate-row {
+            margin-bottom: 12px;
+            padding: 11px 13px;
+            border: 1px solid transparent;
+            border-radius: 9px;
+            transition: background .25s, border-color .25s;
+        }
 
-    #resultsContainer>div,
-    #resultsContainer>section,
-    #resultsContainer>article {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 3px 12px #00000006;
-      min-width: 0;
-    }
+        .candidate-row:last-child {
+            margin-bottom: 0;
+        }
 
-    #resultsContainer h3 {
-      color: #252a34;
-      font-family: Inter, Arial, sans-serif;
-      font-size: 18px;
-      font-weight: 700;
-    }
+        .candidate-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 9px;
+        }
 
-    #resultsContainer p,
-    #resultsContainer span {
-      font-family: Inter, Arial, sans-serif;
-    }
+        .candidate-name {
+            font-size: 14px;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
 
-    #resultsContainer button {
-      cursor: pointer;
-    }
+        .candidate-percent {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
 
-    #resultsContainer .progress-bar,
-    #resultsContainer .vote-progress {
-      border-radius: 999px;
-      overflow: hidden;
-    }
+        .progress-track {
+            width: 100%;
+            height: 13px;
+            background: #d1d5db;
+            border-radius: 999px;
+            overflow: hidden;
+        }
 
-    @media (max-width: 768px) {
-      .dashboard-header {
-        padding: 16px 20px;
-      }
+        .candidate-bar {
+            height: 100%;
+            background: #8f0000;
+            border-radius: 999px;
+            transition: width .5s ease;
+        }
 
-      .dashboard-header h1 {
-        font-size: 19px;
-      }
+        /* SIMPLE FINAL WINNER DESIGN */
 
-      .dashboard-logo {
-        width: 36px;
-        height: 36px;
-      }
+        .winner-row {
+            background: #fffaf0;
+            border-color: #ead49b;
+            border-left: 4px solid #c49a37;
+        }
 
-      .dashboard-main {
-        padding: 20px 16px 35px;
-      }
+        .winner-row .candidate-name {
+            color: #704d12;
+            font-weight: 700;
+        }
 
-      .results-heading {
-        padding: 20px;
-      }
+        .winner-badge {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+            padding: 4px 9px;
+            background: #f8e7b3;
+            color: #805b12;
+            border: 1px solid #e6cb7d;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .4px;
+            vertical-align: middle;
+        }
 
-      .results-heading h2 {
-        font-size: 21px;
-      }
+        .winner-row .candidate-bar {
+            background: #800000;
+        }
 
-      #resultsContainer>div,
-      #resultsContainer>section,
-      #resultsContainer>article {
-        padding: 18px;
-      }
-    }
+        .empty-message {
+            padding: 30px;
+            text-align: center;
+            color: #6b7280;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
 
-    @media (max-width: 480px) {
-      .sort-group {
-        width: 100%;
-        align-items: stretch;
-        flex-direction: column;
-      }
+        @media (max-width: 768px) {
+            .dashboard-header {
+                padding: 16px 20px;
+            }
 
-      .sort-wrapper,
-      #sortSelect {
-        width: 100%;
-      }
+            .dashboard-header h1 {
+                font-size: 19px;
+            }
 
-      .results-heading {
-        flex-direction: column;
-        align-items: stretch;
-      }
-    }
-    /* TOTAL COUNTED BALLOTS */
+            .dashboard-main {
+                padding: 20px 16px 35px;
+            }
 
-.ballot-counter {
-    min-width: 205px;
-    padding: 16px 20px;
-    background: #fff5f6;
-    border: 1px solid #efd7dc;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
+            .results-heading {
+                padding: 20px;
+            }
 
-.ballot-counter-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #801224;
-}
+            .results-heading h2 {
+                font-size: 21px;
+            }
 
-#totalCountedBallots {
-    font-size: 30px;
-    font-weight: 800;
-    color: #801224;
-    line-height: 1.2;
-}
+            .position-section {
+                padding: 18px;
+            }
+        }
 
-.ballot-counter-note {
-    font-size: 11px;
-    color: #747b87;
-}
+        @media (max-width: 480px) {
+            .candidate-info {
+                align-items: flex-start;
+            }
 
-@media (max-width: 480px) {
-    .ballot-counter {
-        width: 100%;
-    }
-}
-  </style>
+            .candidate-percent {
+                font-size: 12px;
+            }
+
+            .winner-badge {
+                margin-left: 5px;
+            }
+
+            .position-header {
+                align-items: flex-start;
+            }
+        }
+    </style>
 </head>
 
 <body>
-  <header class="dashboard-header">
-    <a href="index.html" class="back-link" aria-label="Back">
-      <svg xmlns="http://www.w3.org/2000/svg" width="29" height="29" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m12 19-7-7 7-7"></path>
-        <path d="M19 12H5"></path>
-      </svg>
-    </a>
-    <h1>Live Dashboard</h1>
-  </header>
+    <header class="dashboard-header">
+        <a href="index.html" class="back-link" aria-label="Back">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 width="29" height="29"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round">
+                <path d="m12 19-7-7 7-7"></path>
+                <path d="M19 12H5"></path>
+            </svg>
+        </a>
 
-  <main class="dashboard-main">
-    <div id="statusBanner">
-      <span id="statusIcon">🔒</span>
-      <span id="statusBannerText">Voting in Progress (Names Hidden)</span>
-    </div>
+        <h1>Live Dashboard</h1>
+    </header>
 
-    <div class="results-heading">
-      <div>
-        <h2>Live Results</h2>
-        <p class="results-subtitle">Real-time election results from all students.</p>
-      </div>
-      <div class="ballot-counter">
-        <span class="ballot-counter-label">Total Counted Ballots</span>
-        <strong id="totalCountedBallots">0</strong>
-        <span class="ballot-counter-note">Successfully scanned ballots</span>
-      </div>
-    </div>
-    <div id="resultsContainer"></div>
-  </main>
+    <main class="dashboard-main">
+        <div id="statusBanner">
+            <span id="statusIcon">⏳</span>
+            <span id="statusBannerText">
+                Loading election status...
+            </span>
+        </div>
 
-  <script src="dashboard.js"></script>
+        <div class="results-heading">
+            <div>
+                <h2>Live Results</h2>
+                <p class="results-subtitle">
+                    Real-time election results from all students.
+                </p>
+            </div>
+        </div>
+
+        <div id="resultsContainer"></div>
+    </main>
+
+    <script src="dashboard.js"></script>
 </body>
-
 </html>

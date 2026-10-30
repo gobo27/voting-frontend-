@@ -688,7 +688,7 @@
 
                     <!-- VOTING SCHEDULE -->
 
-                    <form id="electionTimeForm" class="time-form" onsubmit="handleStartElection(event)">
+                    <form id="electionTimeForm" class="time-form">
 
                         <div class="schedule-heading">
                             <i data-lucide="calendar-clock"></i>
@@ -751,8 +751,7 @@
                     <!-- FOUR ELECTION ACTION CARDS -->
                     <div class="action-grid">
                         <!-- START ELECTION -->
-                        <button type="button" id="startElectionBtn" onclick="handleStartElectionClick()"
-                            class="action-card action-start" disabled>
+                        <button type="button" id="startElectionBtn" class="action-card action-start" disabled>
                             <div class="action-icon">
                                 <i data-lucide="play"></i>
                             </div>
@@ -765,8 +764,7 @@
                             </p>
                         </button>
                         <!-- STOP VOTING -->
-                        <button type="button" id="stopVotingBtn" onclick="handleStopVoting()"
-                            class="action-card action-stop" disabled>
+                        <button type="button" id="stopVotingBtn" class="action-card action-stop" disabled>
                             <div class="action-icon">
                                 <i data-lucide="square"></i>
                             </div>
@@ -779,8 +777,7 @@
                             </p>
                         </button>
                         <!-- MASK NAMES -->
-                        <button type="button" id="maskToggleBtn" onclick="handleMaskToggle()"
-                            class="action-card action-mask" disabled>
+                        <button type="button" id="maskToggleBtn" class="action-card action-mask" disabled>
                             <div id="maskIconContainer" class="action-icon">
                                 <i data-lucide="eye-off"></i>
                             </div>
@@ -792,8 +789,7 @@
                             </p>
                         </button>
                         <!-- FINISH SCANNING -->
-                        <button type="button" id="finishScanningBtn" onclick="handleFinishScanning()"
-                            class="action-card action-finish" disabled>
+                        <button type="button" id="finishScanningBtn" class="action-card action-finish" disabled>
                             <div class="action-icon">
                                 <i data-lucide="check-check"></i>
                             </div>

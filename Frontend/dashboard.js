@@ -1,7 +1,8 @@
 
 "use strict";
 
-const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
+const API_BASE =
+    "https://voting-backend-cdrj.onrender.com/api";
 
 const ELECTION_ID =
     new URLSearchParams(window.location.search)
@@ -9,17 +10,18 @@ const ELECTION_ID =
 
 const $ = id => document.getElementById(id);
 
-const MASK_CHAR = "";
 const POLL_INTERVAL = 3000;
+const MASK_CHAR = "••••••••";
 
 let currentPositions = [];
-let totalCountedBallots = 0;
 let electionStatus = "UNKNOWN";
 let namesMasked = true;
+let scanningClosedAt = null;
+let votingClosedAt = null;
 let isLoading = false;
 let lastError = null;
 
-// LOAD DASHBOARD DATA
+// LOAD LIVE DASHBOARD DATA
 
 async function loadDashboardData() {
     if (isLoading) return;
@@ -32,46 +34,66 @@ async function loadDashboardData() {
             { cache: "no-store" }
         );
 
-        const data = await response.json().catch(() => ({}));
+        const data = await response.json()
+            .catch(() => ({}));
 
         if (!response.ok) {
             throw new Error(
-                data.message || `API error ${response.status}`
+                data.message ||
+                `API error ${response.status}`
             );
         }
 
-        if (!data.election || !Array.isArray(data.positions)) {
-            throw new Error("Invalid dashboard API response");
+        if (
+            !data.election ||
+            !Array.isArray(data.positions)
+        ) {
+            throw new Error(
+                "Invalid dashboard API response"
+            );
         }
 
+        const election = data.election;
+
         electionStatus = String(
-            data.election.status || "UNKNOWN"
+            election.status || "UNKNOWN"
         ).toUpperCase();
 
         namesMasked = Boolean(
-            Number(data.election.mask_names ?? 1)
+            Number(election.mask_names ?? 1)
         );
 
-        // TOTAL COUNTED BALLOTS FROM DATABASE
-        totalCountedBallots = Number(
-            data.statistics?.scanned_ballots
-        ) || 0;
+        scanningClosedAt =
+            election.scanning_closed_at || null;
 
-        // POSITIONS AND CANDIDATE VOTES
-        currentPositions = data.positions.map(position => ({
-            title: position.position_title,
-            max_choices: Number(position.max_selection) || 1,
-            candidates: (position.candidates || []).map(candidate => ({
-                id: candidate.candidate_id,
-                name: candidate.name,
-                votes: Number(candidate.total_votes) || 0
-            }))
-        }));
+        votingClosedAt =
+            election.voting_closed_at || null;
+
+        currentPositions = data.positions.map(
+            position => ({
+                title: position.position_title,
+                max_choices:
+                    Number(position.max_selection) || 1,
+
+                candidates: (
+                    position.candidates || []
+                ).map(candidate => ({
+                    id: Number(candidate.candidate_id),
+                    name: candidate.name,
+                    votes:
+                        Number(candidate.total_votes) || 0
+                }))
+            })
+        );
 
         lastError = null;
 
     } catch (error) {
-        console.error("Dashboard error:", error);
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
         lastError = error.message;
 
     } finally {
@@ -80,10 +102,32 @@ async function loadDashboardData() {
     }
 }
 
-// CHECK IF CANDIDATE NAMES CAN BE REVEALED
+// RESULTS RELEASE CHECK
+// Requires scanning_closed_at from backend.
+// Completed status alone is not sufficient.
+
+function isFinalized() {
+    return (
+        electionStatus === "COMPLETED" &&
+        Boolean(scanningClosedAt) &&
+        !namesMasked
+    );
+}
+
+// BEFORE ELECTION CHECK
+
+function isBeforeElection() {
+    return (
+        electionStatus !== "ACTIVE" &&
+        electionStatus !== "COMPLETED" &&
+        !votingClosedAt
+    );
+}
+
+// CHECK IF CANDIDATE NAMES CAN BE SHOWN
 
 function isRevealed() {
-    return electionStatus === "COMPLETED" && !namesMasked;
+    return isBeforeElection() || isFinalized();
 }
 
 // ESCAPE HTML
@@ -101,25 +145,17 @@ function escapeHtml(value) {
 
 function renderLiveResults() {
     const container = $("resultsContainer");
-    const sortSelect = $("sortSelect");
-
-    // UPDATE TOTAL COUNTED BALLOTS
-    const ballotCounter = $("totalCountedBallots");
-
-    if (ballotCounter) {
-        ballotCounter.textContent =
-            totalCountedBallots.toLocaleString();
-    }
 
     if (!container) return;
 
-    const sortMode = sortSelect ? sortSelect.value : "default";
+    const finalized = isFinalized();
     const revealed = isRevealed();
+    const beforeElection = isBeforeElection();
 
     if (lastError && !currentPositions.length) {
         container.innerHTML = `
-            <div class="p-8 text-center bg-white/60 border border-red-300 rounded-2xl">
-                <h3 class="font-serif font-bold text-red-700 text-lg">
+            <div class="empty-message">
+                <h3 class="font-bold text-red-700">
                     Unable to load results
                 </h3>
                 <p class="text-sm text-red-600 mt-2">
@@ -134,11 +170,11 @@ function renderLiveResults() {
 
     if (!currentPositions.length) {
         container.innerHTML = `
-            <div class="p-8 text-center bg-white/60 border border-gray-300 rounded-2xl">
-                <h3 class="font-serif font-bold text-gray-700 text-lg">
+            <div class="empty-message">
+                <h3 class="font-bold">
                     No Ballot Data Found
                 </h3>
-                <p class="text-sm text-gray-500 mt-2">
+                <p class="text-sm mt-2">
                     Please add positions and candidates first.
                 </p>
             </div>
@@ -148,75 +184,141 @@ function renderLiveResults() {
         return;
     }
 
-    container.innerHTML = currentPositions.map(position => {
-        const candidates = [...position.candidates];
+    container.innerHTML = currentPositions.map(
+        position => {
 
-        const totalVotes = candidates.reduce(
-            (sum, candidate) => sum + candidate.votes,
-            0
-        );
+            // COPY ARRAY BEFORE SORTING
+            const candidates = [
+                ...position.candidates
+            ];
 
-        if (sortMode === "high-low") {
-            candidates.sort((a, b) => b.votes - a.votes);
-        } else if (sortMode === "low-high") {
-            candidates.sort((a, b) => a.votes - b.votes);
-        }
+            // AUTOMATIC HIGHEST TO LOWEST
+            candidates.sort((a, b) =>
+                b.votes - a.votes ||
+                a.id - b.id
+            );
 
-        const rows = candidates.map(candidate => {
-            const percent = totalVotes > 0
-                ? (candidate.votes / totalVotes) * 100
-                : 0;
+            const totalVotes = candidates.reduce(
+                (sum, candidate) =>
+                    sum + candidate.votes,
+                0
+            );
 
-            const displayName = revealed
-                ? candidate.name
-                : MASK_CHAR;
+            const highestVotes =
+                candidates[0]?.votes || 0;
 
-            return `
-                <div class="candidate-row flex flex-col w-full mb-3"
-                     data-candidate-id="${Number(candidate.id)}">
+            const highestCount = candidates.filter(
+                candidate =>
+                    candidate.votes === highestVotes
+            ).length;
 
-                    <div class="flex justify-between items-center gap-3 text-sm font-serif font-semibold text-gray-800 mb-1">
+            // WINNER ONLY FOR FINALIZED
+            // SINGLE-WINNER POSITIONS
+            // NO WINNER IF THERE IS A TIE
 
-                        <span class="candidate-name truncate">
-                            ${escapeHtml(displayName)}
-                        </span>
+            const hasWinner =
+                finalized &&
+                highestVotes > 0 &&
+                highestCount === 1 &&
+                position.max_choices === 1;
 
-                        <span class="candidate-percent shrink-0">
+            const rows = candidates.map(
+                (candidate, index) => {
+
+                    const percent =
+                        totalVotes > 0
+                            ? (
+                                candidate.votes /
+                                totalVotes
+                            ) * 100
+                            : 0;
+
+                    const safePercent = Math.max(
+                        0,
+                        Math.min(100, percent)
+                    );
+
+                    const isWinner =
+                        hasWinner &&
+                        index === 0;
+
+                    const displayName = revealed
+                        ? candidate.name
+                        : MASK_CHAR;
+
+                    const winnerBadge = isWinner
+                        ? `
+                            <span class="winner-badge">
+                                🏆 WINNER
+                            </span>
+                          `
+                        : "";
+
+                    const displayVotes = finalized
+                        ? `
                             ${percent.toFixed(1)}%
                             (${candidate.votes.toLocaleString()} votes)
+                          `
+                        : beforeElection
+                            ? "Not started"
+                            : "Results pending";
+
+                    // KEEP VOTES HIDDEN UNTIL FINAL
+                    const displayBarWidth = finalized
+                        ? safePercent
+                        : 0;
+
+                    return `
+                        <div
+                            class="candidate-row ${
+                                isWinner ? "winner-row" : ""
+                            }"
+                            data-candidate-id="${candidate.id}"
+                        >
+                            <div class="candidate-info">
+                                <span class="candidate-name">
+                                    ${escapeHtml(displayName)}
+                                    ${winnerBadge}
+                                </span>
+
+                                <span class="candidate-percent">
+                                    ${displayVotes}
+                                </span>
+                            </div>
+
+                            <div class="progress-track">
+                                <div
+                                    class="candidate-bar"
+                                    style="width:${displayBarWidth.toFixed(2)}%"
+                                ></div>
+                            </div>
+                        </div>
+                    `;
+                }
+            ).join("");
+
+            return `
+                <section class="position-section">
+                    <div class="position-header">
+                        <h3>
+                            ${escapeHtml(position.title).toUpperCase()}
+                        </h3>
+
+                        <span class="position-limit">
+                            Select up to ${position.max_choices}
                         </span>
                     </div>
 
-                    <div class="w-full bg-gray-400/60 h-3.5 rounded-full overflow-hidden shadow-inner">
-                        <div
-                            class="candidate-bar bg-[#8f0000] h-full rounded-full transition-all duration-500"
-                            style="width:${percent.toFixed(2)}%">
-                        </div>
+                    <div class="candidates-list">
+                        ${
+                            rows ||
+                            '<p class="text-sm text-gray-500">No candidates registered.</p>'
+                        }
                     </div>
-                </div>
+                </section>
             `;
-        }).join("");
-
-        return `
-            <section class="position-section flex flex-col gap-2 w-full">
-
-                <div class="border-l-4 border-red-800 pl-3 flex items-center justify-between gap-3">
-                    <h3 class="text-xl font-serif font-bold text-gray-900">
-                        ${escapeHtml(position.title).toUpperCase()}
-                    </h3>
-
-                    <span class="text-xs text-gray-500 font-serif shrink-0">
-                        Select up to ${position.max_choices}
-                    </span>
-                </div>
-
-                <div class="candidates-list flex flex-col pl-3 w-full">
-                    ${rows || '<p class="text-sm text-gray-500">No candidates registered.</p>'}
-                </div>
-
-            </section>
-        `;
-    }).join("");
+        }
+    ).join("");
 
     applyBannerState();
 }
@@ -228,17 +330,28 @@ function applyBannerState() {
     const bannerText = $("statusBannerText");
     const statusIcon = $("statusIcon");
 
-    if (!banner || !bannerText || !statusIcon) return;
+    if (
+        !banner ||
+        !bannerText ||
+        !statusIcon
+    ) return;
 
     banner.classList.remove(
-        "bg-emerald-100", "text-emerald-900", "border-emerald-400",
-        "bg-amber-100", "text-amber-900", "border-amber-400",
-        "bg-gray-200", "text-gray-800", "border-gray-400"
+        "bg-emerald-100",
+        "text-emerald-900",
+        "border-emerald-400",
+        "bg-amber-100",
+        "text-amber-900",
+        "border-amber-400",
+        "bg-gray-200",
+        "text-gray-800",
+        "border-gray-400"
     );
 
-    if (electionStatus === "COMPLETED" && !namesMasked) {
+    if (isFinalized()) {
         bannerText.textContent =
             "Election Ended — Official Results Revealed";
+
         statusIcon.textContent = "✅";
 
         banner.classList.add(
@@ -247,31 +360,10 @@ function applyBannerState() {
             "border-emerald-400"
         );
 
-    } else if (electionStatus === "COMPLETED") {
+    } else if (isBeforeElection()) {
         bannerText.textContent =
-            "Election Ended — Candidate Names Hidden";
-        statusIcon.textContent = "🔒";
+            "Election Not Started — Candidate Preview";
 
-        banner.classList.add(
-            "bg-gray-200",
-            "text-gray-800",
-            "border-gray-400"
-        );
-
-    } else if (electionStatus === "ACTIVE") {
-        bannerText.textContent =
-            "Voting in Progress — Candidate Names Hidden";
-        statusIcon.textContent = "🔒";
-
-        banner.classList.add(
-            "bg-amber-100",
-            "text-amber-900",
-            "border-amber-400"
-        );
-
-    } else {
-        bannerText.textContent =
-            "Election Not Started — Results Preview";
         statusIcon.textContent = "⏳";
 
         banner.classList.add(
@@ -279,19 +371,45 @@ function applyBannerState() {
             "text-gray-800",
             "border-gray-400"
         );
+
+    } else if (
+        electionStatus === "COMPLETED"
+    ) {
+        bannerText.textContent =
+            "Voting Ended — Ballot Counting / Finalization Pending";
+
+        statusIcon.textContent = "🔒";
+
+        banner.classList.add(
+            "bg-gray-200",
+            "text-gray-800",
+            "border-gray-400"
+        );
+
+    } else {
+        bannerText.textContent =
+            "Voting in Progress — Results Hidden";
+
+        statusIcon.textContent = "🔒";
+
+        banner.classList.add(
+            "bg-amber-100",
+            "text-amber-900",
+            "border-amber-400"
+        );
     }
 }
 
 // INITIALIZE DASHBOARD
 
-document.addEventListener("DOMContentLoaded", () => {
-    const sortSelect = $("sortSelect");
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+        loadDashboardData();
 
-    if (sortSelect) {
-        sortSelect.addEventListener("change", renderLiveResults);
+        setInterval(
+            loadDashboardData,
+            POLL_INTERVAL
+        );
     }
-
-    loadDashboardData();
-
-    setInterval(loadDashboardData, POLL_INTERVAL);
-});
+);

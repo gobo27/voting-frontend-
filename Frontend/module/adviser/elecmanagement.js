@@ -658,7 +658,7 @@ async function refreshDashboard() {
 
         const [overviewResult, statusResult] =
             await Promise.all([
-                apiFetch(`/dashboard/${id}/overview`),
+                apiFetch(`/dashboard/${id}/admin-overview`),
                 apiFetch(`/election/${id}/status`)
             ]);
 
@@ -1209,8 +1209,12 @@ function renderLiveSidebar() {
 
     sidebar.innerHTML = positionsData.map(
         position => {
-            const candidates =
-                position.candidates || [];
+            const candidates = Array.isArray(position.candidates)
+                ? [...position.candidates].sort((a, b) =>
+                    Number(b.total_votes || 0) - Number(a.total_votes || 0) ||
+                    Number(a.candidate_id || 0) - Number(b.candidate_id || 0)
+                )
+                : [];
 
             candidateCount += candidates.length;
 
@@ -1235,9 +1239,8 @@ function renderLiveSidebar() {
                         ? (votes / totalVotes) * 100
                         : 0;
 
-                    const name = namesRevealed()
-                        ? candidate.name
-                        : MASK_CHAR;
+                    const name = candidate.name ||
+                        `Candidate #${candidate.candidate_id}`;
 
                     return `
                         <div class="candidate-row flex flex-col w-full mb-3">
@@ -1308,9 +1311,9 @@ function renderLiveSidebar() {
     }
 
     if ($("Voted")) {
-    const votesCast = Number(dashboardStatistics.scanned_ballots ?? 0);
-    $("Voted").textContent = votesCast.toLocaleString();
-}
+        const votesCast = Number(dashboardStatistics.scanned_ballots ?? 0);
+        $("Voted").textContent = votesCast.toLocaleString();
+    }
 }
 
 // OPEN LIVE DASHBOARD
@@ -1381,6 +1384,49 @@ document.addEventListener(
                 openLiveDashboard
             );
         }
+        
+        // ELECTION CONTROL BUTTONS
+
+        const scheduleButton = $("saveScheduleBtn");
+        const scheduleForm = scheduleButton?.closest("form");
+
+        if (scheduleForm) {
+            scheduleForm.addEventListener(
+                "submit",
+                handleStartElection
+            );
+        } else {
+            scheduleButton?.addEventListener(
+                "click",
+                handleStartElection
+            );
+        }
+
+        // START ELECTION
+        $("startElectionBtn")?.addEventListener(
+            "click",
+            handleStartElectionClick
+        );
+
+        // STOP VOTING
+        $("stopVotingBtn")?.addEventListener(
+            "click",
+            handleStopVoting
+        );
+
+        // MASK / UNMASK NAMES
+        $("maskToggleBtn")?.addEventListener(
+            "click",
+            handleMaskToggle
+        );
+
+        // FINISH SCANNING
+        $("finishScanningBtn")?.addEventListener(
+            "click",
+            handleFinishScanning
+        );
+
+
 
         // LOAD CURRENT ELECTION
 
