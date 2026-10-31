@@ -266,19 +266,17 @@ function renderLiveResults() {
                           `
                         : "";
 
-                    const displayVotes = finalized
-                        ? `
-                            ${percent.toFixed(1)}%
-                            (${candidate.votes.toLocaleString()} votes)
-                          `
-                        : beforeElection
-                            ? "Not started"
-                            : "Results pending";
 
-                    // KEEP VOTES HIDDEN UNTIL FINAL
-                    const displayBarWidth = finalized
-                        ? safePercent
-                        : 0;
+                    const displayVotes = beforeElection
+                        ? "Not started"
+                        : `
+                        ${percent.toFixed(1)}%
+                      (${candidate.votes.toLocaleString()} votes)`;
+
+                    const displayBarWidth = beforeElection
+                        ? 0
+                        : safePercent;
+
 
                     return `
                         <div
