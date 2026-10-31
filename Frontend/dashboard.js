@@ -55,6 +55,18 @@ async function loadDashboardData() {
 
         const election = data.election;
 
+        const totalScannedBallots =
+            Number(data.statistics?.scanned_ballots || 0);
+
+        const scanCountElement =
+            document.getElementById("totalScannedBallots");
+
+        if (scanCountElement) {
+            scanCountElement.textContent =
+                totalScannedBallots.toLocaleString();
+        }
+
+
         electionStatus = String(
             election.status || "UNKNOWN"
         ).toUpperCase();
@@ -270,9 +282,8 @@ function renderLiveResults() {
 
                     return `
                         <div
-                            class="candidate-row ${
-                                isWinner ? "winner-row" : ""
-                            }"
+                            class="candidate-row ${isWinner ? "winner-row" : ""
+                        }"
                             data-candidate-id="${candidate.id}"
                         >
                             <div class="candidate-info">
@@ -310,10 +321,9 @@ function renderLiveResults() {
                     </div>
 
                     <div class="candidates-list">
-                        ${
-                            rows ||
-                            '<p class="text-sm text-gray-500">No candidates registered.</p>'
-                        }
+                        ${rows ||
+                '<p class="text-sm text-gray-500">No candidates registered.</p>'
+                }
                     </div>
                 </section>
             `;
