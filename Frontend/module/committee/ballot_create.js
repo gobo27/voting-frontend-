@@ -443,7 +443,7 @@ function installBallotLayoutStyles() {
 
         #ballotPage.layout-a5 .position-heading,
         #ballotPage.layout-a5 .candidate-line {
-            left: 11mm;
+            left: 12mm;
             right: 5mm;
         }
 
