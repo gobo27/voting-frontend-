@@ -1249,8 +1249,11 @@ async function backendPreview() {
         );
 
 
+
         const blob = await imageToBlob();
+
         const form = new FormData();
+
         form.append(
             "election_id",
             String(electionId)
@@ -1268,10 +1271,7 @@ async function backendPreview() {
             "ballot-scan.jpg"
         );
 
-
-
         // STEP 4: SEND TO BACKEND
-
 
         status(
             "analysisStatus",

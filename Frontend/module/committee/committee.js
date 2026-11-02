@@ -1,487 +1,531 @@
-  const API_BASE =
-    "https://voting-backend-cdrj.onrender.com/api";
+const API_BASE =
+  "https://voting-backend-cdrj.onrender.com/api";
 
-  const $ = id => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-  let electionId = null;
-  let ballots = [];
-  let counting = null;
-  let busy = false;
+let electionId = null;
+let ballots = [];
+let counting = null;
+let printSummary = null;
+let busy = false;
 
-  function getToken() {
-    return (
-      sessionStorage.getItem("voting_token") ||
-      localStorage.getItem("voting_token") ||
-      localStorage.getItem("token")
+function getToken() {
+  return (
+    sessionStorage.getItem("voting_token") ||
+    localStorage.getItem("voting_token") ||
+    localStorage.getItem("token")
+  );
+}
+
+function notify(message, error = false) {
+  if (typeof window.showToast === "function") {
+    window.showToast(
+      message,
+      error ? "error" : "success"
+    );
+  } else {
+    console[error ? "error" : "log"](message);
+    alert(message);
+  }
+}
+
+async function confirmAction(message, title, confirmText) {
+  if (typeof window.showConfirmToast === "function") {
+    return Boolean(
+      await window.showConfirmToast(message, {
+        title,
+        confirmText,
+        cancelText: "Cancel"
+      })
     );
   }
 
-  function notify(message, error = false) {
-    if (typeof window.showToast === "function") {
-      window.showToast(
-        message,
-        error ? "error" : "success"
-      );
-    } else {
-      console[error ? "error" : "log"](message);
-      alert(message);
-    }
+  return window.confirm(message);
+}
+
+async function api(path, method = "GET", payload) {
+  const token = getToken();
+
+  if (!token) {
+    throw new Error("Please log in as Committee.");
   }
 
-  async function confirmAction(message, title, confirmText) {
-    if (typeof window.showConfirmToast === "function") {
-      return Boolean(
-        await window.showConfirmToast(message, {
-          title,
-          confirmText,
-          cancelText: "Cancel"
-        })
-      );
-    }
+  const headers = {
+    Authorization: "Bearer " + token
+  };
 
-    return window.confirm(message);
+  if (payload !== undefined) {
+    headers["Content-Type"] = "application/json";
   }
 
-  async function api(path, method = "GET", payload) {
-    const token = getToken();
+  const response = await fetch(API_BASE + path, {
+    method,
+    headers,
+    ...(payload === undefined
+      ? {}
+      : { body: JSON.stringify(payload) })
+  });
 
-    if (!token) {
-      throw new Error("Please log in as Committee.");
-    }
+  const data = await response.json().catch(() => ({}));
 
-    const headers = {
-      Authorization: "Bearer " + token
-    };
-
-    if (payload !== undefined) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    const response = await fetch(API_BASE + path, {
-      method,
-      headers,
-      ...(payload === undefined
-        ? {}
-        : { body: JSON.stringify(payload) })
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(
-        data.message ||
-        data.error ||
-        `Request failed (${response.status})`
-      );
-    }
-
-    return data;
-  }
-
-  function getSelected() {
-    return [
-      ...document.querySelectorAll(
-        ".void-ballot-check:checked"
-      )
-    ].map(input => input.value);
-  }
-
-  function getTotals() {
-    return counting?.ballots || null;
-  }
-
-  function getNumber(value) {
-    const number = Number(value);
-
-    return Number.isFinite(number) && number >= 0
-      ? number
-      : 0;
-  }
-
-  function canVoid() {
-    return (
-      counting?.scanning_open === true &&
-      counting?.voting_open === false
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+      data.error ||
+      `Request failed (${response.status})`
     );
   }
 
-  function updateButtons() {
-    const selected = getSelected();
-    const reason = $("voidReason").value.trim();
-    const verified = $("voidVerified").checked;
-    const totals = getTotals();
+  return data;
+}
 
-    $("voidSelectedCount").textContent =
-      `${selected.length} selected`;
+function getSelected() {
+  return [
+    ...document.querySelectorAll(
+      ".void-ballot-check:checked"
+    )
+  ].map(input => input.value);
+}
 
-    $("voidSubmit").disabled = !(
-      !busy &&
-      canVoid() &&
-      selected.length >= 1 &&
-      selected.length <= 100 &&
-      reason.length >= 10 &&
-      reason.length <= 500 &&
-      verified
-    );
+function getTotals() {
+  return counting?.ballots || null;
+}
 
-    $("finishScanCommittee").disabled = !(
-      !busy &&
-      canVoid() &&
-      totals &&
-      getNumber(totals.ISSUED) === 0 &&
-      getNumber(totals.CAST) === 0
-    );
+function getNumber(value) {
+  const number = Number(value);
 
-    $("voidSelectAll").disabled =
-      busy || !canVoid() || ballots.length === 0;
-  }
+  return Number.isFinite(number) && number >= 0
+    ? number
+    : 0;
+}
 
-  function renderStatus() {
-    const totals = getTotals();
+function canVoid() {
+  return (
+    counting?.scanning_open === true &&
+    counting?.voting_open === false
+  );
+}
 
-    const fields = {
-      voidIssued: "ISSUED",
-      voidCast: "CAST",
-      voidCounted: "COUNTED",
-      voidVoided: "VOID"
-    };
+function updateButtons() {
+  const selected = getSelected();
+  const reason = $("voidReason").value.trim();
+  const verified = $("voidVerified").checked;
+  const totals = getTotals();
 
-    for (const [elementId, status] of Object.entries(fields)) {
-      $(elementId).textContent = totals
-        ? getNumber(totals[status])
+  $("voidSelectedCount").textContent =
+    `${selected.length} selected`;
+
+  $("voidSubmit").disabled = !(
+    !busy &&
+    canVoid() &&
+    selected.length >= 1 &&
+    selected.length <= 100 &&
+    reason.length >= 10 &&
+    reason.length <= 500 &&
+    verified
+  );
+
+  $("finishScanCommittee").disabled = !(
+    !busy &&
+    canVoid() &&
+    totals &&
+    getNumber(totals.ISSUED) === 0 &&
+    getNumber(totals.CAST) === 0
+  );
+
+  $("voidSelectAll").disabled =
+    busy || !canVoid() || ballots.length === 0;
+}
+
+
+function renderStatus() {
+  const totals = getTotals();
+
+  const fields = {
+    voidIssued: "ISSUED",
+    voidCast: "CAST",
+    voidCounted: "COUNTED",
+    voidVoided: "VOID"
+  };
+
+  for (const [elementId, ballotStatus] of Object.entries(fields)) {
+    const element = $(elementId);
+
+    if (element) {
+      element.textContent = totals
+        ? getNumber(totals[ballotStatus])
         : "—";
     }
+  }
 
-    if (totals) {
-      const original = [
-        "ISSUED",
-        "CAST",
-        "COUNTED",
-        "VOID"
-      ].reduce(
-        (sum, status) =>
-          sum + getNumber(totals[status]),
-        0
-      );
+  // Registered unique QR ballots
+  if ($("monitorOriginal")) {
+    $("monitorOriginal").textContent = printSummary
+      ? getNumber(printSummary.registered_unique)
+      : "—";
+  }
 
-      $("monitorOriginal").textContent = original;
-    } else {
-      $("monitorOriginal").textContent = "—";
-    }
+  // Confirmed physical reprints
+  if ($("monitorReprints")) {
+    $("monitorReprints").textContent = printSummary
+      ? getNumber(printSummary.reprints)
+      : "—";
+  }
 
-    // Reprints are not tracked by the current backend.
-    $("monitorReprints").textContent = "—";
-    $("monitorTotal").textContent = "—";
-    $("monitorPhysical").textContent = "— / —";
+  // Confirmed original + reprint totals
+  if ($("monitorTotal")) {
+    $("monitorTotal").textContent = printSummary
+      ? getNumber(printSummary.overall)
+      : "—";
+  }
 
+  // Successfully counted unique ballots
+  if ($("monitorPhysical")) {
+    const counted = totals
+      ? getNumber(totals.COUNTED)
+      : null;
+
+    const registered = printSummary
+      ? getNumber(printSummary.registered_unique)
+      : null;
+
+    $("monitorPhysical").textContent =
+      counted !== null && registered !== null
+        ? `${counted} / ${registered}`
+        : "— / —";
+  }
+
+  if ($("monitorNote")) {
     $("monitorNote").textContent =
       "Original = registered unique QR ballots. " +
-      "Reprints and physical print totals require " +
-      "backend print tracking.";
+      "Reprints and Overall Printed = operator-confirmed " +
+      "physical print quantities. Total Scan Ballot = " +
+      "successfully counted unique ballots.";
+  }
 
+  if ($("voidElectionState")) {
     if (!counting) {
       $("voidElectionState").textContent =
         "Election status unavailable.";
+
     } else if (counting.voting_open) {
       $("voidElectionState").textContent =
         "Voting is still open. Close voting before voiding.";
+
     } else if (counting.scanning_open) {
       $("voidElectionState").textContent =
         "Voting closed; scanning open. " +
         "Physically verify each unused ballot before VOID.";
+
     } else {
       $("voidElectionState").textContent =
         "Scanning is closed. VOID is unavailable.";
     }
-
-    updateButtons();
   }
 
-  function renderBallots() {
-    const container = $("voidBallotList");
+  updateButtons();
+}
 
-    container.replaceChildren();
 
-    if (!ballots.length) {
-      container.textContent =
-        "No ISSUED ballot IDs to review.";
+function renderBallots() {
+  const container = $("voidBallotList");
+
+  container.replaceChildren();
+
+  if (!ballots.length) {
+    container.textContent =
+      "No ISSUED ballot IDs to review.";
+
+    updateButtons();
+    return;
+  }
+
+  ballots.forEach(ballot => {
+    const label = document.createElement("label");
+    label.className = "void-ballot-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "void-ballot-check";
+    checkbox.value = String(ballot.ballot_id);
+    checkbox.disabled = !canVoid() || busy;
+
+    checkbox.addEventListener("change", () => {
+      if (
+        checkbox.checked &&
+        getSelected().length > 100
+      ) {
+        checkbox.checked = false;
+
+        notify(
+          "Maximum of 100 ballots per request.",
+          true
+        );
+      }
 
       updateButtons();
-      return;
-    }
-
-    ballots.forEach(ballot => {
-      const label = document.createElement("label");
-      label.className = "void-ballot-item";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.className = "void-ballot-check";
-      checkbox.value = String(ballot.ballot_id);
-      checkbox.disabled = !canVoid() || busy;
-
-      checkbox.addEventListener("change", () => {
-        if (
-          checkbox.checked &&
-          getSelected().length > 100
-        ) {
-          checkbox.checked = false;
-
-          notify(
-            "Maximum of 100 ballots per request.",
-            true
-          );
-        }
-
-        updateButtons();
-      });
-
-      const text = document.createElement("span");
-
-      text.textContent =
-        `Batch ${ballot.batch_id ?? "—"} · ` +
-        String(ballot.ballot_id);
-
-      label.append(checkbox, text);
-      container.appendChild(label);
     });
 
-    updateButtons();
-  }
+    const text = document.createElement("span");
 
-  async function refresh(showError = true) {
-    try {
-      const current = await api(
-        "/election/current/status"
-      );
+    text.textContent =
+      `Batch ${ballot.batch_id ?? "—"} · ` +
+      String(ballot.ballot_id);
 
-      electionId = Number(
-        current.election?.election_id
-      );
+    label.append(checkbox, text);
+    container.appendChild(label);
+  });
 
-      if (
-        !Number.isSafeInteger(electionId) ||
-        electionId < 1
-      ) {
-        throw new Error("No current election found.");
-      }
+  updateButtons();
+}
 
-      const [status, unused] = await Promise.all([
+async function refresh(showError = true) {
+  try {
+    const current = await api(
+      "/election/current/status"
+    );
+
+    electionId = Number(
+      current.election?.election_id
+    );
+
+    if (
+      !Number.isSafeInteger(electionId) ||
+      electionId < 1
+    ) {
+      throw new Error("No current election found.");
+    }
+
+
+    const [status, unused, printResult] =
+      await Promise.all([
+        api(`/election/${electionId}/counting-status`),
+
+        api(`/election/${electionId}/unused-ballots`),
+
         api(
-          `/election/${electionId}/counting-status`
-        ),
-        api(
-          `/election/${electionId}/unused-ballots`
-        )
+          `/ballots/qr/print-summary/election/${electionId}`
+        ).catch(error => {
+          console.error(
+            "Print summary error:",
+            error
+          );
+
+          return null;
+        })
       ]);
 
-      counting = status;
+    counting = status;
+    printSummary = null;
 
-      ballots = Array.isArray(unused.ballots)
-        ? unused.ballots
-        : [];
 
-      $("voidVerified").checked = false;
-      $("voidSelectAll").checked = false;
+    counting = status;
 
-      renderStatus();
-      renderBallots();
+    ballots = Array.isArray(unused.ballots)
+      ? unused.ballots
+      : [];
 
-    } catch (error) {
-      console.error("Committee refresh:", error);
+    $("voidVerified").checked = false;
+    $("voidSelectAll").checked = false;
 
-      counting = null;
-      ballots = [];
+    renderStatus();
+    renderBallots();
 
-      renderStatus();
-      renderBallots();
+  } catch (error) {
+    console.error("Committee refresh:", error);
 
-      $("voidBallotList").textContent =
-        "Unable to load unused ballots.";
+    counting = null;
+    ballots = [];
 
-      $("voidElectionState").textContent =
-        error.message;
+    renderStatus();
+    renderBallots();
 
-      if (showError) {
-        notify(error.message, true);
-      }
+    $("voidBallotList").textContent =
+      "Unable to load unused ballots.";
+
+    $("voidElectionState").textContent =
+      error.message;
+
+    if (showError) {
+      notify(error.message, true);
     }
   }
+}
 
-  async function voidSelected() {
-    if (busy || !canVoid()) return;
+async function voidSelected() {
+  if (busy || !canVoid()) return;
 
-    const ids = getSelected();
-    const reason = $("voidReason").value.trim();
+  const ids = getSelected();
+  const reason = $("voidReason").value.trim();
 
-    if (
-      ids.length < 1 ||
-      ids.length > 100 ||
-      reason.length < 10 ||
-      reason.length > 500 ||
-      !$("voidVerified").checked
-    ) {
-      notify(
-        "Select 1–100 ballots, enter a reason of " +
-        "10–500 characters, and confirm physical verification.",
-        true
-      );
-      return;
-    }
+  if (
+    ids.length < 1 ||
+    ids.length > 100 ||
+    reason.length < 10 ||
+    reason.length > 500 ||
+    !$("voidVerified").checked
+  ) {
+    notify(
+      "Select 1–100 ballots, enter a reason of " +
+      "10–500 characters, and confirm physical verification.",
+      true
+    );
+    return;
+  }
 
-    const confirmed = await confirmAction(
-      `VOID ${ids.length} physically verified ` +
-      "unused ballot(s)? This action cannot " +
-      "normally be undone.",
-      "Confirm Ballot VOID",
-      "Void Ballots"
+  const confirmed = await confirmAction(
+    `VOID ${ids.length} physically verified ` +
+    "unused ballot(s)? This action cannot " +
+    "normally be undone.",
+    "Confirm Ballot VOID",
+    "Void Ballots"
+  );
+
+  if (!confirmed) return;
+
+  busy = true;
+  updateButtons();
+
+  try {
+    const result = await api(
+      `/election/${electionId}/void-unused-ballots`,
+      "POST",
+      {
+        ballot_ids: ids,
+        reason,
+        physically_verified: true
+      }
     );
 
-    if (!confirmed) return;
+    notify(
+      result.message ||
+      "Unused ballots successfully voided."
+    );
 
-    busy = true;
+    $("voidReason").value = "";
+    $("voidVerified").checked = false;
+
+    await refresh();
+
+  } catch (error) {
+    console.error("VOID error:", error);
+    notify(error.message, true);
+
+  } finally {
+    busy = false;
     updateButtons();
+  }
+}
 
-    try {
-      const result = await api(
-        `/election/${electionId}/void-unused-ballots`,
-        "POST",
-        {
-          ballot_ids: ids,
-          reason,
-          physically_verified: true
-        }
-      );
+async function finishScanning() {
+  if (
+    busy ||
+    !electionId ||
+    $("finishScanCommittee").disabled
+  ) {
+    return;
+  }
 
-      notify(
-        result.message ||
-        "Unused ballots successfully voided."
-      );
+  const confirmed = await confirmAction(
+    "Finish scanning and close ballot counting? " +
+    "All ballots must already be counted or reconciled.",
+    "Finish Scanning",
+    "Finish Scanning"
+  );
 
-      $("voidReason").value = "";
-      $("voidVerified").checked = false;
+  if (!confirmed) return;
 
-      await refresh();
+  busy = true;
+  updateButtons();
 
-    } catch (error) {
-      console.error("VOID error:", error);
-      notify(error.message, true);
+  try {
+    const result = await api(
+      `/election/${electionId}/finish-scanning`,
+      "POST"
+    );
 
-    } finally {
-      busy = false;
+    notify(
+      result.message ||
+      "Scanning successfully finished."
+    );
+
+    await refresh();
+
+  } catch (error) {
+    console.error("Finish scanning error:", error);
+    notify(error.message, true);
+
+  } finally {
+    busy = false;
+    updateButtons();
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const panel = $("voidDetails");
+
+  if (!panel || !$("openVoidPanel")) {
+    console.error(
+      "VOID HTML elements are missing."
+    );
+    return;
+  }
+
+  $("openVoidPanel").addEventListener(
+    "click",
+    async () => {
+      panel.hidden = !panel.hidden;
+
+      if (!panel.hidden) {
+        await refresh();
+      }
+    }
+  );
+
+  $("voidRefresh").addEventListener(
+    "click",
+    () => refresh()
+  );
+
+  $("voidSelectAll").addEventListener(
+    "change",
+    event => {
+      const checkboxes = [
+        ...document.querySelectorAll(
+          ".void-ballot-check"
+        )
+      ];
+
+      checkboxes.forEach((checkbox, index) => {
+        checkbox.checked =
+          event.target.checked &&
+          canVoid() &&
+          index < 100;
+      });
+
       updateButtons();
     }
-  }
+  );
 
-  async function finishScanning() {
-    if (
-      busy ||
-      !electionId ||
-      $("finishScanCommittee").disabled
-    ) {
-      return;
-    }
+  $("voidReason").addEventListener(
+    "input",
+    updateButtons
+  );
 
-    const confirmed = await confirmAction(
-      "Finish scanning and close ballot counting? " +
-      "All ballots must already be counted or reconciled.",
-      "Finish Scanning",
-      "Finish Scanning"
-    );
+  $("voidVerified").addEventListener(
+    "change",
+    updateButtons
+  );
 
-    if (!confirmed) return;
+  $("voidSubmit").addEventListener(
+    "click",
+    voidSelected
+  );
 
-    busy = true;
-    updateButtons();
+  $("finishScanCommittee").addEventListener(
+    "click",
+    finishScanning
+  );
 
-    try {
-      const result = await api(
-        `/election/${electionId}/finish-scanning`,
-        "POST"
-      );
-
-      notify(
-        result.message ||
-        "Scanning successfully finished."
-      );
-
-      await refresh();
-
-    } catch (error) {
-      console.error("Finish scanning error:", error);
-      notify(error.message, true);
-
-    } finally {
-      busy = false;
-      updateButtons();
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const panel = $("voidDetails");
-
-    if (!panel || !$("openVoidPanel")) {
-      console.error(
-        "VOID HTML elements are missing."
-      );
-      return;
-    }
-
-    $("openVoidPanel").addEventListener(
-      "click",
-      async () => {
-        panel.hidden = !panel.hidden;
-
-        if (!panel.hidden) {
-          await refresh();
-        }
-      }
-    );
-
-    $("voidRefresh").addEventListener(
-      "click",
-      () => refresh()
-    );
-
-    $("voidSelectAll").addEventListener(
-      "change",
-      event => {
-        const checkboxes = [
-          ...document.querySelectorAll(
-            ".void-ballot-check"
-          )
-        ];
-
-        checkboxes.forEach((checkbox, index) => {
-          checkbox.checked =
-            event.target.checked &&
-            canVoid() &&
-            index < 100;
-        });
-
-        updateButtons();
-      }
-    );
-
-    $("voidReason").addEventListener(
-      "input",
-      updateButtons
-    );
-
-    $("voidVerified").addEventListener(
-      "change",
-      updateButtons
-    );
-
-    $("voidSubmit").addEventListener(
-      "click",
-      voidSelected
-    );
-
-    $("finishScanCommittee").addEventListener(
-      "click",
-      finishScanning
-    );
-
-    refresh(false);
-  });
+  refresh(false);
+});
