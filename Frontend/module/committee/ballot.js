@@ -10,28 +10,44 @@ const BallotAPI = (() => {
             localStorage.getItem("token");
     }
 
+
     async function request(path, options = {}) {
         const token = getToken();
-        if (!token) throw new Error("Session not found. Please log in again.");
+
+        if (!token) {
+            throw new Error(
+                "Session not found. Please log in again."
+            );
+        }
 
         let response;
+
         try {
-            response = await fetch(API_BASE + path, {
+            response = await fetch(`${API_BASE}${path}`, {
                 ...options,
                 headers: {
-                    "Content-Type": "application/json",
+                    ...(options.body instanceof FormData
+                        ? {}
+                        : { "Content-Type": "application/json" }),
                     Authorization: `Bearer ${token}`,
                     ...(options.headers || {})
                 }
             });
         } catch (error) {
-            throw new Error("Cannot connect to backend: " + error.message);
+            throw new Error(
+                "Cannot connect to backend: " + error.message
+            );
         }
 
         const data = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-            throw new Error(data.message || data.error || `API error ${response.status}`);
+            throw new Error(
+                data.message ||
+                `API error ${response.status}`
+            );
         }
+
         return data;
     }
 
