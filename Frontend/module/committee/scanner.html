@@ -399,6 +399,8 @@ button:not(:disabled):hover {
     overflow: auto;
 }
 
+/* RESPONSIVE DESIGN */
+
 @media screen and (min-width: 1001px) {
     .scanner-controls {
         position: sticky;
@@ -539,29 +541,62 @@ and (max-width: 1000px) {
         margin-top: 15px;
     }
 }
+
+/* PHONE CAMERA */
+
+#phoneCameraInput {
+    display: none;
+}
+
+.camera-note {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin: 10px 0;
+}
+
+#cameraBtn {
+    flex: 1;
+}
+
+#qrStatus {
+    line-height: 1.7;
+}
+
 </style>
 </head>
 
 <body>
 
 <header>
-    <a href="Committee.html"
-       class="back-link"
-       aria-label="Back to Committee Dashboard">
+    <a
+        href="Committee.html"
+        class="back-link"
+        aria-label="Back to Committee Dashboard">
         &#8592;
     </a>
 
     <div>
         <h1>CampusVote — OMR Scanner</h1>
-        <p>QR Verification • A5 Ballot Scanning • Automatic Vote Counting</p>
+        <p>
+            QR Verification • A5 Ballot Scanning •
+            Automatic Vote Counting
+        </p>
     </div>
 </header>
 
 <main>
+
+    <!-- SCANNER CONTROLS -->
+
     <section class="panel scanner-controls">
+
         <h2>Scanner Controls</h2>
 
-        <label for="electionId">Election ID</label>
+        <label for="electionId">
+            Election ID
+        </label>
+
         <input
             id="electionId"
             type="number"
@@ -578,16 +613,25 @@ and (max-width: 1000px) {
             </button>
         </div>
 
-        <label for="templateSelect">A5 Ballot Template</label>
+        <label for="templateSelect">
+            A5 Ballot Template
+        </label>
+
         <select id="templateSelect">
-            <option value="">Select a template</option>
+            <option value="">
+                Select a template
+            </option>
         </select>
 
-        <p id="scannerStatus"
-           class="status"
-           role="status"></p>
+        <p
+            id="scannerStatus"
+            class="status"
+            role="status">
+        </p>
 
         <hr class="divider">
+
+        <!-- BALLOT IMAGE -->
 
         <h3>Ballot Image</h3>
 
@@ -601,18 +645,29 @@ and (max-width: 1000px) {
             accept="image/png,image/jpeg,image/webp"
         >
 
+        <!-- NATIVE PHONE CAMERA INPUT -->
+
+        <input
+            id="phoneCameraInput"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+        >
+
         <div class="buttons">
+
             <button
                 id="cameraBtn"
                 type="button"
-                class="secondary">
-                Open Camera
+                class="primary">
+                Open Phone Camera
             </button>
 
             <button
                 id="captureBtn"
                 type="button"
-                class="primary"
+                class="secondary"
                 disabled>
                 Capture
             </button>
@@ -624,7 +679,15 @@ and (max-width: 1000px) {
                 disabled>
                 Stop Camera
             </button>
+
         </div>
+
+        <p class="camera-note">
+            On mobile, Open Phone Camera requests the
+            rear camera. Use the phone's autofocus and
+            capture the complete A5 ballot. QR detection
+            starts automatically after the photo loads.
+        </p>
 
         <div class="camera-box">
             <video
@@ -635,9 +698,11 @@ and (max-width: 1000px) {
             </video>
         </div>
 
-        <p id="imageStatus"
-           class="status"
-           role="status"></p>
+        <p
+            id="imageStatus"
+            class="status"
+            role="status">
+        </p>
 
         <div class="buttons">
             <button
@@ -650,6 +715,8 @@ and (max-width: 1000px) {
 
         <hr class="divider">
 
+        <!-- OMR SETTINGS -->
+
         <h3>OMR Settings</h3>
 
         <p class="note">
@@ -659,10 +726,13 @@ and (max-width: 1000px) {
 
         <div class="counting-note">
             <strong>Automatic Vote Counting</strong>
+
             <p>
-                After scanning, valid ballots will be counted
-                automatically. Duplicate or invalid ballots
-                will be rejected. No checkbox is required.
+                After you press Scan &amp; Count Ballot,
+                the backend verifies the QR, checks
+                registration marks and shaded bubbles,
+                and counts valid votes automatically.
+                Duplicate or invalid ballots are rejected.
             </p>
         </div>
 
@@ -676,45 +746,66 @@ and (max-width: 1000px) {
             </button>
         </div>
 
-        <p id="analysisStatus"
-           class="status"
-           role="status"
-           aria-live="polite"></p>
+        <p
+            id="analysisStatus"
+            class="status"
+            role="status"
+            aria-live="polite">
+        </p>
 
         <p class="note">
             Keep the entire A5 ballot and all four
-            registration squares visible. If alignment
-            fails, retake the photo.
+            registration squares visible.
+            If alignment fails, retake the photo.
         </p>
 
+        <!-- QR AND DEBUG STATUS -->
+
         <details class="debug">
-            <summary>Debug &amp; QR Diagnostics</summary>
+            <summary>
+                Debug &amp; QR Diagnostics
+            </summary>
 
             <div class="debug-content">
-                <strong>Debug Diagnostics</strong>
+
+                <strong>
+                    Debug Diagnostics
+                </strong>
 
                 <div id="debugInfo">
-                    Load a template and image, then scan.
+                    Load a template and image,
+                    then scan.
                 </div>
 
                 <hr class="divider">
 
-                <strong>QR Diagnostics</strong>
+                <strong>
+                    QR Diagnostics
+                </strong>
 
                 <p id="qrStatus">
                     QR not scanned yet.
                 </p>
+
             </div>
         </details>
+
     </section>
 
+    <!-- BALLOT PREVIEW -->
+
     <section class="panel preview-panel">
+
         <div class="preview-heading">
             <h2>Ballot Preview</h2>
-            <span class="preview-tag">A5 Scanner</span>
+
+            <span class="preview-tag">
+                A5 Scanner
+            </span>
         </div>
 
         <div class="canvas-wrap">
+
             <canvas
                 id="scanCanvas"
                 width="1"
@@ -722,26 +813,42 @@ and (max-width: 1000px) {
             </canvas>
 
             <div class="preview-placeholder">
-                <div class="placeholder-icon">&#9635;</div>
+
+                <div class="placeholder-icon">
+                    &#9635;
+                </div>
+
                 <p>
                     Upload or capture a ballot image
                     to display it here.
                 </p>
+
             </div>
         </div>
 
+        <!-- DETECTED RESULTS -->
+
         <div class="results-area">
+
             <h3>Detected Results</h3>
 
             <div id="results">
                 <p>No ballot analyzed yet.</p>
             </div>
+
         </div>
+
     </section>
+
 </main>
 
+<!-- QR CODE LIBRARY -->
+
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="./scanner.js?v=20261030-auto-count"></script>
+
+<!-- SCANNER JAVASCRIPT -->
+
+<script src="./scanner.js?v=20261102-phone-camera"></script>
 
 </body>
 </html>
