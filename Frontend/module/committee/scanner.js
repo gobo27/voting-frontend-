@@ -115,11 +115,12 @@ function disableSubmission() {
 
 function updateAnalyzeButton() {
     const button = $("analyzeBtn");
-
     if (!button) return;
 
     button.disabled =
         busy ||
+        window.confirmedOMRCounting === true ||
+        window.campusVoteQRVerified !== true ||
         !template ||
         !sourceImage ||
         !validId(getElectionId()) ||
@@ -890,52 +891,95 @@ async function debugQR() {
 // CONVERT BALLOT IMAGE TO PNG BLOB
 
 
+
 async function imageToBlob() {
     if (!sourceImage) {
         throw new Error("No ballot image loaded.");
     }
 
-    const temp = document.createElement("canvas");
+    const MAX_BYTES = 9 * 1024 * 1024;
+    const MAX_DIMENSION = 3200;
 
-    temp.width =
-        sourceImage.naturalWidth ||
-        sourceImage.width;
+    const originalWidth =
+        sourceImage.naturalWidth || sourceImage.width;
 
-    temp.height =
-        sourceImage.naturalHeight ||
-        sourceImage.height;
+    const originalHeight =
+        sourceImage.naturalHeight || sourceImage.height;
 
-    const c = temp.getContext("2d");
+    const scale = Math.min(
+        1,
+        MAX_DIMENSION / Math.max(
+            originalWidth,
+            originalHeight
+        )
+    );
 
-    if (!c) {
+    let width = Math.round(originalWidth * scale);
+    let height = Math.round(originalHeight * scale);
+
+    function encodeJPEG(w, h, quality) {
+        return new Promise((resolve, reject) => {
+            const temp = document.createElement("canvas");
+
+            temp.width = w;
+            temp.height = h;
+
+            const c = temp.getContext("2d");
+
+            if (!c) {
+                reject(new Error("Canvas unavailable."));
+                return;
+            }
+
+            c.fillStyle = "#ffffff";
+            c.fillRect(0, 0, w, h);
+
+            c.drawImage(
+                sourceImage,
+                0,
+                0,
+                w,
+                h
+            );
+
+            temp.toBlob(blob => {
+                if (!blob) {
+                    reject(new Error(
+                        "Image conversion failed."
+                    ));
+                    return;
+                }
+
+                resolve(blob);
+            }, "image/jpeg", quality);
+        });
+    }
+
+    let blob = await encodeJPEG(width, height, 0.92);
+
+    if (blob.size > MAX_BYTES) {
+        blob = await encodeJPEG(width, height, 0.82);
+    }
+
+    while (
+        blob.size > MAX_BYTES &&
+        Math.max(width, height) > 1600
+    ) {
+        width = Math.round(width * 0.85);
+        height = Math.round(height * 0.85);
+
+        blob = await encodeJPEG(width, height, 0.85);
+    }
+
+    if (blob.size > MAX_BYTES) {
         throw new Error(
-            "Unable to create image canvas."
+            "Photo is still too large. " +
+            "Please use a lower camera resolution."
         );
     }
 
-    c.drawImage(
-        sourceImage,
-        0,
-        0,
-        temp.width,
-        temp.height
-    );
-
-    return new Promise((resolve, reject) => {
-        temp.toBlob(blob => {
-            if (blob) {
-                resolve(blob);
-            } else {
-                reject(
-                    new Error(
-                        "Unable to prepare ballot image."
-                    )
-                );
-            }
-        }, "image/png");
-    });
+    return blob;
 }
-
 
 // DISPLAY DETECTED OMR RESULTS
 
@@ -956,37 +1000,30 @@ function displayResults(data, countingEnabled) {
             ? "OMR COUNTING RESULT"
             : "BACKEND OMR PREVIEW",
 
-        `Mode: ${
-            countingEnabled
-                ? "LIVE COUNTING"
-                : "READ ONLY"
+        `Mode: ${countingEnabled
+            ? "LIVE COUNTING"
+            : "READ ONLY"
         }`,
 
         `Template: #${getTemplateId()} ` +
         `(${data.paper_size || template?.paper_size || "A5"})`,
 
-        `Source: ${
-            data.source?.width || "?"
-        } × ${
-            data.source?.height || "?"
+        `Source: ${data.source?.width || "?"
+        } × ${data.source?.height || "?"
         }`,
 
-        `Markers: ${
-            data.markers_detected ?? "?"
+        `Markers: ${data.markers_detected ?? "?"
         } detected`,
 
-        `Sensitivity: ${
-            data.sensitivity || "Balanced"
+        `Sensitivity: ${data.sensitivity || "Balanced"
         }`,
 
         `Positions: ${positions.length}`,
 
-        `Selected bubbles: ${
-            data.selected_bubbles ?? "?"
+        `Selected bubbles: ${data.selected_bubbles ?? "?"
         }`,
 
-        `Overvotes: ${
-            data.overvotes ?? "?"
+        `Overvotes: ${data.overvotes ?? "?"
         }`,
 
         ""
@@ -1123,9 +1160,9 @@ async function backendPreview() {
 
     if (busy) return;
 
-    
+
     // STEP 1: CHECK TEMPLATE AND IMAGE
-    
+
 
     if (!template || !sourceImage) {
         status(
@@ -1159,9 +1196,9 @@ async function backendPreview() {
     disableSubmission();
 
     try {
-        
+
         // STEP 2: VERIFY QR CODE
-        
+
 
         status(
             "analysisStatus",
@@ -1200,9 +1237,9 @@ async function backendPreview() {
             );
         }
 
-        
+
         // STEP 3: PREPARE BALLOT IMAGE
-        
+
 
         status(
             "analysisStatus",
@@ -1219,8 +1256,9 @@ async function backendPreview() {
         );
 
         form.append(
-            "template_id",
-            String(templateId)
+            "ballot_image",
+            blob,
+            "ballot-scan.jpg"
         );
 
         form.append(
@@ -1229,9 +1267,9 @@ async function backendPreview() {
             "ballot-scan.png"
         );
 
-        
+
         // STEP 4: SEND TO BACKEND
-        
+
 
         status(
             "analysisStatus",
@@ -1262,9 +1300,9 @@ async function backendPreview() {
             }
         );
 
-        
+
         // STEP 5: CHECK RESPONSE CONTEXT
-        
+
 
         if (
             version !== imageVersion ||
@@ -1296,15 +1334,15 @@ async function backendPreview() {
             );
         }
 
-        
+
         // STEP 6: DISPLAY DETECTED RESULTS
-        
+
 
         displayResults(data, true);
 
-        
+
         // STEP 7: CONFIRM ACTUAL COUNTING
-        
+
 
         if (
             data.counted === true &&
@@ -1355,9 +1393,9 @@ async function backendPreview() {
         }
 
     } catch (error) {
-        
+
         // STEP 8: HANDLE REJECTED OR FAILED BALLOTS
-        
+
 
         window.confirmedOMRCounting = false;
 
