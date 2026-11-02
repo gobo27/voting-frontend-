@@ -214,11 +214,11 @@ function renderSavedTemplateMenu() {
     updateActionButtons();
 }
 
-// ============================================================
+//
 // BALLOT LAYOUT
 // 1 = One A4 portrait ballot
 // 2 = Two A5 portrait ballots on A4 landscape
-// ============================================================
+//
 
 function layoutBallot() {
     const rows = [];
@@ -261,9 +261,9 @@ function layoutBallot() {
     return rows;
 }
 
-// ============================================================
+//
 // REGISTRATION MARKS FOR OMR SCANNING
-// ============================================================
+//
 
 function addRegistrationMarks(half) {
     const isA5 = state.copies === 2;
@@ -287,10 +287,10 @@ function addRegistrationMarks(half) {
     }
 }
 
-// ============================================================
+//
 // TEMPLATE COORDINATE VALIDATION
 // Prevent accidental conversion of older A5 landscape ballots.
-// ============================================================
+//
 
 function detectSavedLayout(template, coordinates) {
     const paperSize = String(template.paper_size || "")
@@ -382,9 +382,9 @@ function verifySavedCoordinates(coordinates, expectedLayout) {
     }
 }
 
-// ============================================================
+//
 // BALLOT PRINT AND PREVIEW CSS
-// ============================================================
+//
 
 function installBallotLayoutStyles() {
     if (document.getElementById("ballot-layout-runtime-css")) {
@@ -540,9 +540,9 @@ function setPrintPageOrientation() {
 }
 
 
-/* ============================================================
+/*
    CREATE BALLOT
-   ============================================================ */
+ */
 
 function createHalf(ballot = null) {
     const half = document.createElement("section");
@@ -623,9 +623,9 @@ function createHalf(ballot = null) {
 }
 
 
-/* ============================================================
+/*
    BALLOT PREVIEW
-   ============================================================ */
+ */
 
 function render() {
     state.layout = layoutBallot();
@@ -662,9 +662,9 @@ function render() {
 }
 
 
-/* ============================================================
+/*
    LOAD ELECTION DATA
-   ============================================================ */
+ */
 
 async function loadData() {
     try {
@@ -744,9 +744,9 @@ async function loadData() {
 }
 
 
-/* ============================================================
+/*
    OMR COORDINATE PAYLOAD
-   ============================================================ */
+ */
 
 function coordinatePayload() {
     return state.layout.map(({
@@ -764,9 +764,9 @@ function coordinatePayload() {
 }
 
 
-/* ============================================================
+/*
    INVALIDATE SAVED TEMPLATE AFTER CHANGES
-   ============================================================ */
+ */
 
 function invalidateAndRender() {
     state.savedTemplateId = null;
@@ -790,9 +790,9 @@ function invalidateAndRender() {
 }
 
 
-/* ============================================================
+/*
    POSITION SETTINGS
-   ============================================================ */
+ */
 
 function renderPositionSettings() {
     const container = el("positionSettings");
@@ -860,9 +860,9 @@ function renderPositionSettings() {
 }
 
 
-/* ============================================================
+/*
    SAVE POSITION LIMITS
-   ============================================================ */
+ */
 
 async function savePositionLimits() {
     for (const position of state.positions) {
@@ -878,9 +878,9 @@ async function savePositionLimits() {
 }
 
 
-/* ============================================================
+/*
    SAVE BALLOT TEMPLATE
-   ============================================================ */
+ */
 
 async function saveBallot() {
     if (
@@ -991,9 +991,9 @@ async function saveBallot() {
 }
 
 
-/* ============================================================
+/*
    PRINT REGISTERED QR BALLOTS
-   ============================================================ */
+ */
 
 async function printRegisteredBallots(ballots) {
     if (
@@ -1053,8 +1053,6 @@ async function printRegisteredBallots(ballots) {
         page.appendChild(sheet);
     }
 
-    // Wait for QR images to finish loading
-    // before opening the print dialog.
     const images = [
         ...page.querySelectorAll(
             ".ballot-qr img"
@@ -1090,9 +1088,9 @@ async function printRegisteredBallots(ballots) {
 }
 
 
-/* ============================================================
+/*
    CONFIRM PHYSICAL PRINTING
-   ============================================================ */
+ */
 
 async function confirmPrintedBatch(
     batchId,
@@ -1102,23 +1100,22 @@ async function confirmPrintedBatch(
     const ballotSize =
         state.copies === 2 ? "A5" : "A4";
 
-    const confirmed = window.confirm(
-        `Did the printer successfully produce all ` +
-        `${quantity} individual ${ballotSize} ballots ` +
-        `for batch #${batchId}?\n\n` +
-        "Choose OK only after checking the printed pages.\n" +
-        "Choose Cancel if printing failed, was cancelled, or was incomplete."
+
+    const confirmed = await window.showConfirmToast(
+        `Did the printer successfully produce all ${quantity} ` +
+        `individual A5 ballots for batch #${batchId}?\n\n` +
+        `Choose Confirm Printed only after checking the printed pages.`,
+        {
+            title: "Confirm Ballot Printing",
+            confirmText: "Confirm Printed",
+            cancelText: "Cancel"
+        }
     );
 
     if (!confirmed) {
-        status(
-            "Printing was not confirmed. " +
-            "No physical print quantity was recorded.",
-            true
-        );
-
-        return false;
+        return;
     }
+
 
     const eventId = crypto.randomUUID();
 
@@ -1138,9 +1135,9 @@ async function confirmPrintedBatch(
 }
 
 
-/* ============================================================
+/*
    GENERATE AND PRINT REGISTERED QR BALLOTS
-   ============================================================ */
+ */
 
 async function generateAndPrintBallots() {
     if (
@@ -1555,9 +1552,9 @@ async function reprintRegisteredBatch() {
 }
 
 
-/* ============================================================
+/*
    LOAD SAVED BALLOT TEMPLATES
-   ============================================================ */
+ */
 
 async function loadSavedTemplates() {
     if (
@@ -1620,9 +1617,9 @@ async function loadSavedTemplates() {
 }
 
 
-/* ============================================================
+/*
    SELECT SAVED BALLOT TEMPLATE
-   ============================================================ */
+ */
 
 async function selectSavedTemplate(templateId) {
     if (
@@ -1791,9 +1788,9 @@ async function selectSavedTemplate(templateId) {
 }
 
 
-/* ============================================================
+/*
    DELETE SAVED BALLOT TEMPLATE
-   ============================================================ */
+ */
 
 function confirmSavedBallotDeletion(template) {
     return new Promise(resolve => {
@@ -2012,17 +2009,17 @@ async function deleteSavedTemplate(templateId) {
     }
 }
 
-/* ============================================================
+/*
    REGISTERED PRINT BATCHES
-   ============================================================ */
+ */
 
 let registeredPrintBatches = [];
 let loadingPrintBatches = false;
 
 
-/* ============================================================
+/*
    LOAD PRINT BATCHES
-   ============================================================ */
+ */
 
 async function loadPrintBatches() {
     const select = el(
@@ -2144,9 +2141,9 @@ async function loadPrintBatches() {
 }
 
 
-/* ============================================================
+/*
    SELECTED BATCH INFORMATION
-   ============================================================ */
+ */
 
 function updateSelectedBatchInfo() {
     const select = el(
@@ -2201,9 +2198,9 @@ function updateSelectedBatchInfo() {
 }
 
 
-/* ============================================================
+/*
    REPRINT SELECTED BATCH
-   ============================================================ */
+ */
 
 async function reprintSelectedBatch() {
     const select = el(
@@ -2263,9 +2260,9 @@ async function reprintSelectedBatch() {
 }
 
 
-/* ============================================================
+/*
    DOM CONTENT LOADED
-   ============================================================ */
+ */
 
 document.addEventListener(
     "DOMContentLoaded",
