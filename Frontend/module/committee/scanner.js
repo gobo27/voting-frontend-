@@ -409,11 +409,11 @@ function loadImageFile(file) {
 
     if (
         !acceptedTypes.includes(file.type) ||
-        file.size > 10 * 1024 * 1024
+        file.size > 30* 1024 * 1024
     ) {
         status(
             "imageStatus",
-            "Use PNG/JPG/WEBP up to 10MB.",
+            "Use PNG/JPG/WEBP up to 30MB.",
             true
         );
 
