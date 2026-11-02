@@ -138,8 +138,14 @@ function updateButtons() {
 }
 
 
+
 function renderStatus() {
   const totals = getTotals();
+
+  const safeNumber = value => {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
 
   const fields = {
     voidIssued: "ISSUED",
@@ -148,60 +154,78 @@ function renderStatus() {
     voidVoided: "VOID"
   };
 
+  // BALLOT STATUS COUNTERS
+
   for (const [elementId, ballotStatus] of Object.entries(fields)) {
     const element = $(elementId);
 
     if (element) {
       element.textContent = totals
-        ? getNumber(totals[ballotStatus])
+        ? safeNumber(totals[ballotStatus])
         : "—";
     }
   }
 
-  // Registered unique QR ballots
+  // ORIGINAL / REGISTERED BALLOTS
+
+  const registeredFromStatus = totals
+    ? ["ISSUED", "CAST", "COUNTED", "VOID"].reduce(
+        (sum, status) =>
+          sum + safeNumber(totals[status]),
+        0
+      )
+    : null;
+
+  const registered = printSummary
+    ? safeNumber(printSummary.registered_unique)
+    : registeredFromStatus;
+
   if ($("monitorOriginal")) {
-    $("monitorOriginal").textContent = printSummary
-      ? getNumber(printSummary.registered_unique)
-      : "—";
+    $("monitorOriginal").textContent =
+      registered !== null ? registered : "—";
   }
 
-  // Confirmed physical reprints
+  // REPRINTS
+
   if ($("monitorReprints")) {
-    $("monitorReprints").textContent = printSummary
-      ? getNumber(printSummary.reprints)
-      : "—";
+    $("monitorReprints").textContent =
+      printSummary
+        ? safeNumber(printSummary.reprints)
+        : "—";
   }
 
-  // Confirmed original + reprint totals
+  // OVERALL PRINTED
+
   if ($("monitorTotal")) {
-    $("monitorTotal").textContent = printSummary
-      ? getNumber(printSummary.overall)
-      : "—";
+    $("monitorTotal").textContent =
+      printSummary
+        ? safeNumber(printSummary.overall)
+        : "—";
   }
 
-  // Successfully counted unique ballots
+  // TOTAL SCANNED / COUNTED BALLOTS
+
+  const counted = totals
+    ? safeNumber(totals.COUNTED)
+    : null;
+
   if ($("monitorPhysical")) {
-    const counted = totals
-      ? getNumber(totals.COUNTED)
-      : null;
-
-    const registered = printSummary
-      ? getNumber(printSummary.registered_unique)
-      : null;
-
     $("monitorPhysical").textContent =
       counted !== null && registered !== null
         ? `${counted} / ${registered}`
         : "— / —";
   }
 
+  // MONITOR DESCRIPTION
+
   if ($("monitorNote")) {
     $("monitorNote").textContent =
       "Original = registered unique QR ballots. " +
-      "Reprints and Overall Printed = operator-confirmed " +
-      "physical print quantities. Total Scan Ballot = " +
-      "successfully counted unique ballots.";
+      "Reprints and Overall Printed = confirmed print records. " +
+      "Total Scan Ballot = successfully counted unique ballots.";
   }
+
+  // ELECTION STATUS
 
   if ($("voidElectionState")) {
     if (!counting) {
@@ -225,6 +249,7 @@ function renderStatus() {
 
   updateButtons();
 }
+
 
 
 function renderBallots() {
@@ -296,7 +321,6 @@ async function refresh(showError = true) {
       throw new Error("No current election found.");
     }
 
-
     const [status, unused, printResult] =
       await Promise.all([
         api(`/election/${electionId}/counting-status`),
@@ -307,23 +331,20 @@ async function refresh(showError = true) {
           `/ballots/qr/print-summary/election/${electionId}`
         ).catch(error => {
           console.error(
-            "Print summary error:",
-            error
+            "Print summary failed:",
+            error.message
           );
-
           return null;
         })
       ]);
 
     counting = status;
-    printSummary = null;
-
-
-    counting = status;
+    printSummary = printResult;
 
     ballots = Array.isArray(unused.ballots)
       ? unused.ballots
       : [];
+
 
     $("voidVerified").checked = false;
     $("voidSelectAll").checked = false;
