@@ -1248,26 +1248,26 @@ async function backendPreview() {
             "Preparing ballot image for OMR scanning..."
         );
 
+
         const blob = await imageToBlob();
-
         const form = new FormData();
-
         form.append(
             "election_id",
             String(electionId)
         );
 
         form.append(
+            "template_id",
+            String(templateId)
+        );
+
+        // ONE BALLOT IMAGE ONLY
+        form.append(
             "ballot_image",
             blob,
             "ballot-scan.jpg"
         );
 
-        form.append(
-            "ballot_image",
-            blob,
-            "ballot-scan.png"
-        );
 
 
         // STEP 4: SEND TO BACKEND
