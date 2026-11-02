@@ -409,7 +409,7 @@ function loadImageFile(file) {
 
     if (
         !acceptedTypes.includes(file.type) ||
-        file.size > 30* 1024 * 1024
+        file.size > 30 * 1024 * 1024
     ) {
         status(
             "imageStatus",
@@ -711,6 +711,7 @@ async function debugQR() {
 
     window.campusVoteQRVerified = false;
 
+    updateAnalyzeButton();
     try {
         if (!selectedImage) {
             throw new Error(
@@ -826,6 +827,7 @@ async function debugQR() {
         };
 
         window.campusVoteQRVerified = true;
+        updateAnalyzeButton();
 
         if ($("qrStatus")) {
             $("qrStatus").textContent =
