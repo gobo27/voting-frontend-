@@ -150,6 +150,8 @@ function reset() {
 
 
 async function loadTemplates() {
+    if (busy) return;
+
     try {
         const electionId = getElectionId();
 
@@ -170,7 +172,7 @@ async function loadTemplates() {
         );
 
         for (const item of data.templates || []) {
-            if (!["A4", "A5"].includes(item.paper_size)) {
+            if (String(item.paper_size).toUpperCase() !== "A5") {
                 continue;
             }
 
@@ -211,6 +213,8 @@ async function loadTemplates() {
 }
 
 async function selectTemplate() {
+    if (busy) return;
+
     template = null;
     coordinates = [];
 
@@ -243,6 +247,10 @@ async function selectTemplate() {
             );
         }
 
+        if (String(data.template.paper_size).toUpperCase() !== "A5") {
+            throw new Error("A4 counting is not yet supported. Select an A5 portrait template.");
+        }
+
         template = data.template;
         coordinates = data.coordinates;
 
@@ -256,7 +264,9 @@ async function selectTemplate() {
         reset();
 
         if (sourceImage) {
-            await debugQR();
+            await debugQR().catch(() => {
+                // QR error is already shown in the scanner status.
+            });
         }
 
     } catch (error) {
@@ -343,6 +353,11 @@ function drawOriginal() {
 }
 
 function showImage(image) {
+    if (busy) {
+        status("imageStatus", "Wait until the current scan finishes.", true);
+        return;
+    }
+
     imageVersion++;
 
     sourceImage = image;
@@ -531,6 +546,8 @@ function capture() {
         "Use Open Phone Camera to capture a ballot."
     );
 }
+
+
 // GET BALLOT IMAGE PIXELS
 
 
@@ -704,7 +721,7 @@ async function debugQR() {
     const selectedTemplateId = getTemplateId();
     const selectedElectionId = getElectionId();
 
-    // Clear the previous QR verification result.
+    // Clear previous QR verification result.
 
     qrData = null;
     qrResult = null;
@@ -712,6 +729,7 @@ async function debugQR() {
     window.campusVoteQRVerified = false;
 
     updateAnalyzeButton();
+
     try {
         if (!selectedImage) {
             throw new Error(
@@ -730,16 +748,22 @@ async function debugQR() {
             );
         }
 
+        if (String(template.paper_size).toUpperCase() !== "A5") {
+            throw new Error(
+                "Only A5 portrait ballots are currently supported."
+            );
+        }
+
         if ($("qrStatus")) {
             $("qrStatus").textContent =
                 "Reading QR code automatically...";
         }
 
-        //Detect QR from the captured image.
+        // Detect QR from the captured image.
 
         const raw = readQR();
 
-        //Check the ballot.
+        // Check the ballot.
 
         const parsedQR = validateQR(raw);
 
@@ -758,7 +782,7 @@ async function debugQR() {
                 "Checking ballot record with server...";
         }
 
-        //Verify the ballot with the backend.
+        // Verify the ballot with the backend.
 
         const data = await request("/omr/verify-qr", {
             method: "POST",
@@ -779,7 +803,7 @@ async function debugQR() {
             return null;
         }
 
-        //Reject duplicate ballots.
+        // Reject duplicate ballots.
 
         if (
             data.duplicate === true ||
@@ -791,7 +815,7 @@ async function debugQR() {
             );
         }
 
-        //Reject void ballots.
+        // Reject void ballots.
 
         if (data.status === "VOID") {
             throw new Error(
@@ -800,7 +824,7 @@ async function debugQR() {
             );
         }
 
-        //Check supported ballot status.
+        // Check supported ballot status.
 
         if (!["ISSUED", "CAST"].includes(data.status)) {
             throw new Error(
@@ -890,9 +914,7 @@ async function debugQR() {
     }
 }
 
-// CONVERT BALLOT IMAGE TO PNG BLOB
-
-
+// CONVERT BALLOT IMAGE TO JPEG BLOB
 
 async function imageToBlob() {
     if (!sourceImage) {
@@ -900,7 +922,7 @@ async function imageToBlob() {
     }
 
     const MAX_BYTES = 9 * 1024 * 1024;
-    const MAX_DIMENSION = 3200;
+    const MAX_DIMENSION = 4000;
 
     const originalWidth =
         sourceImage.naturalWidth || sourceImage.width;
@@ -985,7 +1007,6 @@ async function imageToBlob() {
 
 // DISPLAY DETECTED OMR RESULTS
 
-
 function displayResults(data, countingEnabled) {
     const positions = Array.isArray(data.positions)
         ? data.positions
@@ -1049,10 +1070,7 @@ function displayResults(data, countingEnabled) {
         section.appendChild(title);
         lines.push(title.textContent);
 
-        // ---------------------------------------------
-        // DISPLAY CANDIDATES AND SHADED BUBBLES
-        // ---------------------------------------------
-
+        // Display candidates and detected shading.
         for (const candidate of position.candidates || []) {
             const filled = candidate.filled === true;
 
@@ -1073,10 +1091,7 @@ function displayResults(data, countingEnabled) {
             lines.push(candidateText);
         }
 
-        // ---------------------------------------------
-        // POSITION VALIDATION
-        // ---------------------------------------------
-
+        // Validate the position's voting result.
         const result =
             position.result ||
             (
@@ -1113,7 +1128,8 @@ function displayResults(data, countingEnabled) {
 
         lines.push(info.textContent, "");
     }
-    // COUNTING SUMMARY
+
+    // Show the backend counting summary.
     const summary = document.createElement("div");
     summary.className = "counting-note";
 
@@ -1153,19 +1169,13 @@ function displayResults(data, countingEnabled) {
     debug(lines.join("\n"));
 }
 
-
 // BACKEND OMR PROCESSING AND LIVE VOTE COUNTING
-
 
 async function backendPreview() {
     // Prevent simultaneous scans.
-
     if (busy) return;
 
-
-    // STEP 1: CHECK TEMPLATE AND IMAGE
-
-
+    // Check template and ballot image.
     if (!template || !sourceImage) {
         status(
             "analysisStatus",
@@ -1190,6 +1200,15 @@ async function backendPreview() {
         return;
     }
 
+    if (String(template.paper_size).toUpperCase() !== "A5") {
+        status(
+            "analysisStatus",
+            "Only A5 portrait ballots are currently supported.",
+            true
+        );
+        return;
+    }
+
     const version = imageVersion;
     const selectedImage = sourceImage;
 
@@ -1198,10 +1217,7 @@ async function backendPreview() {
     disableSubmission();
 
     try {
-
-        // STEP 2: VERIFY QR CODE
-
-
+        // Reverify QR before counting.
         status(
             "analysisStatus",
             "Verifying QR code..."
@@ -1211,9 +1227,7 @@ async function backendPreview() {
             "Checking ballot QR code before OMR counting..."
         );
 
-        // Always reverify before counting.
-        // The backend must independently verify the QR.
-
+        // The backend independently verifies the QR.
         await debugQR();
 
         if (
@@ -1239,16 +1253,11 @@ async function backendPreview() {
             );
         }
 
-
-        // STEP 3: PREPARE BALLOT IMAGE
-
-
+        // Prepare one ballot image for upload.
         status(
             "analysisStatus",
             "Preparing ballot image for OMR scanning..."
         );
-
-
 
         const blob = await imageToBlob();
 
@@ -1264,15 +1273,14 @@ async function backendPreview() {
             String(templateId)
         );
 
-        // ONE BALLOT IMAGE ONLY
+        // One A5 ballot image per scan.
         form.append(
             "ballot_image",
             blob,
             "ballot-scan.jpg"
         );
 
-        // STEP 4: SEND TO BACKEND
-
+        // Send ballot to the backend.
         status(
             "analysisStatus",
             "Checking registration marks and shaded bubbles..."
@@ -1286,14 +1294,7 @@ async function backendPreview() {
             "Waiting for backend counting result..."
         );
 
-        // The /omr/scan endpoint is responsible for:
-        // - QR validation
-        // - Registration mark alignment
-        // - Bubble detection
-        // - Vote limit validation
-        // - Duplicate ballot protection
-        // - Database vote counting
-
+        // Backend handles QR, markers, votes and duplicates.
         const data = await request(
             "/omr/scan",
             {
@@ -1302,10 +1303,7 @@ async function backendPreview() {
             }
         );
 
-
-        // STEP 5: CHECK RESPONSE CONTEXT
-
-
+        // Check that the response matches this ballot.
         if (
             version !== imageVersion ||
             selectedImage !== sourceImage ||
@@ -1336,16 +1334,10 @@ async function backendPreview() {
             );
         }
 
-
-        // STEP 6: DISPLAY DETECTED RESULTS
-
-
+        // Display detected positions and shaded bubbles.
         displayResults(data, true);
 
-
-        // STEP 7: CONFIRM ACTUAL COUNTING
-
-
+        // Confirm actual backend vote counting.
         if (
             data.counted === true &&
             data.valid === true
@@ -1373,7 +1365,7 @@ async function backendPreview() {
                 "success"
             );
 
-            // Prevent another scan of the same image.
+            // Prevent rescanning the counted image.
             if ($("analyzeBtn")) {
                 $("analyzeBtn").disabled = true;
             }
@@ -1396,9 +1388,7 @@ async function backendPreview() {
 
     } catch (error) {
 
-        // STEP 8: HANDLE REJECTED OR FAILED BALLOTS
-
-
+        // Handle rejected or failed ballot scans.
         window.confirmedOMRCounting = false;
 
         const duplicate =
@@ -1551,16 +1541,11 @@ function retakePhoto() {
     updateAnalyzeButton();
 }
 
-
 // SCANNER EVENT LISTENERS
-
 
 function setupScanner() {
 
-    // ---------------------------------------------
-    // LOAD BALLOT TEMPLATES
-    // ---------------------------------------------
-
+    // Load ballot templates.
     $("loadBtn")?.addEventListener(
         "click",
         async () => {
@@ -1570,10 +1555,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // SELECT BALLOT TEMPLATE
-    // ---------------------------------------------
-
+    // Select ballot template.
     $("templateSelect")?.addEventListener(
         "change",
         async () => {
@@ -1583,10 +1565,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // UPLOAD BALLOT IMAGE
-    // ---------------------------------------------
-
+    // Upload ballot image.
     $("fileInput")?.addEventListener(
         "change",
         event => {
@@ -1603,10 +1582,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // OPEN NATIVE PHONE CAMERA
-    // ---------------------------------------------
-
+    // Open native phone camera.
     $("cameraBtn")?.addEventListener(
         "click",
         event => {
@@ -1616,10 +1592,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // RECEIVE CAPTURED PHONE CAMERA PHOTO
-    // ---------------------------------------------
-
+    // Receive captured phone camera photo.
     $("phoneCameraInput")?.addEventListener(
         "change",
         event => {
@@ -1636,10 +1609,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // LEGACY CAPTURE BUTTON
-    // ---------------------------------------------
-
+    // Legacy capture button.
     $("captureBtn")?.addEventListener(
         "click",
         event => {
@@ -1649,10 +1619,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // STOP CAMERA
-    // ---------------------------------------------
-
+    // Stop camera.
     $("stopCameraBtn")?.addEventListener(
         "click",
         event => {
@@ -1662,10 +1629,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // SCAN AND COUNT BALLOT
-    // ---------------------------------------------
-
+    // Scan and count one ballot.
     $("analyzeBtn")?.addEventListener(
         "click",
         async event => {
@@ -1687,10 +1651,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // PREVENT LEGACY SUBMISSION
-    // ---------------------------------------------
-
+    // Prevent legacy submission.
     $("submitBtn")?.addEventListener(
         "click",
         event => {
@@ -1705,10 +1666,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // RETAKE / CLEAR BALLOT
-    // ---------------------------------------------
-
+    // Retake or clear the ballot.
     $("retakeBtn")?.addEventListener(
         "click",
         event => {
@@ -1718,10 +1676,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // OPTIONAL SENSITIVITY CONTROL
-    // ---------------------------------------------
-
+    // Optional sensitivity control.
     $("sensitivity")?.addEventListener(
         "input",
         () => {
@@ -1743,10 +1698,7 @@ function setupScanner() {
         }
     );
 
-    // ---------------------------------------------
-    // INITIAL BUTTON STATES
-    // ---------------------------------------------
-
+    // Initial button states.
     disableSubmission();
 
     if ($("captureBtn")) {
@@ -1772,16 +1724,12 @@ function setupScanner() {
 
     updateAnalyzeButton();
 
-    // ---------------------------------------------
-    // LOAD CURRENT ELECTION
-    // ---------------------------------------------
-
+    // Load current election.
     currentElection();
 }
 
 
 // CLEANUP WHEN LEAVING PAGE
-
 
 window.addEventListener(
     "pagehide",
@@ -1792,7 +1740,6 @@ window.addEventListener(
 
 
 // INITIALIZATION
-
 
 if (document.readyState === "loading") {
     document.addEventListener(
