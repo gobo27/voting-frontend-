@@ -887,14 +887,16 @@
                             </select>
                         </div>
 
+
                         <div class="field">
                             <label for="candParty">
                                 Party list <span class="required">*</span>
                             </label>
-                            <input id="candParty" list="partySuggestions" maxlength="100"
-                                placeholder="Select or enter party list" required disabled>
-                            <datalist id="partySuggestions"></datalist>
+                            <select id="candParty" required disabled>
+                                <option value="">Select party list</option>
+                            </select>
                         </div>
+
 
                         <div class="field">
                             <label for="candPositionText">
@@ -1022,7 +1024,7 @@
     </div>
 
     <script src="../sheared/toast.js"></script>
-    <script src="./Adviser.js?v=20261104-school-level"></script>
+    <script src="./Adviser.js?v=20261104-party-dropdown"></script>
     <script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="adviser"></script>
 </body>
 

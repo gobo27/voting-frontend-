@@ -203,30 +203,37 @@ function populateGradeOptions(selectId, selectedValue = "") {
 }
 
 // Party suggestions para sa Add form
+
+// Party List dropdown ayon sa school level
 function populatePartySuggestions(selectedValue = "") {
-    const input = $("candParty");
-    const list = $("partySuggestions");
+    const select = $("candParty");
     const config = getSchoolConfig();
 
-    if (!input || !list) return;
+    if (!select) return;
 
-    list.replaceChildren();
+    select.replaceChildren();
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = config
+        ? "Select party list"
+        : "Select school level first";
+
+    select.appendChild(placeholder);
 
     if (!config) {
-        input.value = "";
-        input.disabled = true;
-        input.placeholder = "No current school level";
+        select.disabled = true;
         return;
     }
 
-    input.disabled = false;
-    input.placeholder = "Select or enter party list";
-
+    select.disabled = false;
     for (const party of config.parties) {
         const option = document.createElement("option");
 
         option.value = party;
-        list.appendChild(option);
+        option.textContent = party;
+
+        select.appendChild(option);
     }
 
     const matchingParty = config.parties.find(
@@ -235,8 +242,9 @@ function populatePartySuggestions(selectedValue = "") {
             String(selectedValue).trim().toLowerCase()
     );
 
-    input.value = matchingParty || "";
+    select.value = matchingParty || "";
 }
+
 
 // Party dropdown para sa Edit modal
 function populateEditPartyOptions(selectedValue = "") {

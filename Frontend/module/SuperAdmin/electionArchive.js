@@ -16,6 +16,47 @@ const SCHOOL_LEVELS = {
     college: "College"
 };
 
+const SCHOOL_FIELDS = {
+    elementary: {
+        course: "Section / Class",
+        grade: "Grade level",
+        prefix: "Grade"
+    },
+    highschool: {
+        course: "Section / Strand",
+        grade: "Grade level",
+        prefix: "Grade"
+    },
+    college: {
+        course: "Course",
+        grade: "Year level",
+        prefix: "Year"
+    }
+};
+
+function schoolFields(level) {
+    return SCHOOL_FIELDS[
+        String(level || "").trim().toLowerCase()
+    ] || {
+        course: "Course / Section",
+        grade: "Grade / Year",
+        prefix: ""
+    };
+}
+
+// Grade 7 o Year 2 depende sa school level
+function formatCandidateGrade(value, level) {
+    const raw = String(value ?? "").trim();
+
+    if (!raw) return "—";
+
+    const prefix = schoolFields(level).prefix;
+
+    return prefix && /^\d+$/.test(raw)
+        ? `${prefix} ${raw}`
+        : raw;
+}
+
 let electionHistory = [];
 let refreshingHistory = false;
 let creatingElection = false;
@@ -31,7 +72,9 @@ const fmt = value => {
 };
 
 function schoolLevelLabel(value) {
-    const level = String(value || "").trim().toLowerCase();
+    const level = String(value || "")
+        .trim()
+        .toLowerCase();
 
     return SCHOOL_LEVELS[level] || "Unknown";
 }
@@ -175,7 +218,11 @@ function updateCopyPositions() {
             election.school_level || "college"
         ).toLowerCase();
 
-        if (sourceLevel !== selectedLevel) {
+        // Skip kapag ibang level o walang positions
+        if (
+            sourceLevel !== selectedLevel ||
+            Number(election.positions_count || 0) <= 0
+        ) {
             continue;
         }
 
@@ -199,7 +246,7 @@ function updateCopyPositions() {
         : "";
 }
 
-// I-lock ang Create button kapag may current election
+ // I-lock ang Create button kapag may current election
 function updateCreateAvailability() {
     const button = $("createForm")?.querySelector(
         'button[type="submit"]'
@@ -464,13 +511,18 @@ async function viewDetails(electionId) {
         ? data.ballot_status_counts
         : [];
 
+    // School level ng selected election
+    const level = String(
+        election.school_level || ""
+    ).trim().toLowerCase();
+
+    const fields = schoolFields(level);
+
     // Election title at school level
     $("detailsTitle").textContent =
         `${election.title || "Election"} (#${electionId})`;
 
-    const levelText = schoolLevelLabel(
-        election.school_level
-    );
+    const levelText = schoolLevelLabel(level);
 
     $("detailsStatus").textContent =
         `${levelText} · ` +
@@ -479,6 +531,20 @@ async function viewDetails(electionId) {
                 ? "Archived election · Read-only"
                 : "Current / previous election · Read-only details"
         );
+
+    // Dynamic labels sa Candidates table
+    const candidatesTable = $("candidatesBody")?.closest("table");
+
+    if (candidatesTable) {
+        const headers = candidatesTable.querySelectorAll(
+            "thead th"
+        );
+
+        if (headers.length >= 5) {
+            headers[2].textContent = fields.course;
+            headers[3].textContent = fields.grade;
+        }
+    }
 
     // Position lookup
     const positionMap = new Map();
@@ -550,9 +616,13 @@ async function viewDetails(electionId) {
 
         const totalVotes = voteMap.get(key) || 0;
 
+        const partyList = String(
+            candidate.party_list ?? ""
+        ).trim() || "—";
+
         td(row, positionName);
         td(row, candidate.name);
-        td(row, candidate.party_list || "Independent");
+        td(row, partyList);
         td(row, totalVotes);
 
         resultsBody.appendChild(row);
@@ -601,11 +671,23 @@ async function viewDetails(electionId) {
             positionMap.get(Number(candidate.position_id)) ||
             "Unknown position";
 
+        const partyList = String(
+            candidate.party_list ?? ""
+        ).trim() || "—";
+
         td(row, candidate.name);
         td(row, positionName);
         td(row, candidate.course || "—");
-        td(row, candidate.grade_level || "—");
-        td(row, candidate.party_list || "Independent");
+
+        td(
+            row,
+            formatCandidateGrade(
+                candidate.grade_level,
+                level
+            )
+        );
+
+        td(row, partyList);
 
         candidatesBody.appendChild(row);
     }
@@ -734,6 +816,14 @@ $("createForm").addEventListener("submit", async event => {
             message(
                 "You can only copy positions from an election " +
                 "with the same school level.",
+                true
+            );
+            return;
+        }
+
+        if (Number(source.positions_count || 0) <= 0) {
+            message(
+                "The selected election has no positions to copy.",
                 true
             );
             return;
