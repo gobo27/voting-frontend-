@@ -295,7 +295,7 @@ async function loadTemplates() {
         }
 
         const data = await request(
-            `/ballots/templates/election/${electionId}`
+            `/ballot/templates/election/${electionId}`
         );
 
         const select = $("templateSelect");
@@ -367,7 +367,7 @@ async function selectTemplate() {
 
     try {
         const data = await request(
-            `/ballots/templates/${encodeURIComponent(id)}`
+            `/ballot/templates/${encodeURIComponent(id)}`
         );
 
         if (version !== imageVersion) return;
@@ -2537,39 +2537,32 @@ function displayResults(data, countingEnabled) {
             ? "OMR COUNTING RESULT"
             : "BACKEND OMR PREVIEW",
 
-        `Mode: ${
-            countingEnabled
-                ? "LIVE COUNTING"
-                : "READ ONLY"
+        `Mode: ${countingEnabled
+            ? "LIVE COUNTING"
+            : "READ ONLY"
         }`,
 
         `Template: #${getTemplateId()} ` +
         `(${data.paper_size ||
-            template?.paper_size ||
-            "A5"})`,
+        template?.paper_size ||
+        "A5"})`,
 
-        `Source: ${
-            data.source?.width || "?"
-        } × ${
-            data.source?.height || "?"
+        `Source: ${data.source?.width || "?"
+        } × ${data.source?.height || "?"
         }`,
 
-        `Markers: ${
-            data.markers_detected ?? "?"
+        `Markers: ${data.markers_detected ?? "?"
         } detected`,
 
-        `Sensitivity: ${
-            data.sensitivity || "Balanced"
+        `Sensitivity: ${data.sensitivity || "Balanced"
         }`,
 
         `Positions: ${positions.length}`,
 
-        `Selected bubbles: ${
-            data.selected_bubbles ?? "?"
+        `Selected bubbles: ${data.selected_bubbles ?? "?"
         }`,
 
-        `Overvotes: ${
-            data.overvotes ?? "?"
+        `Overvotes: ${data.overvotes ?? "?"
         }`,
 
         ""
