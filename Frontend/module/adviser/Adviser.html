@@ -338,6 +338,7 @@
 
         .avatar {
             display: inline-flex;
+
             align-items: center;
             justify-content: center;
             width: 37px;
@@ -487,6 +488,32 @@
             display: none
         }
 
+        /* Current election school level */
+        .school-level-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 10px 15px;
+            border: 1px solid #ead6da;
+            border-radius: 9px;
+            background: #fff5f6;
+            color: var(--maroon);
+            font-size: 12px;
+            font-weight: 700;
+            max-width: 100%;
+            overflow-wrap: anywhere
+        }
+
+        .school-level-indicator svg {
+            width: 17px;
+            height: 17px;
+            flex-shrink: 0
+        }
+
+        .school-level-indicator strong {
+            font-weight: 800
+        }
+
         @media(max-width:1450px) {
             .main {
                 padding: 25px
@@ -609,11 +636,19 @@
             }
 
             .page-head {
-                margin-bottom: 20px
+                margin-bottom: 20px;
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px
             }
 
             .page-head h1 {
                 font-size: 24px
+            }
+
+            .school-level-indicator {
+                font-size: 11px;
+                padding: 9px 12px
             }
 
             .stats {
@@ -757,7 +792,7 @@
         <div class="brand">
             <div>
                 <h2>CampusVote.</h2>
-                <p>STUDENT ELECTION<br>SYSTEM</p>
+                <p>STUDENT ELECTION<br> SYSTEM</p>
             </div>
         </div>
 
@@ -785,7 +820,12 @@
 
     <main class="main">
         <div class="page-head">
-            <h1>Adviser dashboard</h1>
+            <div>
+                <h1>Adviser dashboard</h1>
+                <p class="muted" id="schoolLevelDisplay" aria-live="polite">
+                    School level: Loading current election...
+                </p>
+            </div>
         </div>
 
         <div class="stats">
@@ -814,7 +854,9 @@
                     <div class="section-head">
                         <div>
                             <h2>Add a candidate</h2>
-                            <p class="muted">Bring the next student leader onto the ballot.</p>
+                            <p class="muted">
+                                Bring the next student leader onto the ballot.
+                            </p>
                         </div>
                         <span class="plus">
                             <i data-lucide="plus"></i>
@@ -833,19 +875,15 @@
                             <label for="candCourse">
                                 Course <span class="required">*</span>
                             </label>
-                            <input id="candCourse" maxlength="255" placeholder="e.g. BSCS" required>
+                            <input id="candCourse" maxlength="255" placeholder="e.g. BSCS" required disabled>
                         </div>
 
                         <div class="field">
                             <label for="candGrade">
                                 Grade level <span class="required">*</span>
                             </label>
-                            <select id="candGrade" required>
+                            <select id="candGrade" required disabled>
                                 <option value="">Select grade level</option>
-                                <option value="1">Year 1</option>
-                                <option value="2">Year 2</option>
-                                <option value="3">Year 3</option>
-                                <option value="4">Year 4</option>
                             </select>
                         </div>
 
@@ -854,12 +892,8 @@
                                 Party list <span class="required">*</span>
                             </label>
                             <input id="candParty" list="partySuggestions" maxlength="100"
-                                placeholder="Select or enter party list" required>
-                            <datalist id="partySuggestions">
-                                <option value="Maroon">
-                                <option value="White">
-                                <option value="Independent">
-                            </datalist>
+                                placeholder="Select or enter party list" required disabled>
+                            <datalist id="partySuggestions"></datalist>
                         </div>
 
                         <div class="field">
@@ -875,7 +909,7 @@
                         </div>
 
                         <div class="field" style="display:flex;align-items:end">
-                            <button class="primary" type="submit" style="width:100%">
+                            <button class="primary" type="submit" style="width:100%" disabled>
                                 <i data-lucide="user-round-plus"></i>
                                 Add candidate
                             </button>
@@ -896,7 +930,7 @@
                             <tr>
                                 <th>Full name</th>
                                 <th>Course</th>
-                                <th>Year</th>
+                                <th>Grade / Year</th>
                                 <th>Party list</th>
                                 <th>Action</th>
                             </tr>
@@ -914,15 +948,20 @@
 
                 <div class="overview">
                     <h3>Election overview</h3>
+
                     <div class="overview-row">
                         <span>Votes cast</span>
                         <strong id="Voted">—</strong>
                     </div>
+
                     <div class="overview-row">
                         <span>Candidates</span>
                         <strong id="No.candidates">0</strong>
                     </div>
-                    <p class="muted">Results update automatically when data is available.</p>
+
+                    <p class="muted">
+                        Results update automatically when data is available.
+                    </p>
                 </div>
             </aside>
         </div>
@@ -954,21 +993,12 @@
 
                     <div class="field">
                         <label for="editGrade">Grade level</label>
-                        <select id="editGrade" required>
-                            <option value="1">Year 1</option>
-                            <option value="2">Year 2</option>
-                            <option value="3">Year 3</option>
-                            <option value="4">Year 4</option>
-                        </select>
+                        <select id="editGrade" required disabled></select>
                     </div>
 
                     <div class="field">
                         <label for="editParty">Party list</label>
-                        <select id="editParty" required>
-                            <option value="Maroon">Maroon</option>
-                            <option value="White">White</option>
-                            <option value="Independent">Independent</option>
-                        </select>
+                        <select id="editParty" required disabled></select>
                     </div>
 
                     <div class="field">
@@ -981,6 +1011,7 @@
                     <button type="button" id="cancelEdit" class="secondary">
                         Cancel
                     </button>
+
                     <button type="submit" class="primary">
                         <i data-lucide="save"></i>
                         Save changes
@@ -991,11 +1022,8 @@
     </div>
 
     <script src="../sheared/toast.js"></script>
-    <script src="./Adviser.js?v=20261028-mobile"></script>
+    <script src="./Adviser.js?v=20261104-school-level"></script>
     <script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="adviser"></script>
-    <script>
-        if (window.lucide) lucide.createIcons();
-    </script>
 </body>
 
 </html>

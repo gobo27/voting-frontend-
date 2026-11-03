@@ -1,8 +1,5 @@
-"use strict";
 
-// ==========================================
-// CAMPUSVOTE - ELECTION ARCHIVE
-// ==========================================
+"use strict";
 
 const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
 
@@ -13,16 +10,44 @@ const token = () =>
     localStorage.getItem("voting_token") ||
     localStorage.getItem("token");
 
-// ==========================================
-// DATE FORMAT
-// ==========================================
+const SCHOOL_LEVELS = {
+    elementary: "Elementary",
+    highschool: "SSG / High School",
+    college: "College"
+};
 
-const fmt = value => value.replace("T", " ") + ":00";
+let electionHistory = [];
+let refreshingHistory = false;
+let creatingElection = false;
 
-// ==========================================
-// API REQUEST
-// ==========================================
+// Format ng MySQL DATETIME
+const fmt = value => {
+    const text = String(value || "").trim();
 
+    if (!text) return "";
+
+    return text.replace("T", " ") +
+        (text.length === 16 ? ":00" : "");
+};
+
+function schoolLevelLabel(value) {
+    const level = String(value || "").trim().toLowerCase();
+
+    return SCHOOL_LEVELS[level] || "Unknown";
+}
+
+function getSelectedSchoolLevel() {
+    return $("schoolLevel")?.value || "college";
+}
+
+function isValidSchoolLevel(level) {
+    return Object.prototype.hasOwnProperty.call(
+        SCHOOL_LEVELS,
+        level
+    );
+}
+
+// Authenticated API requests
 async function request(path, options = {}) {
     const t = token();
 
@@ -32,33 +57,38 @@ async function request(path, options = {}) {
             "Content-Type": "application/json",
             ...(t ? { Authorization: "Bearer " + t } : {}),
             ...(options.headers || {})
-        }
+        },
+        cache: "no-store"
     });
 
     const json = await response.json().catch(() => ({}));
 
     if (!response.ok) {
         throw new Error(
-            json.message || `API error ${response.status}`
+            json.message ||
+            json.error ||
+            `API error ${response.status}`
         );
     }
 
     return json;
 }
 
-// ==========================================
-// TABLE HELPERS
-// ==========================================
-
+// Table helpers
 function td(row, value) {
     const cell = document.createElement("td");
+
     cell.textContent = String(value ?? "");
     row.appendChild(cell);
+
     return cell;
 }
 
 function emptyTable(id, columns, text) {
     const body = $(id);
+
+    if (!body) return;
+
     body.replaceChildren();
 
     const row = document.createElement("tr");
@@ -86,12 +116,10 @@ function message(text, error = false) {
     }
 }
 
-// ==========================================
-// STATUS BADGE
-// ==========================================
-
+// Status badge ng election
 function createStatusBadge(election) {
     const badge = document.createElement("span");
+
     badge.className = "status-badge";
 
     if (election.archived_at) {
@@ -124,169 +152,276 @@ function createStatusBadge(election) {
     return badge;
 }
 
-// ==========================================
-// LOAD ELECTION HISTORY
-// ==========================================
+// Same school level lang ang puwedeng pagkuhanan ng positions
+function updateCopyPositions() {
+    const copy = $("copy");
 
-async function refresh() {
-    try {
-        const data = await request("/election_archive");
+    if (!copy) return;
 
-        const elections = Array.isArray(data.elections)
-            ? data.elections
-            : [];
+    const selectedLevel = getSelectedSchoolLevel();
+    const previousValue = copy.value;
 
-        const history = $("history");
-        const copy = $("copy");
+    copy.replaceChildren();
 
-        history.replaceChildren();
-        copy.replaceChildren();
+    const empty = document.createElement("option");
 
-        const empty = document.createElement("option");
-        empty.value = "";
-        empty.textContent = "Start with no positions";
-        copy.appendChild(empty);
+    empty.value = "";
+    empty.textContent = "Start with no positions";
 
-        for (const election of elections) {
+    copy.appendChild(empty);
 
-            // COPY POSITIONS OPTION
-            const option = document.createElement("option");
+    for (const election of electionHistory) {
+        const sourceLevel = String(
+            election.school_level || "college"
+        ).toLowerCase();
 
-            option.value = election.election_id;
-            option.textContent =
-                `Copy positions from #${election.election_id} — ${election.title}`;
+        if (sourceLevel !== selectedLevel) {
+            continue;
+        }
 
-            copy.appendChild(option);
+        const option = document.createElement("option");
 
-            // HISTORY ROW
-            const row = document.createElement("tr");
+        option.value = String(election.election_id);
 
-            td(
-                row,
-                String(election.election_id).padStart(2, "0")
-            );
+        option.textContent =
+            `Copy positions from #${election.election_id}` +
+            ` — ${election.title}`;
 
-            td(row, election.title);
+        copy.appendChild(option);
+    }
 
-            const statusCell = td(row, "");
-            statusCell.appendChild(
-                createStatusBadge(election)
-            );
+    const previousStillExists = Array.from(
+        copy.options
+    ).some(option => option.value === previousValue);
 
-            td(row, election.positions_count ?? 0);
-            td(row, election.candidates_count ?? 0);
-            td(row, election.scanned_ballots_count ?? 0);
+    copy.value = previousStillExists
+        ? previousValue
+        : "";
+}
 
-            const action = td(row, "");
+// I-lock ang Create button kapag may current election
+function updateCreateAvailability() {
+    const button = $("createForm")?.querySelector(
+        'button[type="submit"]'
+    );
 
-            const buttons = document.createElement("div");
-            buttons.className = "action-buttons";
+    if (!button) return;
 
-            // VIEW DETAILS BUTTON
-            const viewBtn = document.createElement("button");
+    const currentElection = electionHistory.find(
+        election =>
+            Number(election.is_current) === 1 &&
+            !election.archived_at
+    );
 
-            viewBtn.className = "view-btn";
-            viewBtn.textContent = "View Details";
+    button.disabled = creatingElection ||
+        refreshingHistory ||
+        Boolean(currentElection);
 
-            viewBtn.addEventListener("click", async () => {
-                viewBtn.disabled = true;
+    button.title = currentElection
+        ? `Archive election #${currentElection.election_id} first.`
+        : "";
+
+    const msg = $("message");
+
+    if (
+        currentElection &&
+        msg &&
+        !msg.textContent.trim()
+    ) {
+        msg.textContent =
+            `Election #${currentElection.election_id} is current. ` +
+            "Finish scanning and archive it before creating another election.";
+
+        msg.style.color = "#667085";
+    }
+}
+
+// Election history table
+function renderHistory() {
+    const history = $("history");
+
+    if (!history) return;
+
+    history.replaceChildren();
+
+    for (const election of electionHistory) {
+        const row = document.createElement("tr");
+
+        td(
+            row,
+            String(election.election_id).padStart(2, "0")
+        );
+
+        td(row, election.title);
+
+        td(
+            row,
+            schoolLevelLabel(election.school_level)
+        );
+
+        const statusCell = td(row, "");
+
+        statusCell.appendChild(
+            createStatusBadge(election)
+        );
+
+        td(row, election.positions_count ?? 0);
+        td(row, election.candidates_count ?? 0);
+        td(row, election.scanned_ballots_count ?? 0);
+
+        const action = td(row, "");
+
+        const buttons = document.createElement("div");
+
+        buttons.className = "action-buttons";
+
+        // Read-only election details
+        const viewBtn = document.createElement("button");
+
+        viewBtn.type = "button";
+        viewBtn.className = "view-btn";
+        viewBtn.textContent = "View Details";
+
+        viewBtn.addEventListener("click", async () => {
+            viewBtn.disabled = true;
+
+            try {
+                await viewDetails(election.election_id);
+            } catch (error) {
+                message(error.message, true);
+            } finally {
+                viewBtn.disabled = false;
+            }
+        });
+
+        buttons.appendChild(viewBtn);
+
+        // Archive remains protected by the backend
+        if (
+            !election.archived_at &&
+            election.status === "completed"
+        ) {
+            const archiveBtn = document.createElement("button");
+
+            archiveBtn.type = "button";
+            archiveBtn.className = "archive-btn";
+            archiveBtn.textContent = "Archive";
+
+            archiveBtn.addEventListener("click", async () => {
+                const confirmed = window.confirm(
+                    `Archive election #${election.election_id}?\n\n` +
+                    "Historical records will remain saved."
+                );
+
+                if (!confirmed) return;
+
+                archiveBtn.disabled = true;
 
                 try {
-                    await viewDetails(election.election_id);
+                    const result = await request(
+                        `/election_archive/${encodeURIComponent(
+                            election.election_id
+                        )}/archive`,
+                        {
+                            method: "POST"
+                        }
+                    );
+
+                    message(result.message);
+
+                    if ($("detailsCard")) {
+                        $("detailsCard").hidden = true;
+                    }
+
+                    await refresh();
+
                 } catch (error) {
                     message(error.message, true);
-                } finally {
-                    viewBtn.disabled = false;
+                    archiveBtn.disabled = false;
                 }
             });
 
-            buttons.appendChild(viewBtn);
-
-            // ARCHIVE BUTTON
-            if (
-                !election.archived_at &&
-                election.status === "completed"
-            ) {
-                const archiveBtn = document.createElement("button");
-
-                archiveBtn.className = "archive-btn";
-                archiveBtn.textContent = "Archive";
-
-                archiveBtn.addEventListener("click", async () => {
-                    const confirmed = confirm(
-                        `Archive election #${election.election_id}?\n\n` +
-                        "Historical records will remain saved."
-                    );
-
-                    if (!confirmed) return;
-
-                    archiveBtn.disabled = true;
-
-                    try {
-                        const result = await request(
-                            `/election_archive/${election.election_id}/archive`,
-                            { method: "POST" }
-                        );
-
-                        message(result.message);
-
-                        $("detailsCard").hidden = true;
-
-                        await refresh();
-
-                    } catch (error) {
-                        message(error.message, true);
-                        archiveBtn.disabled = false;
-                    }
-                });
-
-                buttons.appendChild(archiveBtn);
-            }
-
-            action.appendChild(buttons);
-            history.appendChild(row);
+            buttons.appendChild(archiveBtn);
         }
 
-        if (!elections.length) {
-            emptyTable(
-                "history",
-                7,
-                "No elections found"
-            );
-        }
+        action.appendChild(buttons);
+        history.appendChild(row);
+    }
 
-        $("historyCount").textContent = elections.length;
+    if (!electionHistory.length) {
+        emptyTable(
+            "history",
+            8,
+            "No elections found"
+        );
+    }
 
+    if ($("historyCount")) {
+        $("historyCount").textContent =
+            electionHistory.length;
+    }
+
+    if ($("historyFooter")) {
         $("historyFooter").textContent =
-            `Showing ${elections.length} of ${elections.length} elections`;
+            `Showing ${electionHistory.length} of ` +
+            `${electionHistory.length} elections`;
+    }
+}
+
+// Reload history at copy-position options
+async function refresh() {
+    if (refreshingHistory) return;
+
+    refreshingHistory = true;
+
+    updateCreateAvailability();
+
+    try {
+        const data = await request("/election_archive");
+
+        electionHistory = Array.isArray(data.elections)
+            ? data.elections
+            : [];
+
+        renderHistory();
+        updateCopyPositions();
 
     } catch (error) {
         console.error("Election archive error:", error);
+
+        electionHistory = [];
 
         message(error.message, true);
 
         emptyTable(
             "history",
-            7,
+            8,
             "Unable to load election history"
         );
 
-        $("historyCount").textContent = "0";
-        $("historyFooter").textContent =
-            "Unable to load elections";
+        if ($("historyCount")) {
+            $("historyCount").textContent = "0";
+        }
+
+        if ($("historyFooter")) {
+            $("historyFooter").textContent =
+                "Unable to load elections";
+        }
+
+    } finally {
+        refreshingHistory = false;
+        updateCreateAvailability();
     }
 }
 
-// ==========================================
-// SUMMARY CARD
-// ==========================================
-
+// Summary card
 function addSummary(label, value) {
     const box = document.createElement("div");
+
     box.className = "summary-box";
 
     const strong = document.createElement("strong");
-    strong.textContent = String(value);
+    strong.textContent = String(value ?? "");
 
     const small = document.createElement("small");
     small.textContent = label;
@@ -297,13 +432,12 @@ function addSummary(label, value) {
     $("summaryGrid").appendChild(box);
 }
 
-// ==========================================
-// VIEW ELECTION DETAILS
-// ==========================================
-
+// Read-only election details
 async function viewDetails(electionId) {
     const data = await request(
-        `/election_archive/${electionId}/details`
+        `/election_archive/${encodeURIComponent(
+            electionId
+        )}/details`
     );
 
     const election = data.election || {};
@@ -324,20 +458,29 @@ async function viewDetails(electionId) {
         ? data.recorded_votes
         : [];
 
-    const ballotCounts = Array.isArray(data.ballot_status_counts)
+    const ballotCounts = Array.isArray(
+        data.ballot_status_counts
+    )
         ? data.ballot_status_counts
         : [];
 
-    // ELECTION TITLE
+    // Election title at school level
     $("detailsTitle").textContent =
         `${election.title || "Election"} (#${electionId})`;
 
-    $("detailsStatus").textContent =
-        election.archived_at
-            ? "Archived election · Read-only"
-            : "Current / previous election · Read-only details";
+    const levelText = schoolLevelLabel(
+        election.school_level
+    );
 
-    // POSITION LOOKUP
+    $("detailsStatus").textContent =
+        `${levelText} · ` +
+        (
+            election.archived_at
+                ? "Archived election · Read-only"
+                : "Current / previous election · Read-only details"
+        );
+
+    // Position lookup
     const positionMap = new Map();
 
     for (const position of positions) {
@@ -347,7 +490,7 @@ async function viewDetails(electionId) {
         );
     }
 
-    // VOTE LOOKUP
+    // Vote lookup
     const voteMap = new Map();
 
     for (const vote of votes) {
@@ -360,7 +503,7 @@ async function viewDetails(electionId) {
         );
     }
 
-    // BALLOT STATUS COUNTS
+    // Ballot status counts
     const statusMap = new Map();
 
     for (const item of ballotCounts) {
@@ -375,23 +518,24 @@ async function viewDetails(electionId) {
     const counted = statusMap.get("COUNTED") || 0;
     const voided = statusMap.get("VOID") || 0;
 
-    // SUMMARY
+    // Summary
     $("summaryGrid").replaceChildren();
 
     addSummary("Positions", positions.length);
     addSummary("Candidates", candidates.length);
     addSummary("Ballot templates", templates.length);
-    addSummary("Generated ballots", issued + cast + counted + voided);
+    addSummary(
+        "Generated ballots",
+        issued + cast + counted + voided
+    );
     addSummary("Issued / not received", issued);
     addSummary("Received / pending", cast);
     addSummary("Counted ballots", counted);
     addSummary("Void ballots", voided);
 
-    // ======================================
-    // ELECTION RESULTS
-    // ======================================
-
+    // Election results
     const resultsBody = $("resultsBody");
+
     resultsBody.replaceChildren();
 
     for (const candidate of candidates) {
@@ -422,11 +566,9 @@ async function viewDetails(electionId) {
         );
     }
 
-    // ======================================
-    // BALLOT TEMPLATES
-    // ======================================
-
+    // Ballot templates
     const templatesBody = $("templatesBody");
+
     templatesBody.replaceChildren();
 
     for (const template of templates) {
@@ -447,11 +589,9 @@ async function viewDetails(electionId) {
         );
     }
 
-    // ======================================
-    // CANDIDATES
-    // ======================================
-
+    // Candidate records
     const candidatesBody = $("candidatesBody");
+
     candidatesBody.replaceChildren();
 
     for (const candidate of candidates) {
@@ -478,7 +618,7 @@ async function viewDetails(electionId) {
         );
     }
 
-    // SHOW DETAILS
+    // Display details panel
     $("detailsCard").hidden = false;
 
     $("detailsCard").scrollIntoView({
@@ -487,33 +627,57 @@ async function viewDetails(electionId) {
     });
 }
 
-// ==========================================
-// CLOSE DETAILS
-// ==========================================
-
+// Close election details
 $("closeDetails").addEventListener("click", () => {
     $("detailsCard").hidden = true;
 });
 
-// ==========================================
-// REFRESH BUTTON
-// ==========================================
-
+// Refresh button
 $("reload").addEventListener("click", refresh);
 
-// ==========================================
-// CREATE NEW ELECTION
-// ==========================================
+// School level change: refresh matching positions
+$("schoolLevel").addEventListener("change", () => {
+    updateCopyPositions();
+});
 
+// Reset form: College ang default
+$("createForm").addEventListener("reset", () => {
+    // Hintayin ang native form reset bago mag-filter
+    queueMicrotask(() => {
+        updateCopyPositions();
+    });
+});
+
+// Create new election
 $("createForm").addEventListener("submit", async event => {
     event.preventDefault();
+
+    if (creatingElection || refreshingHistory) return;
 
     const button = event.currentTarget.querySelector(
         'button[type="submit"]'
     );
 
+    const title = $("title").value.trim();
     const start = $("start").value;
     const end = $("end").value;
+    const schoolLevel = getSelectedSchoolLevel();
+
+    if (!title || title.length > 150) {
+        message(
+            "Enter an election title (max 150 characters).",
+            true
+        );
+        return;
+    }
+
+    if (!isValidSchoolLevel(schoolLevel)) {
+        message(
+            "Please select a valid school level.",
+            true
+        );
+        return;
+    }
 
     if (!start || !end) {
         message(
@@ -531,24 +695,77 @@ $("createForm").addEventListener("submit", async event => {
         return;
     }
 
-    const confirmed = confirm(
-        "Create a new election with fresh candidates and votes?"
+    const currentElection = electionHistory.find(
+        election =>
+            Number(election.is_current) === 1 &&
+            !election.archived_at
+    );
+
+    if (currentElection) {
+        message(
+            `Archive election #${currentElection.election_id} ` +
+            "before creating a new election.",
+            true
+        );
+        return;
+    }
+
+    const copyValue = $("copy").value;
+
+    if (copyValue) {
+        const source = electionHistory.find(
+            election =>
+                String(election.election_id) === copyValue
+        );
+
+        if (!source) {
+            message(
+                "Selected source election was not found.",
+                true
+            );
+            return;
+        }
+
+        const sourceLevel = String(
+            source.school_level || "college"
+        ).toLowerCase();
+
+        if (sourceLevel !== schoolLevel) {
+            message(
+                "You can only copy positions from an election " +
+                "with the same school level.",
+                true
+            );
+            return;
+        }
+    }
+
+    const confirmed = window.confirm(
+        `Create a new ${schoolLevelLabel(schoolLevel)} election?\n\n` +
+        "New candidates and votes will start fresh." +
+        (
+            copyValue
+                ? "\nPositions will be copied from the selected election."
+                : "\nNo positions will be copied."
+        )
     );
 
     if (!confirmed) return;
 
+    creatingElection = true;
     button.disabled = true;
 
     try {
         const payload = {
-            title: $("title").value.trim(),
+            title,
+            school_level: schoolLevel,
             start_time: fmt(start),
             end_time: fmt(end)
         };
 
-        if ($("copy").value) {
+        if (copyValue) {
             payload.copy_positions_from =
-                Number($("copy").value);
+                Number(copyValue);
         }
 
         const result = await request(
@@ -560,10 +777,15 @@ $("createForm").addEventListener("submit", async event => {
         );
 
         message(
-            `Election #${result.election_id} created successfully`
+            `${schoolLevelLabel(schoolLevel)} election ` +
+            `#${result.election_id} created successfully`
         );
 
         $("createForm").reset();
+
+        if ($("detailsCard")) {
+            $("detailsCard").hidden = true;
+        }
 
         await refresh();
 
@@ -571,12 +793,10 @@ $("createForm").addEventListener("submit", async event => {
         message(error.message, true);
 
     } finally {
-        button.disabled = false;
+        creatingElection = false;
+        updateCreateAvailability();
     }
 });
 
-// ==========================================
-// INITIAL LOAD
-// ==========================================
-
+// Initial load
 refresh();
