@@ -399,7 +399,7 @@ button:not(:disabled):hover {
     overflow: auto;
 }
 
-/* Responsive desktop layout */
+/* RESPONSIVE DESIGN */
 
 @media screen and (min-width: 1001px) {
     .scanner-controls {
@@ -436,8 +436,6 @@ button:not(:disabled):hover {
     }
 }
 
-/* Responsive tablet layout */
-
 @media screen and (min-width: 601px)
 and (max-width: 1000px) {
     main {
@@ -457,8 +455,6 @@ and (max-width: 1000px) {
         max-height: 480px;
     }
 }
-
-/* Responsive mobile layout */
 
 @media screen and (max-width: 600px) {
     header {
@@ -546,7 +542,7 @@ and (max-width: 1000px) {
     }
 }
 
-/* Phone camera */
+/* PHONE CAMERA */
 
 #phoneCameraInput {
     display: none;
@@ -565,164 +561,6 @@ and (max-width: 1000px) {
 
 #qrStatus {
     line-height: 1.7;
-}
-
-/* CamScanner-style crop controls */
-
-.crop-panel {
-    margin-top: 15px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fafafa;
-}
-
-.crop-panel h3 {
-    margin: 0 0 9px;
-}
-
-.crop-panel .note {
-    margin: 8px 0 12px;
-}
-
-.crop-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
-    margin-top: 12px;
-}
-
-.crop-actions button {
-    min-width: 0;
-    padding: 10px 8px;
-    font-size: 12px;
-}
-
-#cropConfirmBtn {
-    grid-column: 1 / -1;
-}
-
-#cropStatus {
-    margin-top: 12px;
-}
-
-/* Canvas crop overlay */
-
-.canvas-wrap.crop-editing {
-    background: #1f2937;
-}
-
-.crop-overlay {
-    position: absolute;
-    inset: 0;
-    display: none;
-    pointer-events: none;
-    z-index: 5;
-}
-
-.crop-overlay.active {
-    display: block;
-}
-
-#cropSvg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    pointer-events: none;
-}
-
-#cropPolygon {
-    fill: rgba(128, 0, 0, .08);
-    stroke: #fbbf24;
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-}
-
-.crop-corner {
-    position: absolute;
-    width: 30px;
-    height: 30px;
-    border: 3px solid white;
-    border-radius: 50%;
-    background: var(--maroon);
-    box-shadow: 0 2px 9px rgba(0, 0, 0, .35);
-    transform: translate(-50%, -50%);
-    pointer-events: auto;
-    cursor: grab;
-    touch-action: none;
-    z-index: 7;
-}
-
-.crop-corner:active {
-    cursor: grabbing;
-    background: #a00000;
-}
-
-.crop-corner:focus-visible {
-    outline: 3px solid #fbbf24;
-    outline-offset: 3px;
-}
-
-.crop-corner::after {
-    content: "";
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: white;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.crop-corner-label {
-    position: absolute;
-    bottom: 33px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, .75);
-    color: white;
-    border-radius: 5px;
-    padding: 4px 6px;
-    font-size: 10px;
-    font-weight: 700;
-    white-space: nowrap;
-    pointer-events: none;
-}
-
-.crop-guide {
-    margin-top: 12px;
-    padding: 11px;
-    border-left: 3px solid var(--maroon);
-    background: #fff;
-    border-radius: 6px;
-    font-size: 12px;
-    line-height: 1.65;
-    color: #475467;
-}
-
-.crop-preview-note {
-    margin: 8px 0 0;
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.6;
-}
-
-@media screen and (max-width: 600px) {
-    .crop-corner {
-        width: 34px;
-        height: 34px;
-    }
-
-    .crop-panel {
-        padding: 12px;
-    }
-
-    .crop-actions button {
-        font-size: 12px;
-    }
 }
 
 </style>
@@ -749,7 +587,7 @@ and (max-width: 1000px) {
 
 <main>
 
-    <!-- Scanner controls -->
+    <!-- SCANNER CONTROLS -->
 
     <section class="panel scanner-controls">
 
@@ -793,7 +631,7 @@ and (max-width: 1000px) {
 
         <hr class="divider">
 
-        <!-- Ballot image -->
+        <!-- BALLOT IMAGE -->
 
         <h3>Ballot Image</h3>
 
@@ -807,7 +645,7 @@ and (max-width: 1000px) {
             accept="image/png,image/jpeg,image/webp"
         >
 
-        <!-- Native phone camera -->
+        <!-- NATIVE PHONE CAMERA INPUT -->
 
         <input
             id="phoneCameraInput"
@@ -818,6 +656,7 @@ and (max-width: 1000px) {
         >
 
         <div class="buttons">
+
             <button
                 id="cameraBtn"
                 type="button"
@@ -825,7 +664,6 @@ and (max-width: 1000px) {
                 Open Phone Camera
             </button>
         </div>
-
         <div class="camera-box">
             <video
                 id="video"
@@ -852,63 +690,140 @@ and (max-width: 1000px) {
 
         <hr class="divider">
 
-        <!-- CamScanner crop controls -->
+        <!-- OMR SETTINGS -->
 
-        <div class="crop-panel">
+        <h3>OMR Settings</h3>
 
-            <h3>Document Crop &amp; Straighten</h3>
+        <p class="note">
+            A5 portrait ballot • One ballot per scan •
+            Balanced shade detection
+        </p>
 
-            <p class="note">
-                Adjust the four corners to match the
-                outside edges of the A5 ballot.
-                Keep all registration squares inside
-                the crop area.
+        <div class="counting-note">
+            <strong>Automatic Vote Counting</strong>
+
+            <p>
+                After you press Scan &amp; Count Ballot,
+                the backend verifies the QR, checks
+                registration marks and shaded bubbles,
+                and counts valid votes automatically.
+                Duplicate or invalid ballots are rejected.
             </p>
+        </div>
 
-            <div class="crop-actions">
+        <div class="buttons">
+            <button
+                id="analyzeBtn"
+                type="button"
+                class="primary"
+                disabled>
+                Scan &amp; Count Ballot
+            </button>
+        </div>
 
-                <button
-                    id="cropAutoBtn"
-                    type="button"
-                    class="secondary"
-                    disabled>
-                    Auto Detect
-                </button>
+        <p
+            id="analysisStatus"
+            class="status"
+            role="status"
+            aria-live="polite">
+        </p>
 
-                <button
-                    id="cropResetBtn"
-                    type="button"
-                    class="outline"
-                    disabled>
-                    Reset Corners
-                </button>
+        <p class="note">
+            Keep the entire A5 ballot and all four
+            registration squares visible.
+            If alignment fails, retake the photo.
+        </p>
 
-                <button
-                    id="cropConfirmBtn"
-                    type="button"
-                    class="primary"
-                    disabled>
-                    Crop &amp; Straighten
-                </button>
+        <!-- QR AND DEBUG STATUS -->
+
+        <details class="debug">
+            <summary>
+                Debug &amp; QR Diagnostics
+            </summary>
+
+            <div class="debug-content">
+
+                <strong>
+                    Debug Diagnostics
+                </strong>
+
+                <div id="debugInfo">
+                    Load a template and image,
+                    then scan.
+                </div>
+
+                <hr class="divider">
+
+                <strong>
+                    QR Diagnostics
+                </strong>
+
+                <p id="qrStatus">
+                    QR not scanned yet.
+                </p>
 
             </div>
+        </details>
 
-            <p
-                id="cropStatus"
-                class="status"
-                role="status"
-                aria-live="polite">
-                Load a ballot image to start cropping.
-            </p>
+    </section>
 
-            <div class="crop-guide">
-                <strong>Scanning guide:</strong>
-                Move the four corner handles to the
-                paper edges. Confirm the corrected
-                ballot before QR verification and
-                automatic vote counting.
+    <!-- BALLOT PREVIEW -->
+
+    <section class="panel preview-panel">
+
+        <div class="preview-heading">
+            <h2>Ballot Preview</h2>
+
+            <span class="preview-tag">
+                A5 Scanner
+            </span>
+        </div>
+
+        <div class="canvas-wrap">
+
+            <canvas
+                id="scanCanvas"
+                width="1"
+                height="1">
+            </canvas>
+
+            <div class="preview-placeholder">
+
+                <div class="placeholder-icon">
+                    &#9635;
+                </div>
+
+                <p>
+                    Upload or capture a ballot image
+                    to display it here.
+                </p>
+
+            </div>
+        </div>
+
+        <!-- DETECTED RESULTS -->
+
+        <div class="results-area">
+
+            <h3>Detected Results</h3>
+
+            <div id="results">
+                <p>No ballot analyzed yet.</p>
             </div>
 
         </div>
-        
 
+    </section>
+
+</main>
+
+<!-- QR CODE LIBRARY -->
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+<!-- SCANNER JAVASCRIPT -->
+
+<script src="./scanner.js?v=20261103-omr-update"></script>
+
+</body>
+</html>
