@@ -51,7 +51,7 @@ header {
 }
 
 .back-link:hover {
-    background: rgba(255, 255, 255, .12);
+    background: rgba(255,255,255,.12);
 }
 
 header h1 {
@@ -81,7 +81,7 @@ main {
     border: 1px solid #eaecf0;
     border-radius: 14px;
     padding: 20px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, .045);
+    box-shadow: 0 4px 16px rgba(0,0,0,.045);
     min-width: 0;
 }
 
@@ -248,23 +248,6 @@ button:not(:disabled):hover {
     background: #111;
 }
 
-#phoneCameraInput {
-    display: none;
-}
-
-.camera-note {
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--muted);
-    margin: 10px 0;
-}
-
-#cameraBtn {
-    flex: 1;
-}
-
-/* Ballot preview */
-
 .preview-panel {
     min-width: 0;
 }
@@ -416,87 +399,7 @@ button:not(:disabled):hover {
     overflow: auto;
 }
 
-#qrStatus {
-    line-height: 1.7;
-}
-
-/* Document crop editor */
-
-.crop-controls {
-    margin-top: 14px;
-    padding: 14px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #fafafa;
-}
-
-.crop-controls h3 {
-    margin: 0 0 8px;
-}
-
-.crop-controls .buttons button {
-    flex: 1;
-    min-width: 115px;
-}
-
-.crop-stage {
-    position: relative;
-    width: 100%;
-    display: none;
-    margin-top: 10px;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #1f2937;
-    touch-action: none;
-}
-
-.crop-stage.active {
-    display: block;
-}
-
-.crop-stage img {
-    width: 100%;
-    height: auto;
-    display: block;
-    user-select: none;
-    pointer-events: none;
-}
-
-.crop-stage svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-.crop-stage polygon {
-    fill: rgba(128, 0, 0, .10);
-    stroke: #fbbf24;
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-}
-
-.crop-handle {
-    position: absolute;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    min-height: 0;
-    border: 3px solid white;
-    border-radius: 50%;
-    background: var(--maroon);
-    transform: translate(-50%, -50%);
-    touch-action: none;
-    cursor: grab;
-    box-shadow: 0 1px 8px #0008;
-}
-
-.crop-handle:active {
-    cursor: grabbing;
-}
-
-/* Desktop */
+/* RESPONSIVE DESIGN */
 
 @media screen and (min-width: 1001px) {
     .scanner-controls {
@@ -533,8 +436,6 @@ button:not(:disabled):hover {
     }
 }
 
-/* Tablet: controls muna bago preview */
-
 @media screen and (min-width: 601px)
 and (max-width: 1000px) {
     main {
@@ -543,19 +444,17 @@ and (max-width: 1000px) {
     }
 
     .scanner-controls {
-        order: 1;
+        order: 2;
     }
 
     .preview-panel {
-        order: 2;
+        order: 1;
     }
 
     .canvas-wrap {
         max-height: 480px;
     }
 }
-
-/* Mobile */
 
 @media screen and (max-width: 600px) {
     header {
@@ -590,11 +489,11 @@ and (max-width: 1000px) {
         border-radius: 11px;
     }
 
-    .scanner-controls {
+    .preview-panel {
         order: 1;
     }
 
-    .preview-panel {
+    .scanner-controls {
         order: 2;
     }
 
@@ -617,10 +516,7 @@ and (max-width: 1000px) {
 
     .buttons {
         display: grid;
-        grid-template-columns: repeat(
-            2,
-            minmax(0, 1fr)
-        );
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .buttons button {
@@ -644,21 +540,29 @@ and (max-width: 1000px) {
     .results-area {
         margin-top: 15px;
     }
-
-    .crop-controls .buttons {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .crop-controls .buttons button:last-child {
-        grid-column: 1 / -1;
-    }
-
-    .crop-handle {
-        width: 36px;
-        height: 36px;
-    }
 }
+
+/* PHONE CAMERA */
+
+#phoneCameraInput {
+    display: none;
+}
+
+.camera-note {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin: 10px 0;
+}
+
+#cameraBtn {
+    flex: 1;
+}
+
+#qrStatus {
+    line-height: 1.7;
+}
+
 </style>
 </head>
 
@@ -668,8 +572,7 @@ and (max-width: 1000px) {
     <a
         href="Committee.html"
         class="back-link"
-        aria-label="Back to Committee Dashboard"
-    >
+        aria-label="Back to Committee Dashboard">
         &#8592;
     </a>
 
@@ -684,7 +587,7 @@ and (max-width: 1000px) {
 
 <main>
 
-    <!-- Scanner controls -->
+    <!-- SCANNER CONTROLS -->
 
     <section class="panel scanner-controls">
 
@@ -705,8 +608,7 @@ and (max-width: 1000px) {
             <button
                 id="loadBtn"
                 type="button"
-                class="secondary"
-            >
+                class="secondary">
                 Load Templates
             </button>
         </div>
@@ -724,12 +626,12 @@ and (max-width: 1000px) {
         <p
             id="scannerStatus"
             class="status"
-            role="status"
-        ></p>
+            role="status">
+        </p>
 
         <hr class="divider">
 
-        <!-- Ballot image -->
+        <!-- BALLOT IMAGE -->
 
         <h3>Ballot Image</h3>
 
@@ -743,6 +645,8 @@ and (max-width: 1000px) {
             accept="image/png,image/jpeg,image/webp"
         >
 
+        <!-- NATIVE PHONE CAMERA INPUT -->
+
         <input
             id="phoneCameraInput"
             type="file"
@@ -752,154 +656,41 @@ and (max-width: 1000px) {
         >
 
         <div class="buttons">
+
             <button
                 id="cameraBtn"
                 type="button"
-                class="primary"
-            >
+                class="primary">
                 Open Phone Camera
             </button>
         </div>
-
         <div class="camera-box">
             <video
                 id="video"
                 autoplay
                 playsinline
-                muted
-            ></video>
+                muted>
+            </video>
         </div>
 
         <p
             id="imageStatus"
             class="status"
-            role="status"
-        ></p>
+            role="status">
+        </p>
 
         <div class="buttons">
             <button
                 id="retakeBtn"
                 type="button"
-                class="outline"
-            >
+                class="outline">
                 Retake Photo / Clear Image
             </button>
         </div>
 
         <hr class="divider">
 
-        <!-- CamScanner-style crop controls -->
-
-        <div
-            class="crop-controls"
-            id="cropControls"
-        >
-            <h3>
-                Document Crop &amp; Straighten
-            </h3>
-
-            <p class="note">
-                Position all four handles on the
-                outer paper edges. Include the
-                registration marks.
-            </p>
-
-            <div class="buttons">
-
-                <button
-                    id="cropDetectBtn"
-                    type="button"
-                    class="secondary"
-                    disabled
-                >
-                    Auto Detect
-                </button>
-
-                <button
-                    id="cropResetBtn"
-                    type="button"
-                    class="outline"
-                    disabled
-                >
-                    Reset Corners
-                </button>
-
-                <button
-                    id="cropApplyBtn"
-                    type="button"
-                    class="primary"
-                    disabled
-                >
-                    Crop &amp; Straighten
-                </button>
-
-            </div>
-
-            <p
-                id="cropMessage"
-                class="status"
-                role="status"
-                aria-live="polite"
-            >
-                Upload a ballot to start cropping.
-            </p>
-
-            <!-- Original photo with corner handles -->
-
-            <div
-                id="cropStage"
-                class="crop-stage"
-            >
-                <img
-                    id="cropPhoto"
-                    alt="Original ballot for corner adjustment"
-                >
-
-                <svg
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    aria-hidden="true"
-                >
-                    <polygon
-                        id="cropShape"
-                        points="4,4 96,4 96,96 4,96"
-                    ></polygon>
-                </svg>
-
-                <button
-                    type="button"
-                    class="crop-handle"
-                    data-corner="tl"
-                    aria-label="Top left corner"
-                ></button>
-
-                <button
-                    type="button"
-                    class="crop-handle"
-                    data-corner="tr"
-                    aria-label="Top right corner"
-                ></button>
-
-                <button
-                    type="button"
-                    class="crop-handle"
-                    data-corner="br"
-                    aria-label="Bottom right corner"
-                ></button>
-
-                <button
-                    type="button"
-                    class="crop-handle"
-                    data-corner="bl"
-                    aria-label="Bottom left corner"
-                ></button>
-
-            </div>
-        </div>
-
-        <hr class="divider">
-
-        <!-- OMR settings -->
+        <!-- OMR SETTINGS -->
 
         <h3>OMR Settings</h3>
 
@@ -909,10 +700,7 @@ and (max-width: 1000px) {
         </p>
 
         <div class="counting-note">
-
-            <strong>
-                Automatic Vote Counting
-            </strong>
+            <strong>Automatic Vote Counting</strong>
 
             <p>
                 After you press Scan &amp; Count Ballot,
@@ -921,7 +709,6 @@ and (max-width: 1000px) {
                 and counts valid votes automatically.
                 Duplicate or invalid ballots are rejected.
             </p>
-
         </div>
 
         <div class="buttons">
@@ -929,8 +716,7 @@ and (max-width: 1000px) {
                 id="analyzeBtn"
                 type="button"
                 class="primary"
-                disabled
-            >
+                disabled>
                 Scan &amp; Count Ballot
             </button>
         </div>
@@ -939,8 +725,8 @@ and (max-width: 1000px) {
             id="analysisStatus"
             class="status"
             role="status"
-            aria-live="polite"
-        ></p>
+            aria-live="polite">
+        </p>
 
         <p class="note">
             Keep the entire A5 ballot and all four
@@ -948,10 +734,9 @@ and (max-width: 1000px) {
             If alignment fails, retake the photo.
         </p>
 
-        <!-- QR diagnostics -->
+        <!-- QR AND DEBUG STATUS -->
 
         <details class="debug">
-
             <summary>
                 Debug &amp; QR Diagnostics
             </summary>
@@ -978,23 +763,20 @@ and (max-width: 1000px) {
                 </p>
 
             </div>
-
         </details>
 
     </section>
 
-    <!-- Ballot preview -->
+    <!-- BALLOT PREVIEW -->
 
     <section class="panel preview-panel">
 
         <div class="preview-heading">
-
             <h2>Ballot Preview</h2>
 
             <span class="preview-tag">
                 A5 Scanner
             </span>
-
         </div>
 
         <div class="canvas-wrap">
@@ -1002,8 +784,8 @@ and (max-width: 1000px) {
             <canvas
                 id="scanCanvas"
                 width="1"
-                height="1"
-            ></canvas>
+                height="1">
+            </canvas>
 
             <div class="preview-placeholder">
 
@@ -1017,10 +799,9 @@ and (max-width: 1000px) {
                 </p>
 
             </div>
-
         </div>
 
-        <!-- Detected results -->
+        <!-- DETECTED RESULTS -->
 
         <div class="results-area">
 
@@ -1036,14 +817,13 @@ and (max-width: 1000px) {
 
 </main>
 
-<!-- QR library -->
+<!-- QR CODE LIBRARY -->
+
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
-<!-- Crop feature: OpenCV loads only when needed -->
-<script src="./scanner-crop.js?v=20261103-safe1"></script>
+<!-- SCANNER JAVASCRIPT -->
 
-<!-- Existing scanner with crop integration -->
-<script src="./scanner.js?v=20261103-safe1"></script>
+<script src="./scanner.js?v=20261103-omr-update"></script>
 
 </body>
 </html>

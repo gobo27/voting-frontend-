@@ -120,7 +120,6 @@ function updateAnalyzeButton() {
     button.disabled =
         busy ||
         window.confirmedOMRCounting === true ||
-        window.CampusCrop?.confirmed !== true ||
         window.campusVoteQRVerified !== true ||
         !template ||
         !sourceImage ||
@@ -264,7 +263,7 @@ async function selectTemplate() {
 
         reset();
 
-        if (sourceImage && window.CampusCrop?.confirmed === true) {
+        if (sourceImage) {
             await debugQR().catch(() => {
                 // QR error is already shown in the scanner status.
             });
@@ -371,18 +370,6 @@ function showImage(image) {
     drawOriginal();
     reset();
 
-    // New photo: crop muna bago QR verification.
-    if (window.CampusCrop && !window.CampusCrop.applying) {
-        window.CampusCrop.onImageLoaded(image);
-        status(
-            "imageStatus",
-            "Image loaded. Adjust corners, then Crop & Straighten."
-        );
-        updateAnalyzeButton();
-        return;
-    }
-
-    // Cropped image: dito magsisimula ang QR verification.
     status(
         "imageStatus",
         `Image loaded: ${canvas.width} × ` +
@@ -394,8 +381,8 @@ function showImage(image) {
             "Automatically reading QR code...";
     }
 
-    // Automatic QR verification after crop confirmation.
-    // Hindi pa ito nagse-save ng votes.
+    // Automatic QR verification after photo capture.
+    // This does NOT count votes.
     if (template && validId(getTemplateId())) {
         debugQR().then(result => {
             if (result && sourceImage === image) {
@@ -476,7 +463,7 @@ function upload(event) {
 }
 
 
-// DIRECT PHONE CAMERA
+// DIRECT PHONE CAMERA - OPTION 1
 
 
 function openCamera() {
@@ -507,7 +494,6 @@ function openCamera() {
         "Opening phone camera. Capture the complete " +
         "A5 ballot with all four registration marks."
     );
-
     phoneCameraInput.click();
 }
 
@@ -522,8 +508,8 @@ function phoneCameraCapture(event) {
         return;
     }
 
-    // Native camera returns the photo to the crop editor.
-    // QR verification starts after Crop & Straighten.
+    // After the native camera returns the photo,
+    // showImage() automatically starts QR verification.
     loadImageFile(file);
 }
 
@@ -584,12 +570,6 @@ function getSource() {
         willReadFrequently: true
     });
 
-    if (!c) {
-        throw new Error(
-            "Canvas is unavailable for QR reading."
-        );
-    }
-
     c.drawImage(
         sourceImage,
         0,
@@ -620,6 +600,7 @@ function readQR() {
     const image = getSource();
 
     // First attempt: scan the entire ballot image.
+
     let result = window.jsQR(
         image.data,
         image.width,
@@ -631,6 +612,7 @@ function readQR() {
 
     // Second attempt: scan the top-right area
     // where the ballot QR code is normally printed.
+
     if (!result) {
         const temp = document.createElement("canvas");
 
@@ -640,12 +622,6 @@ function readQR() {
         const c = temp.getContext("2d", {
             willReadFrequently: true
         });
-
-        if (!c) {
-            throw new Error(
-                "Canvas is unavailable for QR cropping."
-            );
-        }
 
         c.putImageData(image, 0, 0);
 
@@ -735,6 +711,7 @@ function validateQR(raw) {
     };
 }
 
+
 // AUTOMATIC QR VERIFICATION
 
 
@@ -745,6 +722,7 @@ async function debugQR() {
     const selectedElectionId = getElectionId();
 
     // Clear previous QR verification result.
+
     qrData = null;
     qrResult = null;
 
@@ -770,9 +748,7 @@ async function debugQR() {
             );
         }
 
-        if (
-            String(template.paper_size).toUpperCase() !== "A5"
-        ) {
+        if (String(template.paper_size).toUpperCase() !== "A5") {
             throw new Error(
                 "Only A5 portrait ballots are currently supported."
             );
@@ -783,10 +759,12 @@ async function debugQR() {
                 "Reading QR code automatically...";
         }
 
-        // Detect QR from the cropped ballot image.
+        // Detect QR from the captured image.
+
         const raw = readQR();
 
-        // Check CampusVote QR format and IDs.
+        // Check the ballot.
+
         const parsedQR = validateQR(raw);
 
         if (
@@ -805,6 +783,7 @@ async function debugQR() {
         }
 
         // Verify the ballot with the backend.
+
         const data = await request("/omr/verify-qr", {
             method: "POST",
             headers: {
@@ -825,6 +804,7 @@ async function debugQR() {
         }
 
         // Reject duplicate ballots.
+
         if (
             data.duplicate === true ||
             data.status === "COUNTED"
@@ -836,6 +816,7 @@ async function debugQR() {
         }
 
         // Reject void ballots.
+
         if (data.status === "VOID") {
             throw new Error(
                 "VOID BALLOT. " +
@@ -844,6 +825,7 @@ async function debugQR() {
         }
 
         // Check supported ballot status.
+
         if (!["ISSUED", "CAST"].includes(data.status)) {
             throw new Error(
                 "Unsupported ballot status: " +
@@ -852,6 +834,7 @@ async function debugQR() {
         }
 
         // Require explicit backend validation.
+
         if (data.valid !== true) {
             throw new Error(
                 "QR verification was not approved " +
@@ -860,6 +843,7 @@ async function debugQR() {
         }
 
         // Save verified QR information.
+
         qrData = raw;
         qrResult = {
             ...data,
@@ -930,9 +914,7 @@ async function debugQR() {
     }
 }
 
-
 // CONVERT BALLOT IMAGE TO JPEG BLOB
-
 
 async function imageToBlob() {
     if (!sourceImage) {
@@ -969,9 +951,7 @@ async function imageToBlob() {
             const c = temp.getContext("2d");
 
             if (!c) {
-                reject(
-                    new Error("Canvas unavailable.")
-                );
+                reject(new Error("Canvas unavailable."));
                 return;
             }
 
@@ -988,11 +968,9 @@ async function imageToBlob() {
 
             temp.toBlob(blob => {
                 if (!blob) {
-                    reject(
-                        new Error(
-                            "Image conversion failed."
-                        )
-                    );
+                    reject(new Error(
+                        "Image conversion failed."
+                    ));
                     return;
                 }
 
@@ -1001,18 +979,10 @@ async function imageToBlob() {
         });
     }
 
-    let blob = await encodeJPEG(
-        width,
-        height,
-        0.92
-    );
+    let blob = await encodeJPEG(width, height, 0.92);
 
     if (blob.size > MAX_BYTES) {
-        blob = await encodeJPEG(
-            width,
-            height,
-            0.82
-        );
+        blob = await encodeJPEG(width, height, 0.82);
     }
 
     while (
@@ -1022,11 +992,7 @@ async function imageToBlob() {
         width = Math.round(width * 0.85);
         height = Math.round(height * 0.85);
 
-        blob = await encodeJPEG(
-            width,
-            height,
-            0.85
-        );
+        blob = await encodeJPEG(width, height, 0.85);
     }
 
     if (blob.size > MAX_BYTES) {
@@ -1203,7 +1169,6 @@ function displayResults(data, countingEnabled) {
     debug(lines.join("\n"));
 }
 
-
 // BACKEND OMR PROCESSING AND LIVE VOTE COUNTING
 
 async function backendPreview() {
@@ -1215,20 +1180,6 @@ async function backendPreview() {
         status(
             "analysisStatus",
             "Load a template and ballot image first.",
-            true
-        );
-        return;
-    }
-
-    // Require confirmed crop before counting.
-    if (
-        !window.CampusCrop ||
-        window.CampusCrop.confirmed !== true ||
-        window.CampusCrop.applying === true
-    ) {
-        status(
-            "analysisStatus",
-            "Please complete Crop & Straighten before scanning.",
             true
         );
         return;
@@ -1508,10 +1459,13 @@ async function backendPreview() {
     }
 }
 
+
 // RETAKE BALLOT / CLEAR IMAGE
+
 
 function retakePhoto() {
     // Prevent changing the image during counting.
+
     if (busy) {
         status(
             "imageStatus",
@@ -1522,9 +1476,11 @@ function retakePhoto() {
     }
 
     // Stop any previous live camera stream.
+
     stopCamera();
 
     // Clear previous ballot information.
+
     sourceImage = null;
     qrData = null;
     qrResult = null;
@@ -1533,14 +1489,11 @@ function retakePhoto() {
     window.confirmedOMRCounting = false;
 
     // Invalidate any previous QR verification requests.
+
     imageVersion++;
 
-    // Reset the document crop editor.
-    if (window.CampusCrop) {
-        window.CampusCrop.clear();
-    }
-
     // Clear ballot preview.
+
     ctx.clearRect(
         0,
         0,
@@ -1552,22 +1505,26 @@ function retakePhoto() {
     canvas.height = 1;
 
     // Clear uploaded image input.
+
     if ($("fileInput")) {
         $("fileInput").value = "";
     }
 
     // Clear native phone camera input.
+
     if ($("phoneCameraInput")) {
         $("phoneCameraInput").value = "";
     }
 
     // Reset QR diagnostics.
+
     if ($("qrStatus")) {
         $("qrStatus").textContent =
             "Waiting for a new ballot image.";
     }
 
     // Reset analysis results and controls.
+
     reset();
 
     status(
@@ -1583,7 +1540,6 @@ function retakePhoto() {
 
     updateAnalyzeButton();
 }
-
 
 // SCANNER EVENT LISTENERS
 
@@ -1691,21 +1647,6 @@ function setupScanner() {
                 return;
             }
 
-            // Require completed crop before OMR counting.
-            if (
-                !window.CampusCrop ||
-                window.CampusCrop.confirmed !== true ||
-                window.CampusCrop.applying === true
-            ) {
-                status(
-                    "analysisStatus",
-                    "Please complete Crop & Straighten " +
-                    "before scanning this ballot.",
-                    true
-                );
-                return;
-            }
-
             await backendPreview();
         }
     );
@@ -1779,11 +1720,6 @@ function setupScanner() {
             "Ready. Open Phone Camera or upload " +
             "an A5 ballot image."
         );
-    }
-
-    // Initialize the crop editor state.
-    if (window.CampusCrop) {
-        window.CampusCrop.clear();
     }
 
     updateAnalyzeButton();
