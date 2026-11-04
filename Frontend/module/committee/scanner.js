@@ -13,6 +13,7 @@ let cameraStream = null;
 
 let busy = false;
 let imageVersion = 0;
+let retakeRequired = false;
 
 let qrData = null;
 let qrResult = null;
@@ -120,6 +121,7 @@ function updateAnalyzeButton() {
     button.disabled =
         busy ||
         window.confirmedOMRCounting === true ||
+        retakeRequired ||
         window.campusVoteQRVerified !== true ||
         !template ||
         !sourceImage ||
@@ -321,9 +323,9 @@ async function currentElection() {
     }
 }
 
-
+//
 // IMAGE HANDLING
-
+//
 
 function drawOriginal() {
     if (!sourceImage) return;
@@ -361,6 +363,7 @@ function showImage(image) {
     imageVersion++;
 
     sourceImage = image;
+    retakeRequired = false;
 
     qrData = null;
     qrResult = null;
@@ -586,9 +589,7 @@ function getSource() {
     );
 }
 
-
 // READ QR CODE FROM IMAGE
-
 
 function readQR() {
     if (typeof window.jsQR !== "function") {
@@ -914,7 +915,9 @@ async function debugQR() {
     }
 }
 
+//
 // CONVERT BALLOT IMAGE TO JPEG BLOB
+//
 
 async function imageToBlob() {
     if (!sourceImage) {
@@ -1005,7 +1008,9 @@ async function imageToBlob() {
     return blob;
 }
 
+
 // DISPLAY DETECTED OMR RESULTS
+
 
 function displayResults(data, countingEnabled) {
     const positions = Array.isArray(data.positions)
@@ -1168,8 +1173,6 @@ function displayResults(data, countingEnabled) {
 
     debug(lines.join("\n"));
 }
-
-// BACKEND OMR PROCESSING AND LIVE VOTE COUNTING
 
 async function backendPreview() {
     // Prevent simultaneous scans.
@@ -1343,6 +1346,7 @@ async function backendPreview() {
             data.valid === true
         ) {
             window.confirmedOMRCounting = true;
+            retakeRequired = false;
 
             if ($("qrStatus")) {
                 $("qrStatus").textContent =
@@ -1387,63 +1391,90 @@ async function backendPreview() {
         }
 
     } catch (error) {
-
-        // Handle rejected or failed ballot scans.
+        // Failed scans never count as confirmed success.
         window.confirmedOMRCounting = false;
 
+        const payload = error.data || {};
+        const messageText = String(error.message || "");
         const duplicate =
-            error.data?.duplicate === true ||
+            payload.duplicate === true ||
             error.status === 409;
 
         const blankBallot =
             error.status === 422 &&
-            error.message?.includes(
-                "Blank ballot detected"
-            );
+            /blank ballot detected/i.test(messageText);
+
+        // Retake only on a definitive backend rejection.
+        // Network errors are uncertain: verify ballot status first.
+        const qualityIssue =
+            payload.retake_required === true ||
+            payload.review_required === true ||
+            (error.status === 422 && /(?:alignment|registration marks?|four corners|shading|bubble samples?|exposure|lighting|retake|rescan|QR code not detected|insufficient)/i.test(messageText));
 
         let message;
 
-        if (blankBallot) {
+        if (duplicate) {
+            retakeRequired = true;
             message =
-                "Blank ballot detected. No votes saved. " +
-                "This ballot can still be used.";
-
-            window.showToast?.(
-                message,
-                "warning"
-            );
-
-        } else if (duplicate) {
+                "BALLOT UNAVAILABLE / ALREADY COUNTED. " +
+                "Do not resubmit this ballot. Verify its status.";
+        } else if (qualityIssue) {
+            retakeRequired = true;
             message =
-                "Duplicate or unavailable ballot. " +
-                "No new votes saved.";
-
-            window.showToast?.(
-                message,
-                "error"
-            );
-
+                "RETAKE PHOTO REQUIRED — No votes saved. " +
+                "Keep all four registration marks visible, " +
+                "avoid glare/shadows, and photograph the same ballot again. " +
+                messageText;
+        } else if (blankBallot) {
+            // A blank reading can be a missed light pencil mark.
+            retakeRequired = true;
+            message =
+                "NO SHADING DETECTED — No votes saved. " +
+                "Check the physical ballot and retake a clearer photo " +
+                "of the same ballot. " + messageText;
+        } else if (!error.status) {
+            // A request may have reached the server despite a network failure.
+            retakeRequired = true;
+            message =
+                "SCAN STATUS UNKNOWN. Check ballot status before retrying. " +
+                "Do not assume votes were not saved. " + messageText;
         } else {
-            message =
-                "OMR scan failed: " +
-                error.message;
-
-            window.showToast?.(
-                message,
-                "error"
-            );
+            message = "OMR scan failed: " + messageText;
         }
 
-        status(
-            "analysisStatus",
-            message,
-            !blankBallot
-        );
+        status("analysisStatus", message, true);
+        window.showToast?.(message, "error");
 
-        debug(
-            "OMR SCAN RESULT\n" +
-            message
-        );
+        if (retakeRequired) {
+            if ($("imageStatus")) {
+                status(
+                    "imageStatus",
+                    duplicate
+                        ? "Ballot unavailable. Do not retake this counted ballot."
+                        : "Retake needed: use Open Phone Camera or upload " +
+                          "a clearer image of the SAME ballot.",
+                    true
+                );
+            }
+
+            if ($("results")) {
+                $("results").replaceChildren();
+                const notice = document.createElement("p");
+                notice.className = "error";
+                notice.textContent = message;
+                $("results").appendChild(notice);
+            }
+
+            if ($("qrStatus")) {
+                $("qrStatus").textContent =
+                    "Scan not confirmed. " +
+                    (duplicate
+                        ? "Verify ballot status."
+                        : "Retake the same ballot if server rejected the scan.");
+            }
+        }
+
+        debug("OMR SCAN RESULT\n" + message);
 
     } finally {
         busy = false;
@@ -1459,9 +1490,9 @@ async function backendPreview() {
     }
 }
 
-
+//
 // RETAKE BALLOT / CLEAR IMAGE
-
+//
 
 function retakePhoto() {
     // Prevent changing the image during counting.
@@ -1482,6 +1513,7 @@ function retakePhoto() {
     // Clear previous ballot information.
 
     sourceImage = null;
+    retakeRequired = false;
     qrData = null;
     qrResult = null;
 

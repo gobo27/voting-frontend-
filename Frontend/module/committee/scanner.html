@@ -1,829 +1,806 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CampusVote | OMR Scanner</title>
-
-<style>
-:root {
-    --maroon: #800000;
-    --maroon-dark: #650000;
-    --bg: #f3f4f6;
-    --border: #e5e7eb;
-    --text: #242424;
-    --muted: #667085;
-}
-
-* {
-    box-sizing: border-box;
-}
-
-html, body {
-    margin: 0;
-    min-height: 100%;
-}
-
-body {
-    background: var(--bg);
-    color: var(--text);
-    font: 14px Arial, sans-serif;
-    overflow-x: hidden;
-}
-
-header {
-    background: var(--maroon);
-    color: white;
-    padding: 16px 25px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.back-link {
-    color: white;
-    text-decoration: none;
-    font-size: 29px;
-    line-height: 1;
-    padding: 5px 8px;
-    border-radius: 8px;
-}
-
-.back-link:hover {
-    background: rgba(255,255,255,.12);
-}
-
-header h1 {
-    margin: 0;
-    font-size: 22px;
-}
-
-header p {
-    margin: 5px 0 0;
-    font-size: 12px;
-    color: #f1d4d4;
-}
-
-main {
-    width: 100%;
-    max-width: 1600px;
-    margin: 18px auto;
-    padding: 0 18px;
-    display: grid;
-    grid-template-columns: 360px minmax(0, 1fr);
-    align-items: start;
-    gap: 18px;
-}
-
-.panel {
-    background: white;
-    border: 1px solid #eaecf0;
-    border-radius: 14px;
-    padding: 20px;
-    box-shadow: 0 4px 16px rgba(0,0,0,.045);
-    min-width: 0;
-}
-
-h2 {
-    margin: 0 0 18px;
-    font-size: 20px;
-}
-
-h3 {
-    font-size: 15px;
-    margin: 18px 0 12px;
-}
-
-label {
-    display: block;
-    font-weight: 600;
-    margin: 13px 0 7px;
-}
-
-input:not([type="range"]),
-select {
-    width: 100%;
-    min-height: 43px;
-    padding: 10px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    background: white;
-    color: var(--text);
-    font: inherit;
-}
-
-input:focus-visible,
-select:focus-visible,
-button:focus-visible,
-summary:focus-visible {
-    outline: 2px solid var(--maroon);
-    outline-offset: 2px;
-}
-
-input[readonly] {
-    background: #f9fafb !important;
-}
-
-input[type="range"] {
-    width: 100%;
-    accent-color: var(--maroon);
-    cursor: pointer;
-}
-
-input[type="file"] {
-    padding: 9px !important;
-}
-
-input[type="file"]::file-selector-button {
-    border: 0;
-    border-radius: 6px;
-    padding: 7px 10px;
-    margin-right: 8px;
-    background: #e5e7eb;
-    cursor: pointer;
-}
-
-.buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 13px 0;
-}
-
-button {
-    border: 0;
-    border-radius: 8px;
-    padding: 11px 14px;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-    min-height: 43px;
-}
-
-button:disabled {
-    opacity: .5;
-    cursor: not-allowed;
-}
-
-button:not(:disabled):hover {
-    filter: brightness(.95);
-}
-
-.primary {
-    background: var(--maroon);
-    color: white;
-}
-
-.secondary {
-    background: #e5e7eb;
-    color: #242424;
-}
-
-.outline {
-    background: white;
-    border: 1px solid #d1d5db;
-    color: #374151;
-}
-
-#analyzeBtn {
-    width: 100%;
-    min-height: 48px;
-    font-size: 14px;
-}
-
-#retakeBtn {
-    width: 100%;
-}
-
-.status,
-.note {
-    font-size: 12px;
-    line-height: 1.65;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-.status {
-    margin: 10px 0;
-}
-
-.note {
-    color: var(--muted);
-}
-
-.error,
-.overvote {
-    color: #a00000;
-}
-
-.success,
-.valid {
-    color: #176b36;
-}
-
-.valid,
-.overvote {
-    font-weight: 600;
-}
-
-.divider {
-    border: 0;
-    border-top: 1px solid var(--border);
-    margin: 20px 0;
-}
-
-.camera-box {
-    border-radius: 10px;
-    overflow: hidden;
-    background: #111;
-    margin-top: 12px;
-}
-
-#video {
-    display: none;
-    width: 100%;
-    max-height: 350px;
-    object-fit: contain;
-    background: #111;
-}
-
-.preview-panel {
-    min-width: 0;
-}
-
-.preview-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-}
-
-.preview-heading h2 {
-    margin: 0;
-}
-
-.preview-tag {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--maroon);
-    background: #fff1f2;
-    border-radius: 20px;
-    padding: 7px 10px;
-}
-
-.canvas-wrap {
-    position: relative;
-    min-height: 290px;
-    max-height: 650px;
-    overflow: auto;
-    background: #f8f9fa;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-}
-
-#scanCanvas {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-width: 100%;
-}
-
-.preview-placeholder {
-    display: none;
-    position: absolute;
-    inset: 0;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 12px;
-    padding: 20px;
-    text-align: center;
-    pointer-events: none;
-    color: #98a2b3;
-}
-
-.canvas-wrap:has(#scanCanvas[width="1"])
-.preview-placeholder {
-    display: flex;
-}
-
-.placeholder-icon {
-    font-size: 34px;
-    color: #b0b6c0;
-}
-
-.preview-placeholder p {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.6;
-}
-
-.results-area {
-    margin-top: 20px;
-    border-top: 1px solid var(--border);
-    padding-top: 18px;
-}
-
-.results-area h3 {
-    margin-top: 0;
-}
-
-#results {
-    line-height: 1.6;
-    overflow-wrap: anywhere;
-}
-
-.result-position {
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    padding: 13px;
-    margin: 12px 0;
-    background: #fff;
-}
-
-.result-position h4 {
-    margin: 0 0 9px;
-    font-size: 15px;
-}
-
-.result-position p {
-    margin: 7px 0;
-    font-size: 13px;
-}
-
-.counting-note {
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    padding: 12px;
-    margin: 15px 0;
-    font-size: 12px;
-    line-height: 1.7;
-    color: #475467;
-}
-
-.debug {
-    margin-top: 18px;
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    font-size: 12px;
-    line-height: 1.7;
-    overflow: hidden;
-}
-
-.debug summary {
-    cursor: pointer;
-    padding: 14px;
-    font-weight: 700;
-    user-select: none;
-}
-
-.debug-content {
-    padding: 0 14px 14px;
-}
-
-#debugInfo,
-#qrStatus {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-#debugInfo {
-    max-height: 300px;
-    overflow: auto;
-}
-
-/* RESPONSIVE DESIGN */
-
-@media screen and (min-width: 1001px) {
-    .scanner-controls {
-        position: sticky;
-        top: 14px;
-        height: calc(100vh - 28px);
-        max-height: calc(100vh - 28px);
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
-    }
-
-    .preview-panel {
-        position: sticky;
-        top: 14px;
-        height: calc(100vh - 28px);
-        max-height: calc(100vh - 28px);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .preview-panel .canvas-wrap {
-        flex: 1 1 auto;
-        min-height: 150px;
-        max-height: none;
-    }
-
-    .preview-panel .results-area {
-        flex: 0 1 auto;
-        min-height: 110px;
-        max-height: 38%;
-        overflow-y: auto;
-    }
-}
-
-@media screen and (min-width: 601px)
-and (max-width: 1000px) {
-    main {
-        grid-template-columns: 1fr;
-        max-width: 900px;
-    }
-
-    .scanner-controls {
-        order: 2;
-    }
-
-    .preview-panel {
-        order: 1;
-    }
-
-    .canvas-wrap {
-        max-height: 480px;
-    }
-}
-
-@media screen and (max-width: 600px) {
-    header {
-        padding: 14px 12px;
-        gap: 8px;
-    }
-
-    header h1 {
-        font-size: 17px;
-    }
-
-    header p {
-        font-size: 11px;
-        line-height: 1.4;
-    }
-
-    .back-link {
-        font-size: 26px;
-    }
-
-    main {
-        display: flex;
-        flex-direction: column;
-        padding: 0 10px;
-        margin: 12px auto;
-        gap: 12px;
-    }
-
-    .panel {
-        width: 100%;
-        padding: 15px;
-        border-radius: 11px;
-    }
-
-    .preview-panel {
-        order: 1;
-    }
-
-    .scanner-controls {
-        order: 2;
-    }
-
-    h2 {
-        font-size: 18px;
-    }
-
-    .preview-tag {
-        font-size: 10px;
-    }
-
-    .canvas-wrap {
-        min-height: 230px;
-        max-height: 380px;
-    }
-
-    #video {
-        max-height: 55vh;
-    }
-
-    .buttons {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .buttons button {
-        width: 100%;
-        min-width: 0;
-        padding: 11px 8px;
-        font-size: 13px;
-    }
-
-    #retakeBtn,
-    #loadBtn,
-    #analyzeBtn {
-        width: 100%;
-    }
-
-    input:not([type="range"]),
-    select {
-        font-size: 16px;
-    }
-
-    .results-area {
-        margin-top: 15px;
-    }
-}
-
-/* PHONE CAMERA */
-
-#phoneCameraInput {
-    display: none;
-}
-
-.camera-note {
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--muted);
-    margin: 10px 0;
-}
-
-#cameraBtn {
-    flex: 1;
-}
-
-#qrStatus {
-    line-height: 1.7;
-}
-
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CampusVote | OMR Scanner</title>
+
+    <style>
+        :root {
+            --maroon: #800000;
+            --maroon-dark: #650000;
+            --bg: #f3f4f6;
+            --border: #e5e7eb;
+            --text: #242424;
+            --muted: #667085;
+            --warning: #92400e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font: 14px Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: var(--maroon);
+            color: white;
+            padding: 16px 25px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-link {
+            color: white;
+            text-decoration: none;
+            font-size: 29px;
+            line-height: 1;
+            padding: 5px 8px;
+            border-radius: 8px;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, .12);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        header p {
+            margin: 5px 0 0;
+            font-size: 12px;
+            color: #f1d4d4;
+        }
+
+        main {
+            width: 100%;
+            max-width: 1600px;
+            margin: 18px auto;
+            padding: 0 18px;
+            display: grid;
+            grid-template-columns: 360px minmax(0, 1fr);
+            align-items: start;
+            gap: 18px;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #eaecf0;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .045);
+            min-width: 0;
+        }
+
+        h2 {
+            margin: 0 0 18px;
+            font-size: 20px;
+        }
+
+        h3 {
+            font-size: 15px;
+            margin: 18px 0 12px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin: 13px 0 7px;
+        }
+
+        input:not([type="range"]),
+        select {
+            width: 100%;
+            min-height: 43px;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            color: var(--text);
+            font: inherit;
+        }
+
+        input:focus-visible,
+        select:focus-visible,
+        button:focus-visible,
+        summary:focus-visible {
+            outline: 2px solid var(--maroon);
+            outline-offset: 2px;
+        }
+
+        input[readonly] {
+            background: #f9fafb !important;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--maroon);
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            padding: 9px !important;
+        }
+
+        input[type="file"]::file-selector-button {
+            border: 0;
+            border-radius: 6px;
+            padding: 7px 10px;
+            margin-right: 8px;
+            background: #e5e7eb;
+            cursor: pointer;
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 13px 0;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 11px 14px;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            min-height: 43px;
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        button:not(:disabled):hover {
+            filter: brightness(.95);
+        }
+
+        .primary {
+            background: var(--maroon);
+            color: white;
+        }
+
+        .secondary {
+            background: #e5e7eb;
+            color: #242424;
+        }
+
+        .outline {
+            background: white;
+            border: 1px solid #d1d5db;
+            color: #374151;
+        }
+
+        #analyzeBtn {
+            width: 100%;
+            min-height: 48px;
+            font-size: 14px;
+        }
+
+        #retakeBtn {
+            width: 100%;
+        }
+
+        .status,
+        .note {
+            font-size: 12px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .status {
+            margin: 10px 0;
+        }
+
+        .note {
+            color: var(--muted);
+        }
+
+        .error,
+        .overvote {
+            color: #a00000;
+        }
+
+        .success,
+        .valid {
+            color: #176b36;
+        }
+
+        .valid,
+        .overvote {
+            font-weight: 600;
+        }
+
+        .divider {
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 20px 0;
+        }
+
+        .camera-box {
+            border-radius: 10px;
+            overflow: hidden;
+            background: #111;
+            margin-top: 12px;
+        }
+
+        #video {
+            display: none;
+            width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            background: #111;
+        }
+
+        .preview-panel {
+            min-width: 0;
+        }
+
+        .preview-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .preview-heading h2 {
+            margin: 0;
+        }
+
+        .preview-tag {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--maroon);
+            background: #fff1f2;
+            border-radius: 20px;
+            padding: 7px 10px;
+        }
+
+        .canvas-wrap {
+            position: relative;
+            min-height: 290px;
+            max-height: 650px;
+            overflow: auto;
+            background: #f8f9fa;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        #scanCanvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+        }
+
+        .preview-placeholder {
+            display: none;
+            position: absolute;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            padding: 20px;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .canvas-wrap:has(#scanCanvas[width="1"]) .preview-placeholder {
+            display: flex;
+        }
+
+        .placeholder-icon {
+            font-size: 34px;
+            color: #b0b6c0;
+        }
+
+        .preview-placeholder p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .results-area {
+            margin-top: 20px;
+            border-top: 1px solid var(--border);
+            padding-top: 18px;
+        }
+
+        .results-area h3 {
+            margin-top: 0;
+        }
+
+        #results {
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+
+        .result-position {
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 13px;
+            margin: 12px 0;
+            background: #fff;
+        }
+
+        .result-position h4 {
+            margin: 0 0 9px;
+            font-size: 15px;
+        }
+
+        .result-position p {
+            margin: 7px 0;
+            font-size: 13px;
+        }
+
+        .counting-note {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 12px;
+            line-height: 1.7;
+            color: #475467;
+        }
+
+        .debug {
+            margin-top: 18px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            font-size: 12px;
+            line-height: 1.7;
+            overflow: hidden;
+        }
+
+        .debug summary {
+            cursor: pointer;
+            padding: 14px;
+            font-weight: 700;
+            user-select: none;
+        }
+
+        .debug-content {
+            padding: 0 14px 14px;
+        }
+
+        #debugInfo,
+        #qrStatus {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        #debugInfo {
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        /* Retake at image quality status */
+
+        .retake-guide {
+            border: 1px solid #fcd34d;
+            border-radius: 9px;
+            background: #fffbeb;
+            color: var(--warning);
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.7;
+            margin: 12px 0;
+        }
+
+        #analysisStatus.error,
+        #imageStatus.error {
+            border-left: 3px solid #b91c1c;
+            padding: 9px 12px;
+            background: #fef2f2;
+            border-radius: 5px;
+        }
+
+        /* Responsive design */
+
+        @media screen and (min-width: 1001px) {
+            .scanner-controls {
+                position: sticky;
+                top: 14px;
+                height: calc(100vh - 28px);
+                max-height: calc(100vh - 28px);
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                scrollbar-width: thin;
+            }
+
+            .preview-panel {
+                position: sticky;
+                top: 14px;
+                height: calc(100vh - 28px);
+                max-height: calc(100vh - 28px);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .preview-panel .canvas-wrap {
+                flex: 1 1 auto;
+                min-height: 150px;
+                max-height: none;
+            }
+
+            .preview-panel .results-area {
+                flex: 0 1 auto;
+                min-height: 110px;
+                max-height: 38%;
+                overflow-y: auto;
+            }
+        }
+
+        @media screen and (min-width: 601px) and (max-width: 1000px) {
+            main {
+                grid-template-columns: 1fr;
+                max-width: 900px;
+            }
+
+            .scanner-controls {
+                order: 2;
+            }
+
+            .preview-panel {
+                order: 1;
+            }
+
+            .canvas-wrap {
+                max-height: 480px;
+            }
+        }
+
+        @media screen and (max-width: 600px) {
+            header {
+                padding: 14px 12px;
+                gap: 8px;
+            }
+
+            header h1 {
+                font-size: 17px;
+            }
+
+            header p {
+                font-size: 11px;
+                line-height: 1.4;
+            }
+
+            .back-link {
+                font-size: 26px;
+            }
+
+            main {
+                display: flex;
+                flex-direction: column;
+                padding: 0 10px;
+                margin: 12px auto;
+                gap: 12px;
+            }
+
+            .panel {
+                width: 100%;
+                padding: 15px;
+                border-radius: 11px;
+            }
+
+            .preview-panel {
+                order: 1;
+            }
+
+            .scanner-controls {
+                order: 2;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+
+            .preview-tag {
+                font-size: 10px;
+            }
+
+            .canvas-wrap {
+                min-height: 230px;
+                max-height: 380px;
+            }
+
+            #video {
+                max-height: 55vh;
+            }
+
+            .buttons {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .buttons button {
+                width: 100%;
+                min-width: 0;
+                padding: 11px 8px;
+                font-size: 13px;
+            }
+
+            #retakeBtn,
+            #loadBtn,
+            #analyzeBtn {
+                width: 100%;
+            }
+
+            input:not([type="range"]),
+            select {
+                font-size: 16px;
+            }
+
+            .results-area {
+                margin-top: 15px;
+            }
+        }
+
+        /* Phone camera */
+
+        #phoneCameraInput {
+            display: none;
+        }
+
+        .camera-note {
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--muted);
+            margin: 10px 0;
+        }
+
+        #cameraBtn {
+            flex: 1;
+        }
+
+        #qrStatus {
+            line-height: 1.7;
+        }
+    </style>
 </head>
 
 <body>
 
-<header>
-    <a
-        href="Committee.html"
-        class="back-link"
-        aria-label="Back to Committee Dashboard">
-        &#8592;
-    </a>
+    <header>
+        <a href="Committee.html" class="back-link" aria-label="Back to Committee Dashboard">
+            &#8592;
+        </a>
 
-    <div>
-        <h1>CampusVote — OMR Scanner</h1>
-        <p>
-            QR Verification • A5 Ballot Scanning •
-            Automatic Vote Counting
-        </p>
-    </div>
-</header>
-
-<main>
-
-    <!-- SCANNER CONTROLS -->
-
-    <section class="panel scanner-controls">
-
-        <h2>Scanner Controls</h2>
-
-        <label for="electionId">
-            Election ID
-        </label>
-
-        <input
-            id="electionId"
-            type="number"
-            readonly
-            placeholder="Loading current election..."
-        >
-
-        <div class="buttons">
-            <button
-                id="loadBtn"
-                type="button"
-                class="secondary">
-                Load Templates
-            </button>
-        </div>
-
-        <label for="templateSelect">
-            A5 Ballot Template
-        </label>
-
-        <select id="templateSelect">
-            <option value="">
-                Select a template
-            </option>
-        </select>
-
-        <p
-            id="scannerStatus"
-            class="status"
-            role="status">
-        </p>
-
-        <hr class="divider">
-
-        <!-- BALLOT IMAGE -->
-
-        <h3>Ballot Image</h3>
-
-        <label for="fileInput">
-            Upload Ballot Image (A5)
-        </label>
-
-        <input
-            id="fileInput"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-        >
-
-        <!-- NATIVE PHONE CAMERA INPUT -->
-
-        <input
-            id="phoneCameraInput"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-        >
-
-        <div class="buttons">
-
-            <button
-                id="cameraBtn"
-                type="button"
-                class="primary">
-                Open Phone Camera
-            </button>
-        </div>
-        <div class="camera-box">
-            <video
-                id="video"
-                autoplay
-                playsinline
-                muted>
-            </video>
-        </div>
-
-        <p
-            id="imageStatus"
-            class="status"
-            role="status">
-        </p>
-
-        <div class="buttons">
-            <button
-                id="retakeBtn"
-                type="button"
-                class="outline">
-                Retake Photo / Clear Image
-            </button>
-        </div>
-
-        <hr class="divider">
-
-        <!-- OMR SETTINGS -->
-
-        <h3>OMR Settings</h3>
-
-        <p class="note">
-            A5 portrait ballot • One ballot per scan •
-            Balanced shade detection
-        </p>
-
-        <div class="counting-note">
-            <strong>Automatic Vote Counting</strong>
-
+        <div>
+            <h1>CampusVote — OMR Scanner</h1>
             <p>
-                After you press Scan &amp; Count Ballot,
-                the backend verifies the QR, checks
-                registration marks and shaded bubbles,
-                and counts valid votes automatically.
-                Duplicate or invalid ballots are rejected.
+                QR Verification • A5 Ballot Scanning •
+                Automatic Vote Counting
             </p>
         </div>
+    </header>
 
-        <div class="buttons">
-            <button
-                id="analyzeBtn"
-                type="button"
-                class="primary"
-                disabled>
-                Scan &amp; Count Ballot
-            </button>
-        </div>
+    <main>
 
-        <p
-            id="analysisStatus"
-            class="status"
-            role="status"
-            aria-live="polite">
-        </p>
+        <!-- SCANNER CONTROLS -->
 
-        <p class="note">
-            Keep the entire A5 ballot and all four
-            registration squares visible.
-            If alignment fails, retake the photo.
-        </p>
+        <section class="panel scanner-controls">
 
-        <!-- QR AND DEBUG STATUS -->
+            <h2>Scanner Controls</h2>
 
-        <details class="debug">
-            <summary>
-                Debug &amp; QR Diagnostics
-            </summary>
+            <label for="electionId">
+                Election ID
+            </label>
 
-            <div class="debug-content">
+            <input id="electionId" type="number" readonly placeholder="Loading current election...">
 
-                <strong>
-                    Debug Diagnostics
-                </strong>
-
-                <div id="debugInfo">
-                    Load a template and image,
-                    then scan.
-                </div>
-
-                <hr class="divider">
-
-                <strong>
-                    QR Diagnostics
-                </strong>
-
-                <p id="qrStatus">
-                    QR not scanned yet.
-                </p>
-
+            <div class="buttons">
+                <button id="loadBtn" type="button" class="secondary">
+                    Load Templates
+                </button>
             </div>
-        </details>
 
-    </section>
+            <label for="templateSelect">
+                A5 Ballot Template
+            </label>
 
-    <!-- BALLOT PREVIEW -->
+            <select id="templateSelect">
+                <option value="">
+                    Select a template
+                </option>
+            </select>
 
-    <section class="panel preview-panel">
+            <p id="scannerStatus" class="status" role="status">
+            </p>
 
-        <div class="preview-heading">
-            <h2>Ballot Preview</h2>
+            <hr class="divider">
 
-            <span class="preview-tag">
-                A5 Scanner
-            </span>
-        </div>
+            <!-- BALLOT IMAGE -->
 
-        <div class="canvas-wrap">
+            <h3>Ballot Image</h3>
 
-            <canvas
-                id="scanCanvas"
-                width="1"
-                height="1">
-            </canvas>
+            <label for="fileInput">
+                Upload Ballot Image (A5)
+            </label>
 
-            <div class="preview-placeholder">
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp">
 
-                <div class="placeholder-icon">
-                    &#9635;
-                </div>
+            <!-- NATIVE PHONE CAMERA INPUT -->
+
+            <input id="phoneCameraInput" type="file" accept="image/*" capture="environment" hidden>
+
+            <div class="buttons">
+
+                <button id="cameraBtn" type="button" class="primary">
+                    Open Phone Camera
+                </button>
+            </div>
+            <div class="camera-box">
+                <video id="video" autoplay playsinline muted>
+                </video>
+            </div>
+
+            <p id="imageStatus" class="status" role="status">
+            </p>
+
+            <div class="buttons">
+                <button id="retakeBtn" type="button" class="outline">
+                    Retake Photo / Clear Image
+                </button>
+            </div>
+
+            <div class="retake-guide">
+                <strong>Photo quality &amp; retake</strong>
+                <div>Keep all four registration squares visible. Avoid shadows, glare, blur, and cropped corners. If the
+                    scanner requests a retake, capture a clearer photo of the same physical ballot. Votes are counted
+                    only after backend confirmation.</div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- OMR SETTINGS -->
+
+            <h3>OMR Settings</h3>
+
+            <p class="note">
+                A5 portrait ballot • One ballot per scan •
+                Balanced shade detection
+            </p>
+
+            <div class="counting-note">
+                <strong>Automatic Vote Counting</strong>
 
                 <p>
-                    Upload or capture a ballot image
-                    to display it here.
+                    After you press Scan &amp; Count Ballot,
+                    the backend verifies the QR, checks
+                    registration marks and shaded bubbles,
+                    and counts valid votes automatically.
+                    Duplicate or invalid ballots are rejected.
                 </p>
-
-            </div>
-        </div>
-
-        <!-- DETECTED RESULTS -->
-
-        <div class="results-area">
-
-            <h3>Detected Results</h3>
-
-            <div id="results">
-                <p>No ballot analyzed yet.</p>
             </div>
 
-        </div>
+            <div class="buttons">
+                <button id="analyzeBtn" type="button" class="primary" disabled>
+                    Scan &amp; Count Ballot
+                </button>
+            </div>
 
-    </section>
+            <p id="analysisStatus" class="status" role="status" aria-live="polite">
+            </p>
 
-</main>
+            <p class="note">
+                Keep the entire A5 ballot and all four
+                registration squares visible.
+                If alignment fails, retake the photo.
+            </p>
 
-<!-- QR CODE LIBRARY -->
+            <!-- QR AND DEBUG STATUS -->
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+            <details class="debug">
+                <summary>
+                    Debug &amp; QR Diagnostics
+                </summary>
 
-<!-- SCANNER JAVASCRIPT -->
+                <div class="debug-content">
 
-<script src="./scanner.js?v=20261103-omr-update"></script>
+                    <strong>
+                        Debug Diagnostics
+                    </strong>
 
+                    <div id="debugInfo">
+                        Load a template and image,
+                        then scan.
+                    </div>
+
+                    <hr class="divider">
+
+                    <strong>
+                        QR Diagnostics
+                    </strong>
+
+                    <p id="qrStatus">
+                        QR not scanned yet.
+                    </p>
+
+                </div>
+            </details>
+
+        </section>
+
+        <!-- BALLOT PREVIEW -->
+
+        <section class="panel preview-panel">
+
+            <div class="preview-heading">
+                <h2>Ballot Preview</h2>
+
+                <span class="preview-tag">
+                    A5 Scanner
+                </span>
+            </div>
+
+            <div class="canvas-wrap">
+
+                <canvas id="scanCanvas" width="1" height="1">
+                </canvas>
+
+                <div class="preview-placeholder">
+
+                    <div class="placeholder-icon">
+                        &#9635;
+                    </div>
+
+                    <p>
+                        Upload or capture a ballot image
+                        to display it here.
+                    </p>
+
+                </div>
+            </div>
+
+            <!-- DETECTED RESULTS -->
+
+            <div class="results-area">
+
+                <h3>Detected Results</h3>
+
+                <div id="results">
+                    <p>No ballot analyzed yet.</p>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- QR CODE LIBRARY -->
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+    <!-- SCANNER JAVASCRIPT -->
+    <script src="./scanner.js?v=20261104-retake-update"></script>
 </body>
+
 </html>
