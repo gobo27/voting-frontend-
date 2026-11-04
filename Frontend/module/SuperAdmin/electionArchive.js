@@ -246,7 +246,7 @@ function updateCopyPositions() {
         : "";
 }
 
- // I-lock ang Create button kapag may current election
+// I-lock ang Create button kapag may current election
 function updateCreateAvailability() {
     const button = $("createForm")?.querySelector(
         'button[type="submit"]'
@@ -355,9 +355,14 @@ function renderHistory() {
             archiveBtn.textContent = "Archive";
 
             archiveBtn.addEventListener("click", async () => {
-                const confirmed = window.confirm(
+                const confirmed = await window.showConfirmToast(
                     `Archive election #${election.election_id}?\n\n` +
-                    "Historical records will remain saved."
+                    "Historical records will remain saved.",
+                    {
+                        title: "Archive Election",
+                        confirmText: "Archive Election",
+                        cancelText: "Cancel"
+                    }
                 );
 
                 if (!confirmed) return;
@@ -830,14 +835,19 @@ $("createForm").addEventListener("submit", async event => {
         }
     }
 
-    const confirmed = window.confirm(
+    const confirmed = await window.showConfirmToast(
         `Create a new ${schoolLevelLabel(schoolLevel)} election?\n\n` +
         "New candidates and votes will start fresh." +
         (
             copyValue
                 ? "\nPositions will be copied from the selected election."
                 : "\nNo positions will be copied."
-        )
+        ),
+        {
+            title: "Create New Election",
+            confirmText: "Create Election",
+            cancelText: "Cancel"
+        }
     );
 
     if (!confirmed) return;
