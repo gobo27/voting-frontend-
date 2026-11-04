@@ -540,9 +540,9 @@ function setPrintPageOrientation() {
 }
 
 
-/*
-   CREATE BALLOT
- */
+
+   //CREATE BALLOT
+ 
 
 function createHalf(ballot = null) {
     const half = document.createElement("section");
@@ -623,9 +623,9 @@ function createHalf(ballot = null) {
 }
 
 
-/*
-   BALLOT PREVIEW
- */
+
+  // BALLOT PREVIEW
+ 
 
 function render() {
     state.layout = layoutBallot();
@@ -662,9 +662,8 @@ function render() {
 }
 
 
-/*
-   LOAD ELECTION DATA
- */
+   //LOAD ELECTION DATA
+ 
 
 async function loadData() {
     try {
@@ -744,9 +743,9 @@ async function loadData() {
 }
 
 
-/*
-   OMR COORDINATE PAYLOAD
- */
+
+   //OMR COORDINATE PAYLOAD
+ 
 
 function coordinatePayload() {
     return state.layout.map(({
@@ -763,10 +762,8 @@ function coordinatePayload() {
     }));
 }
 
-
-/*
-   INVALIDATE SAVED TEMPLATE AFTER CHANGES
- */
+  // INVALIDATE SAVED TEMPLATE AFTER CHANGES
+ 
 
 function invalidateAndRender() {
     state.savedTemplateId = null;
@@ -789,11 +786,8 @@ function invalidateAndRender() {
     }
 }
 
-
-/*
-   POSITION SETTINGS
- */
-
+   //POSITION SETTINGS
+ 
 function renderPositionSettings() {
     const container = el("positionSettings");
     container.replaceChildren();
@@ -859,10 +853,8 @@ function renderPositionSettings() {
     }
 }
 
-
-/*
-   SAVE POSITION LIMITS
- */
+   //SAVE POSITION LIMITS
+ 
 
 async function savePositionLimits() {
     for (const position of state.positions) {
@@ -877,10 +869,8 @@ async function savePositionLimits() {
     }
 }
 
-
-/*
-   SAVE BALLOT TEMPLATE
- */
+   //SAVE BALLOT TEMPLATE
+ 
 
 async function saveBallot() {
     if (
@@ -990,10 +980,8 @@ async function saveBallot() {
     }
 }
 
-
-/*
-   PRINT REGISTERED QR BALLOTS
- */
+   //PRINT REGISTERED QR BALLOTS
+ 
 
 async function printRegisteredBallots(ballots) {
     if (
@@ -1087,10 +1075,8 @@ async function printRegisteredBallots(ballots) {
     window.print();
 }
 
-
-/*
-   CONFIRM PHYSICAL PRINTING
- */
+   //CONFIRM PHYSICAL PRINTING
+ 
 
 async function confirmPrintedBatch(
     batchId,
@@ -1100,10 +1086,9 @@ async function confirmPrintedBatch(
     const ballotSize =
         state.copies === 2 ? "A5" : "A4";
 
-
     const confirmed = await window.showConfirmToast(
         `Did the printer successfully produce all ${quantity} ` +
-        `individual A5 ballots for batch #${batchId}?\n\n` +
+        `individual ${ballotSize} ballots for batch #${batchId}?\n\n` +
         `Choose Confirm Printed only after checking the printed pages.`,
         {
             title: "Confirm Ballot Printing",
@@ -1115,7 +1100,6 @@ async function confirmPrintedBatch(
     if (!confirmed) {
         return;
     }
-
 
     const eventId = crypto.randomUUID();
 
@@ -1134,10 +1118,8 @@ async function confirmPrintedBatch(
     return true;
 }
 
-
-/*
-   GENERATE AND PRINT REGISTERED QR BALLOTS
- */
+  // GENERATE AND PRINT REGISTERED QR BALLOTS
+ 
 
 async function generateAndPrintBallots() {
     if (
@@ -1181,8 +1163,7 @@ async function generateAndPrintBallots() {
             false
         );
 
-        // Verify that the saved template matches
-        // the currently selected printing layout.
+        // Verify saved template bago mag-generate.
         const saved = await BallotAPI.getTemplate(
             state.savedTemplateId
         );
@@ -1237,12 +1218,48 @@ async function generateAndPrintBallots() {
             false
         );
 
-        const result =
-            await BallotAPI.generateQRBatch({
-                election_id: state.electionId,
-                template_id: state.savedTemplateId,
-                quantity
-            });
+        // Same request ID ang gagamitin kapag nag-retry.
+        const pendingKey = "campusvote_pending_qr_batch";
+
+        const details = {
+            election_id: state.electionId,
+            template_id: state.savedTemplateId,
+            quantity
+        };
+
+        let pending = null;
+
+        try {
+            pending = JSON.parse(
+                sessionStorage.getItem(pendingKey) || "null"
+            );
+        } catch (_) {
+            pending = null;
+        }
+
+        // Bagong request ID kapag walang matching pending request.
+        if (
+            !pending ||
+            Number(pending.election_id) !== Number(details.election_id) ||
+            Number(pending.template_id) !== Number(details.template_id) ||
+            Number(pending.quantity) !== Number(details.quantity) ||
+            !pending.request_id
+        ) {
+            pending = {
+                ...details,
+                request_id: crypto.randomUUID()
+            };
+
+            sessionStorage.setItem(
+                pendingKey,
+                JSON.stringify(pending)
+            );
+        }
+
+        // Backend ang magche-check ng existing request ID.
+        const result = await BallotAPI.generateQRBatch(pending);
+
+        sessionStorage.removeItem(pendingKey);
 
         const batchId = Number(result.batch_id);
 
@@ -1268,6 +1285,7 @@ async function generateAndPrintBallots() {
         state.printBatchId = batchId;
 
         const reprintInput = el("reprintBatchId");
+
         if (reprintInput) {
             reprintInput.value = String(batchId);
         }
@@ -1318,7 +1336,6 @@ async function generateAndPrintBallots() {
         updateActionButtons();
     }
 }
-
 
 async function reprintRegisteredBatch() {
     if (
@@ -1551,10 +1568,7 @@ async function reprintRegisteredBatch() {
     }
 }
 
-
-/*
-   LOAD SAVED BALLOT TEMPLATES
- */
+//LOAD SAVED BALLOT TEMPLATES
 
 async function loadSavedTemplates() {
     if (
@@ -1616,10 +1630,7 @@ async function loadSavedTemplates() {
     }
 }
 
-
-/*
-   SELECT SAVED BALLOT TEMPLATE
- */
+//SELECT SAVED BALLOT TEMPLATE
 
 async function selectSavedTemplate(templateId) {
     if (
@@ -1787,10 +1798,8 @@ async function selectSavedTemplate(templateId) {
     }
 }
 
-
-/*
-   DELETE SAVED BALLOT TEMPLATE
- */
+   //DELETE SAVED BALLOT TEMPLATE
+ 
 
 function confirmSavedBallotDeletion(template) {
     return new Promise(resolve => {
@@ -1870,7 +1879,7 @@ function confirmSavedBallotDeletion(template) {
             if (event.target === backdrop) finish(false);
         });
 
-        actions.append(cancel, confirm);
+        actions.append(cancel, description, actions);
         dialog.append(title, description, actions);
         backdrop.appendChild(dialog);
         document.body.appendChild(backdrop);
@@ -1916,7 +1925,6 @@ async function deleteSavedTemplate(templateId) {
         );
         return;
     }
-
 
     if (
         registeredPrintBatches.some(
@@ -2009,17 +2017,13 @@ async function deleteSavedTemplate(templateId) {
     }
 }
 
-/*
-   REGISTERED PRINT BATCHES
- */
+//REGISTERED PRINT BATCHES
 
 let registeredPrintBatches = [];
 let loadingPrintBatches = false;
 
-
-/*
-   LOAD PRINT BATCHES
- */
+   //LOAD PRINT BATCHES
+ 
 
 async function loadPrintBatches() {
     const select = el(
@@ -2140,10 +2144,7 @@ async function loadPrintBatches() {
     }
 }
 
-
-/*
-   SELECTED BATCH INFORMATION
- */
+   //SELECTED BATCH INFORMATION
 
 function updateSelectedBatchInfo() {
     const select = el(
@@ -2197,11 +2198,8 @@ function updateSelectedBatchInfo() {
         `(${batch.paper_size})`;
 }
 
-
-/*
-   REPRINT SELECTED BATCH
- */
-
+   //REPRINT SELECTED BATCH
+ 
 async function reprintSelectedBatch() {
     const select = el(
         "reprintBatchSelect"
@@ -2259,10 +2257,7 @@ async function reprintSelectedBatch() {
     await reprintRegisteredBatch();
 }
 
-
-/*
-   DOM CONTENT LOADED
- */
+   //DOM CONTENT LOADED
 
 document.addEventListener(
     "DOMContentLoaded",
@@ -2431,3 +2426,4 @@ document.addEventListener(
         loadData();
     }
 );
+
