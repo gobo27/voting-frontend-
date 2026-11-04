@@ -216,23 +216,40 @@ function renderLiveResults() {
                 0
             );
 
-            const highestVotes =
-                candidates[0]?.votes || 0;
+            // Kunin ang allowed winners sa position
+            const maxWinners = Math.max(
+                1,
+                Number(position.max_choices) || 1
+            );
 
-            const highestCount = candidates.filter(
-                candidate =>
-                    candidate.votes === highestVotes
-            ).length;
+            // Top candidates base sa allowed winners
+            const winningCandidates = candidates
+                .filter(candidate => candidate.votes > 0)
+                .slice(0, maxWinners);
 
-            // WINNER ONLY FOR FINALIZED
-            // SINGLE-WINNER POSITIONS
-            // NO WINNER IF THERE IS A TIE
+            // Check kung may tie sa last winning slot
+            const cutoffCandidate = candidates[maxWinners - 1];
+            const nextCandidate = candidates[maxWinners];
 
-            const hasWinner =
-                finalized &&
-                highestVotes > 0 &&
-                highestCount === 1 &&
-                position.max_choices === 1;
+            const hasCutoffTie =
+                cutoffCandidate &&
+                nextCandidate &&
+                cutoffCandidate.votes > 0 &&
+                cutoffCandidate.votes === nextCandidate.votes;
+
+            const cutoffVotes = hasCutoffTie
+                ? cutoffCandidate.votes
+                : null;
+
+            // IDs ng confirmed winners
+            const winnerIds = new Set(
+                winningCandidates
+                    .filter(candidate =>
+                        !hasCutoffTie ||
+                        candidate.votes > cutoffVotes
+                    )
+                    .map(candidate => candidate.id)
+            );
 
             const rows = candidates.map(
                 (candidate, index) => {
@@ -250,9 +267,10 @@ function renderLiveResults() {
                         Math.min(100, percent)
                     );
 
+                    // Winner lang kapag finalized ang election
                     const isWinner =
-                        hasWinner &&
-                        index === 0;
+                        finalized &&
+                        winnerIds.has(candidate.id);
 
                     const displayName = revealed
                         ? candidate.name

@@ -826,24 +826,56 @@ function refreshStatusUI() {
     }
 
     // FINISH SCANNING
-    // Requires voting to be closed and scanning to be open.
-
+    // Check kung finalized na ang scanning
     const finishButton = $("finishScanningBtn");
 
     if (finishButton) {
+        const scanningFinished =
+            hasStatus &&
+            Boolean(electionControlStatus?.scanning_closed_at) &&
+            !scanningOpen;
+
         finishButton.disabled =
             !hasStatus ||
             actionPending ||
             archived ||
+            scanningFinished ||
             !scanningOpen ||
             !votingEnded;
 
-        finishButton.title =
-            !scanningOpen
-                ? "Scanning is not open or is already finished."
-                : !votingEnded
-                    ? "Close voting first before finishing scanning."
-                    : "Finalize OMR scanning for this election.";
+        const finishTitle = $("finishScanningBtnTitle");
+        const finishDesc = $("finishScanningBtnDesc");
+
+        if (scanningFinished) {
+            if (finishTitle) {
+                finishTitle.textContent = "Scanning Finished ✓";
+            }
+
+            if (finishDesc) {
+                finishDesc.textContent =
+                    "Ballot counting finalized and locked";
+            }
+
+            finishButton.title =
+                "Scanning has already been finalized.";
+
+        } else {
+            if (finishTitle) {
+                finishTitle.textContent = "Finish Scanning";
+            }
+
+            if (finishDesc) {
+                finishDesc.textContent =
+                    "Finalize ballot counting and lock scanning";
+            }
+
+            finishButton.title =
+                !scanningOpen
+                    ? "Scanning is not open."
+                    : !votingEnded
+                        ? "Close voting first."
+                        : "Finalize OMR scanning.";
+        }
     }
 
     // SAVE SCHEDULE
