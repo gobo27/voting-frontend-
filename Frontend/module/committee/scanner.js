@@ -13,41 +13,21 @@ let cameraStream = null;
 
 let busy = false;
 let imageVersion = 0;
-let retakeRequired = false;
 
 let qrData = null;
 let qrResult = null;
 
-// Backend ang final QR verification authority.
-let backendQRPending = false;
-let backendQRVerified = false;
-
-// Corrected A5 preview state.
-let correctedBallotURL = null;
-let correctedBallotImage = null;
-
-// Para sa scan result at retake diagnostics.
-let lastScanResult = null;
-let lastQualityIssue = null;
-
-// Browser QR is optional; backend verification is required.
 window.campusVoteQRVerified = false;
 window.confirmedOMRCounting = false;
 
 const canvas = $("scanCanvas");
-
-const ctx = canvas?.getContext("2d", {
+const ctx = canvas.getContext("2d", {
     willReadFrequently: true
 });
 
-if (!canvas || !ctx) {
-    console.error(
-        "Scanner canvas not found. Check #scanCanvas."
-    );
-}
-
 
 // AUTHENTICATION
+
 
 function token() {
     return (
@@ -75,7 +55,6 @@ function getTemplateId() {
     return Number($("templateSelect")?.value);
 }
 
-// Shared API request handler.
 async function request(path, options = {}) {
     const t = token();
 
@@ -112,6 +91,7 @@ async function request(path, options = {}) {
 
 // STATUS AND RESET
 
+
 function status(id, message, error = false) {
     const el = $(id);
 
@@ -133,56 +113,18 @@ function disableSubmission() {
     }
 }
 
-// Scan button is no longer blocked by browser QR failure.
 function updateAnalyzeButton() {
     const button = $("analyzeBtn");
-
     if (!button) return;
 
     button.disabled =
         busy ||
         window.confirmedOMRCounting === true ||
-        retakeRequired ||
+        window.campusVoteQRVerified !== true ||
         !template ||
         !sourceImage ||
         !validId(getElectionId()) ||
         !validId(getTemplateId());
-
-    // QR validation happens independently in the backend.
-}
-
-// Release old corrected preview resources.
-function clearCorrectedPreview() {
-    if (correctedBallotURL) {
-        URL.revokeObjectURL(correctedBallotURL);
-        correctedBallotURL = null;
-    }
-
-    correctedBallotImage = null;
-
-    const preview = $("correctedBallotPreview");
-
-    if (preview) {
-        preview.removeAttribute("src");
-        preview.style.display = "none";
-    }
-}
-
-// Clear state from the previous ballot.
-function resetBallotVerification() {
-    qrData = null;
-    qrResult = null;
-
-    backendQRPending = false;
-    backendQRVerified = false;
-
-    window.campusVoteQRVerified = false;
-    window.confirmedOMRCounting = false;
-
-    lastScanResult = null;
-    lastQualityIssue = null;
-
-    clearCorrectedPreview();
 }
 
 function reset() {
@@ -199,15 +141,13 @@ function reset() {
 
     window.confirmedOMRCounting = false;
 
-    lastScanResult = null;
-    lastQualityIssue = null;
-
     disableSubmission();
     updateAnalyzeButton();
 }
 
 
 // ELECTION AND TEMPLATES
+
 
 async function loadTemplates() {
     if (busy) return;
@@ -227,20 +167,12 @@ async function loadTemplates() {
 
         const select = $("templateSelect");
 
-        if (!select) {
-            throw new Error(
-                "Template selector not found."
-            );
-        }
-
         select.replaceChildren(
             new Option("Select a template", "")
         );
 
         for (const item of data.templates || []) {
-            if (
-                String(item.paper_size).toUpperCase() !== "A5"
-            ) {
+            if (String(item.paper_size).toUpperCase() !== "A5") {
                 continue;
             }
 
@@ -257,7 +189,10 @@ async function loadTemplates() {
         template = null;
         coordinates = [];
 
-        resetBallotVerification();
+        qrData = null;
+        qrResult = null;
+
+        window.campusVoteQRVerified = false;
 
         imageVersion++;
 
@@ -283,12 +218,13 @@ async function selectTemplate() {
     template = null;
     coordinates = [];
 
-    resetBallotVerification();
+    qrData = null;
+    qrResult = null;
+
+    window.campusVoteQRVerified = false;
 
     const version = ++imageVersion;
-
-    const select = $("templateSelect");
-    const id = select?.value;
+    const id = $("templateSelect").value;
 
     reset();
 
@@ -311,13 +247,8 @@ async function selectTemplate() {
             );
         }
 
-        if (
-            String(data.template.paper_size).toUpperCase() !== "A5"
-        ) {
-            throw new Error(
-                "A4 counting is not yet supported. " +
-                "Select an A5 portrait template."
-            );
+        if (String(data.template.paper_size).toUpperCase() !== "A5") {
+            throw new Error("A4 counting is not yet supported. Select an A5 portrait template.");
         }
 
         template = data.template;
@@ -332,22 +263,10 @@ async function selectTemplate() {
 
         reset();
 
-        // Browser QR check is optional.
-        // Backend can still read the uploaded image.
         if (sourceImage) {
-            status(
-                "imageStatus",
-                "Template loaded. Ballot image is ready " +
-                "for backend QR and OMR verification."
-            );
-
-            if ($("qrStatus")) {
-                $("qrStatus").textContent =
-                    "QR will be verified by the backend. " +
-                    "Browser QR detection is optional.";
-            }
-
-            updateAnalyzeButton();
+            await debugQR().catch(() => {
+                // QR error is already shown in the scanner status.
+            });
         }
 
     } catch (error) {
@@ -388,15 +307,7 @@ async function currentElection() {
             );
         }
 
-        const electionInput = $("electionId");
-
-        if (!electionInput) {
-            throw new Error(
-                "Election ID input not found."
-            );
-        }
-
-        electionInput.value = id;
+        $("electionId").value = id;
 
         await loadTemplates();
 
@@ -410,10 +321,12 @@ async function currentElection() {
     }
 }
 
+
 // IMAGE HANDLING
 
+
 function drawOriginal() {
-    if (!sourceImage || !canvas || !ctx) return;
+    if (!sourceImage) return;
 
     canvas.width =
         sourceImage.naturalWidth ||
@@ -439,23 +352,20 @@ function drawOriginal() {
     );
 }
 
-// I-display ang uploaded o captured ballot.
 function showImage(image) {
     if (busy) {
-        status(
-            "imageStatus",
-            "Wait until the current scan finishes.",
-            true
-        );
+        status("imageStatus", "Wait until the current scan finishes.", true);
         return;
     }
 
     imageVersion++;
 
     sourceImage = image;
-    retakeRequired = false;
 
-    resetBallotVerification();
+    qrData = null;
+    qrResult = null;
+
+    window.campusVoteQRVerified = false;
 
     drawOriginal();
     reset();
@@ -463,38 +373,40 @@ function showImage(image) {
     status(
         "imageStatus",
         `Image loaded: ${canvas.width} × ` +
-        `${canvas.height}. Ready for backend verification.`
+        `${canvas.height}. Checking QR code...`
     );
 
     if ($("qrStatus")) {
         $("qrStatus").textContent =
-            "QR verification pending.\n" +
-            "The backend will verify the ballot during scanning.";
+            "Automatically reading QR code...";
     }
 
-    // Optional browser QR check para sa mabilis na feedback.
-    // Hindi nito haharangin ang backend kapag hindi mabasa.
+    // Automatic QR verification after photo capture.
+    // This does NOT count votes.
     if (template && validId(getTemplateId())) {
-        debugQR().catch(error => {
-            if (sourceImage !== image) return;
-
-            status(
-                "imageStatus",
-                "Image loaded. Browser QR check unavailable. " +
-                "Backend scanning is still available."
-            );
-
-            debug(
-                "BROWSER QR CHECK\n" +
-                error.message + "\n" +
-                "Backend verification remains available."
-            );
+        debugQR().then(result => {
+            if (result && sourceImage === image) {
+                status(
+                    "imageStatus",
+                    "Ballot image loaded. QR verified. " +
+                    "Ready for Scan & Count Ballot."
+                );
+            }
+        }).catch(error => {
+            if (sourceImage === image) {
+                status(
+                    "imageStatus",
+                    "Image loaded, but QR verification failed: " +
+                    error.message,
+                    true
+                );
+            }
         });
     } else {
         status(
             "imageStatus",
-            "Image loaded. Select an A5 ballot template " +
-            "before scanning."
+            "Image loaded. Select a ballot template " +
+            "to verify its QR code."
         );
     }
 
@@ -519,6 +431,7 @@ function loadImageFile(file) {
             "Use PNG/JPG/WEBP up to 30MB.",
             true
         );
+
         return;
     }
 
@@ -550,7 +463,8 @@ function upload(event) {
 }
 
 
-// DIRECT PHONE CAMERA
+// DIRECT PHONE CAMERA - OPTION 1
+
 
 function openCamera() {
     if (busy) {
@@ -573,8 +487,6 @@ function openCamera() {
         return;
     }
 
-    // Native camera picker para sa Android at iPhone.
-    // Kailangan ang capture attribute sa HTML.
     phoneCameraInput.value = "";
 
     status(
@@ -582,7 +494,6 @@ function openCamera() {
         "Opening phone camera. Capture the complete " +
         "A5 ballot with all four registration marks."
     );
-
     phoneCameraInput.click();
 }
 
@@ -597,13 +508,14 @@ function phoneCameraCapture(event) {
         return;
     }
 
-    // Hindi kailangang mabasa agad ang QR sa browser.
-    // Backend ang gagawa ng final validation.
+    // After the native camera returns the photo,
+    // showImage() automatically starts QR verification.
     loadImageFile(file);
 }
 
 
 // OPTIONAL LEGACY CAMERA CLEANUP
+
 
 function stopCamera() {
     cameraStream?.getTracks().forEach(track => {
@@ -638,6 +550,7 @@ function capture() {
 
 // GET BALLOT IMAGE PIXELS
 
+
 function getSource() {
     if (!sourceImage) {
         throw new Error("No ballot image loaded.");
@@ -656,10 +569,6 @@ function getSource() {
     const c = temp.getContext("2d", {
         willReadFrequently: true
     });
-
-    if (!c) {
-        throw new Error("Image canvas unavailable.");
-    }
 
     c.drawImage(
         sourceImage,
@@ -680,6 +589,7 @@ function getSource() {
 
 // READ QR CODE FROM IMAGE
 
+
 function readQR() {
     if (typeof window.jsQR !== "function") {
         throw new Error(
@@ -689,7 +599,8 @@ function readQR() {
 
     const image = getSource();
 
-    // Unang attempt: buong ballot image.
+    // First attempt: scan the entire ballot image.
+
     let result = window.jsQR(
         image.data,
         image.width,
@@ -699,7 +610,9 @@ function readQR() {
         }
     );
 
-    // Ikalawang attempt: upper-right QR region.
+    // Second attempt: scan the top-right area
+    // where the ballot QR code is normally printed.
+
     if (!result) {
         const temp = document.createElement("canvas");
 
@@ -709,10 +622,6 @@ function readQR() {
         const c = temp.getContext("2d", {
             willReadFrequently: true
         });
-
-        if (!c) {
-            throw new Error("QR canvas unavailable.");
-        }
 
         c.putImageData(image, 0, 0);
 
@@ -740,8 +649,9 @@ function readQR() {
 
     if (!result) {
         throw new Error(
-            "QR not detected in browser. " +
-            "Backend verification is still available."
+            "QR NOT DETECTED. " +
+            "Retake a clearer photo with the " +
+            "entire A5 ballot visible."
         );
     }
 
@@ -751,6 +661,7 @@ function readQR() {
 
 // VALIDATE CAMPUSVOTE QR FORMAT
 
+
 function validateQR(raw) {
     if (typeof raw !== "string" || !raw.trim()) {
         throw new Error(
@@ -758,7 +669,7 @@ function validateQR(raw) {
         );
     }
 
-    const parts = raw.trim().split("|");
+    const parts = raw.split("|");
 
     const uuid =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -795,13 +706,14 @@ function validateQR(raw) {
 
     return {
         election_id: qrElectionId,
-        ballot_id: parts[2].toLowerCase(),
+        ballot_id: parts[2],
         template_id: qrTemplateId
     };
 }
 
 
-// OPTIONAL BROWSER QR VERIFICATION
+// AUTOMATIC QR VERIFICATION
+
 
 async function debugQR() {
     const version = imageVersion;
@@ -809,23 +721,14 @@ async function debugQR() {
     const selectedTemplateId = getTemplateId();
     const selectedElectionId = getElectionId();
 
+    // Clear previous QR verification result.
+
     qrData = null;
     qrResult = null;
 
-    backendQRPending = false;
-    backendQRVerified = false;
-
     window.campusVoteQRVerified = false;
 
-    // Hindi dini-disable ang scan button dito.
     updateAnalyzeButton();
-
-    const isCurrent = () => (
-        version === imageVersion &&
-        selectedImage === sourceImage &&
-        selectedTemplateId === getTemplateId() &&
-        selectedElectionId === getElectionId()
-    );
 
     try {
         if (!selectedImage) {
@@ -845,9 +748,7 @@ async function debugQR() {
             );
         }
 
-        if (
-            String(template.paper_size).toUpperCase() !== "A5"
-        ) {
+        if (String(template.paper_size).toUpperCase() !== "A5") {
             throw new Error(
                 "Only A5 portrait ballots are currently supported."
             );
@@ -855,14 +756,25 @@ async function debugQR() {
 
         if ($("qrStatus")) {
             $("qrStatus").textContent =
-                "Checking QR in browser...";
+                "Reading QR code automatically...";
         }
 
-        // Browser detection ay optional.
+        // Detect QR from the captured image.
+
         const raw = readQR();
+
+        // Check the ballot.
+
         const parsedQR = validateQR(raw);
 
-        if (!isCurrent()) return null;
+        if (
+            version !== imageVersion ||
+            selectedImage !== sourceImage ||
+            selectedTemplateId !== getTemplateId() ||
+            selectedElectionId !== getElectionId()
+        ) {
+            return null;
+        }
 
         if ($("qrStatus")) {
             $("qrStatus").textContent =
@@ -870,9 +782,8 @@ async function debugQR() {
                 "Checking ballot record with server...";
         }
 
-        backendQRPending = true;
+        // Verify the ballot with the backend.
 
-        // Verify ang nabasang QR sa database.
         const data = await request("/omr/verify-qr", {
             method: "POST",
             headers: {
@@ -883,9 +794,16 @@ async function debugQR() {
             })
         });
 
-        if (!isCurrent()) return null;
+        if (
+            version !== imageVersion ||
+            selectedImage !== sourceImage ||
+            selectedTemplateId !== getTemplateId() ||
+            selectedElectionId !== getElectionId()
+        ) {
+            return null;
+        }
 
-        backendQRPending = false;
+        // Reject duplicate ballots.
 
         if (
             data.duplicate === true ||
@@ -897,12 +815,16 @@ async function debugQR() {
             );
         }
 
+        // Reject void ballots.
+
         if (data.status === "VOID") {
             throw new Error(
                 "VOID BALLOT. " +
                 "This ballot cannot be counted."
             );
         }
+
+        // Check supported ballot status.
 
         if (!["ISSUED", "CAST"].includes(data.status)) {
             throw new Error(
@@ -911,6 +833,8 @@ async function debugQR() {
             );
         }
 
+        // Require explicit backend validation.
+
         if (data.valid !== true) {
             throw new Error(
                 "QR verification was not approved " +
@@ -918,14 +842,16 @@ async function debugQR() {
             );
         }
 
+        // Save verified QR information.
+
         qrData = raw;
         qrResult = {
             ...data,
             parsedQR
         };
 
-        backendQRVerified = true;
         window.campusVoteQRVerified = true;
+        updateAnalyzeButton();
 
         if ($("qrStatus")) {
             $("qrStatus").textContent =
@@ -940,7 +866,7 @@ async function debugQR() {
         status(
             "imageStatus",
             "QR verified successfully. " +
-            "Ready for backend OMR scanning."
+            "You can now press Scan & Count Ballot."
         );
 
         debug(
@@ -951,47 +877,42 @@ async function debugQR() {
             "No votes have been saved yet."
         );
 
-        updateAnalyzeButton();
-
         return data;
 
     } catch (error) {
-        if (isCurrent()) {
+
+        if (
+            version === imageVersion &&
+            selectedImage === sourceImage &&
+            selectedTemplateId === getTemplateId() &&
+            selectedElectionId === getElectionId()
+        ) {
             qrData = null;
             qrResult = null;
-
-            backendQRPending = false;
-            backendQRVerified = false;
 
             window.campusVoteQRVerified = false;
 
             if ($("qrStatus")) {
                 $("qrStatus").textContent =
-                    "BROWSER QR CHECK INCOMPLETE\n" +
-                    error.message + "\n" +
-                    "Backend verification remains available.";
+                    "QR VERIFICATION FAILED\n" +
+                    error.message;
             }
 
             status(
                 "imageStatus",
-                "Browser QR check incomplete. " +
-                "The backend can still verify the ballot."
+                error.message,
+                true
             );
 
             debug(
-                "BROWSER QR CHECK\n" +
-                error.message + "\n" +
-                "No votes saved."
+                "QR VERIFICATION ERROR\n" +
+                error.message
             );
         }
-
-        // Hindi nito ibo-block ang backend-first scan.
-        updateAnalyzeButton();
 
         throw error;
     }
 }
-
 
 // CONVERT BALLOT IMAGE TO JPEG BLOB
 
@@ -1047,11 +968,9 @@ async function imageToBlob() {
 
             temp.toBlob(blob => {
                 if (!blob) {
-                    reject(
-                        new Error(
-                            "Image conversion failed."
-                        )
-                    );
+                    reject(new Error(
+                        "Image conversion failed."
+                    ));
                     return;
                 }
 
@@ -1060,18 +979,10 @@ async function imageToBlob() {
         });
     }
 
-    let blob = await encodeJPEG(
-        width,
-        height,
-        0.92
-    );
+    let blob = await encodeJPEG(width, height, 0.92);
 
     if (blob.size > MAX_BYTES) {
-        blob = await encodeJPEG(
-            width,
-            height,
-            0.82
-        );
+        blob = await encodeJPEG(width, height, 0.82);
     }
 
     while (
@@ -1081,11 +992,7 @@ async function imageToBlob() {
         width = Math.round(width * 0.85);
         height = Math.round(height * 0.85);
 
-        blob = await encodeJPEG(
-            width,
-            height,
-            0.85
-        );
+        blob = await encodeJPEG(width, height, 0.85);
     }
 
     if (blob.size > MAX_BYTES) {
@@ -1097,7 +1004,6 @@ async function imageToBlob() {
 
     return blob;
 }
-
 
 // DISPLAY DETECTED OMR RESULTS
 
@@ -1132,13 +1038,16 @@ function displayResults(data, countingEnabled) {
         `Markers: ${data.markers_detected ?? "?"
         } detected`,
 
-        `Sensitivity: ${data.sensitivity || "Balanced"}`,
+        `Sensitivity: ${data.sensitivity || "Balanced"
+        }`,
 
         `Positions: ${positions.length}`,
 
-        `Selected bubbles: ${data.selected_bubbles ?? "?"}`,
+        `Selected bubbles: ${data.selected_bubbles ?? "?"
+        }`,
 
-        `Overvotes: ${data.overvotes ?? "?"}`,
+        `Overvotes: ${data.overvotes ?? "?"
+        }`,
 
         ""
     ];
@@ -1161,28 +1070,20 @@ function displayResults(data, countingEnabled) {
         section.appendChild(title);
         lines.push(title.textContent);
 
-        // Ipakita ang candidates at detected shading.
+        // Display candidates and detected shading.
         for (const candidate of position.candidates || []) {
             const filled = candidate.filled === true;
-            const unclear = candidate.unclear === true;
-
-            const shadingStatus = unclear
-                ? "UNCLEAR"
-                : filled
-                    ? "SHADED"
-                    : "BLANK";
 
             const candidateText =
-                `${unclear ? "◐" : filled ? "●" : "○"} ` +
+                `${filled ? "●" : "○"} ` +
                 `${candidate.name || "Unknown Candidate"} - ` +
-                shadingStatus;
+                `${filled ? "SHADED" : "BLANK"}`;
 
             const p = document.createElement("p");
+
             p.textContent = candidateText;
 
-            if (unclear) {
-                p.className = "overvote";
-            } else if (filled) {
+            if (filled) {
                 p.className = "valid";
             }
 
@@ -1190,7 +1091,7 @@ function displayResults(data, countingEnabled) {
             lines.push(candidateText);
         }
 
-        // Preserve ang overvote at blank rules.
+        // Validate the position's voting result.
         const result =
             position.result ||
             (
@@ -1207,23 +1108,18 @@ function displayResults(data, countingEnabled) {
             info.textContent = "SKIPPED: OVERVOTE";
             info.className = "overvote";
 
-        } else if (
-            result === "NEEDS_REVIEW" ||
-            position.unclear === true
-        ) {
-            info.textContent =
-                "UNCLEAR SHADING — RETAKE REQUIRED";
-            info.className = "overvote";
-
         } else if (result.startsWith("SKIPPED")) {
-            info.textContent = "SKIPPED POSITION";
+            info.textContent = "SKIPPED: UNCLEAR SHADE";
             info.className = "overvote";
 
         } else if (result === "BLANK") {
             info.textContent = "BLANK POSITION";
 
         } else {
-            info.textContent = "VALID POSITION";
+            info.textContent = countingEnabled
+                ? "VALID POSITION"
+                : "VALID POSITION";
+
             info.className = "valid";
         }
 
@@ -1233,7 +1129,7 @@ function displayResults(data, countingEnabled) {
         lines.push(info.textContent, "");
     }
 
-    // Counting summary mula sa backend.
+    // Show the backend counting summary.
     const summary = document.createElement("div");
     summary.className = "counting-note";
 
@@ -1243,7 +1139,7 @@ function displayResults(data, countingEnabled) {
         );
 
         summary.textContent =
-            "Ballot counted successfully. " +
+            `Ballot counted successfully. ` +
             `Saved votes: ${savedVotes}.`;
 
         lines.push(
@@ -1273,127 +1169,13 @@ function displayResults(data, countingEnabled) {
     debug(lines.join("\n"));
 }
 
-
-// CORRECTED A5 BALLOT PREVIEW
-
-function displayCorrectedBallotPreview(data) {
-    if (!data || typeof data !== "object") {
-        return false;
-    }
-
-    // Optional backend response fields.
-    // Hindi available sa kasalukuyang controller.
-    const previewData =
-        data.corrected_preview ||
-        data.corrected_image ||
-        data.corrected_image_url ||
-        null;
-
-    if (!previewData) {
-        return false;
-    }
-
-    let imageURL = null;
-    let shouldRevoke = false;
-
-    if (
-        typeof previewData === "string" &&
-        /^data:image\/(?:jpeg|png|webp);base64,/i.test(previewData)
-    ) {
-        imageURL = previewData;
-
-    } else if (
-        typeof previewData === "object" &&
-        typeof previewData.base64 === "string" &&
-        /^[A-Za-z0-9+/]+={0,2}$/.test(previewData.base64) &&
-        ["image/jpeg", "image/png", "image/webp"].includes(
-            previewData.mime_type
-        )
-    ) {
-        imageURL =
-            `data:${previewData.mime_type};base64,` +
-            previewData.base64;
-
-    } else if (
-        typeof previewData === "string" &&
-        previewData.startsWith("blob:")
-    ) {
-        // Blob URLs are usable only in the same browser context.
-        imageURL = previewData;
-    }
-
-    if (!imageURL) {
-        return false;
-    }
-
-    clearCorrectedPreview();
-
-    const preview = $("correctedBallotPreview");
-
-    if (!preview) {
-        // Walang dedicated preview element sa HTML.
-        // Huwag palitan ang original scan canvas.
-        return false;
-    }
-
-    const image = new Image();
-
-    image.onload = () => {
-        if (correctedBallotImage !== image) return;
-
-        preview.src = imageURL;
-        preview.style.display = "block";
-    };
-
-    image.onerror = () => {
-        if (correctedBallotImage !== image) return;
-
-        clearCorrectedPreview();
-
-        console.warn(
-            "Corrected A5 preview could not be displayed."
-        );
-    };
-
-    correctedBallotImage = image;
-
-    if (shouldRevoke) {
-        correctedBallotURL = imageURL;
-    }
-
-    image.src = imageURL;
-
-    return true;
-}
-
-
-// BACKEND-FIRST OMR SCANNING
+// BACKEND OMR PROCESSING AND LIVE VOTE COUNTING
 
 async function backendPreview() {
-    // Iwas sa simultaneous scans.
+    // Prevent simultaneous scans.
     if (busy) return;
 
-    if (window.confirmedOMRCounting === true) {
-        status(
-            "analysisStatus",
-            "This ballot has already been counted. " +
-            "Load a new ballot before scanning again.",
-            true
-        );
-        return;
-    }
-
-    if (retakeRequired) {
-        status(
-            "analysisStatus",
-            "A new photo or ballot status verification " +
-            "is required before scanning again.",
-            true
-        );
-        return;
-    }
-
-    // Check template at ballot image.
+    // Check template and ballot image.
     if (!template || !sourceImage) {
         status(
             "analysisStatus",
@@ -1418,9 +1200,7 @@ async function backendPreview() {
         return;
     }
 
-    if (
-        String(template.paper_size).toUpperCase() !== "A5"
-    ) {
+    if (String(template.paper_size).toUpperCase() !== "A5") {
         status(
             "analysisStatus",
             "Only A5 portrait ballots are currently supported.",
@@ -1432,51 +1212,54 @@ async function backendPreview() {
     const version = imageVersion;
     const selectedImage = sourceImage;
 
-    const isCurrent = () => (
-        version === imageVersion &&
-        selectedImage === sourceImage &&
-        electionId === getElectionId() &&
-        templateId === getTemplateId()
-    );
-
     busy = true;
-
     updateAnalyzeButton();
     disableSubmission();
 
     try {
+        // Reverify QR before counting.
         status(
             "analysisStatus",
-            "Preparing ballot for backend QR and OMR verification..."
+            "Verifying QR code..."
         );
 
         debug(
-            "BACKEND-FIRST OMR SCANNING\n" +
-            "Browser QR: Optional\n" +
-            "Backend QR: Required\n" +
-            "Automatic crop: Enabled on backend\n" +
-            "Lighting correction: Enabled on backend\n" +
-            "Four-marker alignment: Required\n" +
-            "Vote counting: Pending"
+            "Checking ballot QR code before OMR counting..."
         );
 
-        // Browser QR failure ay hindi blocking.
-        // Backend mismo ang magbabasa ng uploaded QR.
-        if ($("qrStatus")) {
-            $("qrStatus").textContent =
-                "BACKEND VERIFICATION IN PROGRESS\n" +
-                "Checking ballot QR and registration marks...";
-        }
+        // The backend independently verifies the QR.
+        await debugQR();
 
-        // Prepare one A5 ballot image.
-        const blob = await imageToBlob();
-
-        if (!isCurrent()) {
+        if (
+            version !== imageVersion ||
+            selectedImage !== sourceImage ||
+            electionId !== getElectionId() ||
+            templateId !== getTemplateId()
+        ) {
             throw new Error(
                 "Ballot image or template changed " +
-                "during preparation. Please retry."
+                "during verification. Please retry."
             );
         }
+
+        if (
+            window.campusVoteQRVerified !== true ||
+            !qrData ||
+            !qrResult
+        ) {
+            throw new Error(
+                "QR verification failed. " +
+                "No votes will be counted."
+            );
+        }
+
+        // Prepare one ballot image for upload.
+        status(
+            "analysisStatus",
+            "Preparing ballot image for OMR scanning..."
+        );
+
+        const blob = await imageToBlob();
 
         const form = new FormData();
 
@@ -1490,21 +1273,28 @@ async function backendPreview() {
             String(templateId)
         );
 
+        // One A5 ballot image per scan.
         form.append(
             "ballot_image",
             blob,
             "ballot-scan.jpg"
         );
 
-        // Sensitivity control remains display-only.
-        // Current backend uses COUNTING_SENSITIVITY = 2.
+        // Send ballot to the backend.
         status(
             "analysisStatus",
-            "Verifying QR, correcting A5 alignment, " +
-            "and analyzing shaded bubbles..."
+            "Checking registration marks and shaded bubbles..."
         );
 
-        // Backend ang final authority para sa counting.
+        debug(
+            "OMR PROCESSING\n" +
+            "QR: Verified\n" +
+            "Checking four registration marks...\n" +
+            "Analyzing shaded bubbles...\n" +
+            "Waiting for backend counting result..."
+        );
+
+        // Backend handles QR, markers, votes and duplicates.
         const data = await request(
             "/omr/scan",
             {
@@ -1513,12 +1303,16 @@ async function backendPreview() {
             }
         );
 
-        // Huwag mag-assume ng failure kapag nagbago
-        // ang local state habang nagre-request.
-        if (!isCurrent()) {
+        // Check that the response matches this ballot.
+        if (
+            version !== imageVersion ||
+            selectedImage !== sourceImage ||
+            electionId !== getElectionId() ||
+            templateId !== getTemplateId()
+        ) {
             throw new Error(
                 "Image or template changed during scanning. " +
-                "Check ballot status before retrying."
+                "Check the ballot status before retrying."
             );
         }
 
@@ -1527,8 +1321,9 @@ async function backendPreview() {
             Number(data.template_id) !== templateId
         ) {
             throw new Error(
-                "Backend returned a different election " +
-                "or template. Check ballot status before retrying."
+                "Backend returned a different " +
+                "election or template. " +
+                "Check ballot status before retrying."
             );
         }
 
@@ -1539,262 +1334,121 @@ async function backendPreview() {
             );
         }
 
-        // Final result must come from backend.
-        if (
-            data.success !== true ||
-            data.valid !== true ||
-            data.counted !== true ||
-            data.status !== "COUNTED" ||
-            !validId(data.ballot_id) &&
-                !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(
-                    String(data.ballot_id || "")
-                )
-        ) {
-            throw new Error(
-                "Backend did not return a complete " +
-                "confirmed counting result. " +
-                "Verify ballot status before retrying."
-            );
-        }
-
-        // Save successful backend response.
-        lastScanResult = data;
-        lastQualityIssue = null;
-
-        // Corrected preview only kapag supported.
-        displayCorrectedBallotPreview(data);
-
-        // Ipakita ang actual detected votes.
+        // Display detected positions and shaded bubbles.
         displayResults(data, true);
 
-        window.confirmedOMRCounting = true;
-        retakeRequired = false;
+        // Confirm actual backend vote counting.
+        if (
+            data.counted === true &&
+            data.valid === true
+        ) {
+            window.confirmedOMRCounting = true;
 
-        backendQRPending = false;
-        backendQRVerified = true;
+            if ($("qrStatus")) {
+                $("qrStatus").textContent =
+                    "QR VALIDATED\n" +
+                    "Status: COUNTED\n" +
+                    "Template: #" + templateId + "\n" +
+                    "Backend counting successful.";
+            }
 
-        window.campusVoteQRVerified = true;
+            status(
+                "analysisStatus",
+                data.message ||
+                "Ballot counted successfully. " +
+                "Votes saved to Live Results."
+            );
 
-        qrResult = {
-            valid: true,
-            status: "COUNTED",
-            election_id: electionId,
-            template_id: templateId,
-            ballot_id: data.ballot_id
-        };
+            window.showToast?.(
+                "Ballot counted successfully! " +
+                "Votes saved to Live Results.",
+                "success"
+            );
 
-        if ($("qrStatus")) {
-            $("qrStatus").textContent =
-                "QR VALIDATED BY BACKEND\n" +
-                "Status: COUNTED\n" +
-                `Ballot: ${data.ballot_id}\n` +
-                `Template: #${templateId}\n` +
-                "Backend counting successful.";
-        }
+            // Prevent rescanning the counted image.
+            if ($("analyzeBtn")) {
+                $("analyzeBtn").disabled = true;
+            }
 
-        status(
-            "analysisStatus",
-            data.message ||
-            "Ballot counted successfully. " +
-            "Votes saved to Live Results."
-        );
+        } else {
+            window.confirmedOMRCounting = false;
 
-        window.showToast?.(
-            "Ballot counted successfully! " +
-            "Votes saved to Live Results.",
-            "success"
-        );
+            status(
+                "analysisStatus",
+                data.message ||
+                "Ballot was not confirmed as counted.",
+                true
+            );
 
-        // Huwag i-submit muli ang counted image.
-        if ($("analyzeBtn")) {
-            $("analyzeBtn").disabled = true;
+            window.showToast?.(
+                "Ballot was not confirmed as counted.",
+                "warning"
+            );
         }
 
     } catch (error) {
-        // Failed o uncertain scan is never confirmed success.
+
+        // Handle rejected or failed ballot scans.
         window.confirmedOMRCounting = false;
 
-        const payload = error.data || {};
-        const messageText = String(error.message || "");
-
         const duplicate =
-            payload.duplicate === true ||
-            (
-                error.status === 409 &&
-                (
-                    payload.status === "COUNTED" ||
-                    /duplicate|already counted/i.test(messageText)
-                )
-            );
-
-        const unavailable =
+            error.data?.duplicate === true ||
             error.status === 409;
 
         const blankBallot =
             error.status === 422 &&
-            (
-                payload.quality_issue === "BLANK_BALLOT" ||
-                /blank ballot detected/i.test(messageText)
-            );
-
-        // Explicit backend retake response.
-        const qualityIssue =
-            error.status === 422 &&
-            (
-                payload.retake_required === true ||
-                payload.review_required === true ||
-                [
-                    "IMAGE",
-                    "ALIGNMENT",
-                    "CROP",
-                    "EXPOSURE",
-                    "LIGHTING",
-                    "QR",
-                    "BUBBLE_ALIGNMENT",
-                    "UNCLEAR_SHADING",
-                    "BLANK_BALLOT"
-                ].includes(payload.quality_issue) ||
-                /(?:alignment|registration marks?|four corners|shading|bubble samples?|exposure|lighting|retake|rescan|QR code not detected|insufficient)/i.test(
-                    messageText
-                )
+            error.message?.includes(
+                "Blank ballot detected"
             );
 
         let message;
 
-        if (duplicate) {
-            retakeRequired = true;
-
+        if (blankBallot) {
             message =
-                "BALLOT ALREADY COUNTED. " +
-                "Do not resubmit this ballot. " +
-                "Verify its status.";
+                "Blank ballot detected. No votes saved. " +
+                "This ballot can still be used.";
 
-        } else if (unavailable) {
-            retakeRequired = true;
+            window.showToast?.(
+                message,
+                "warning"
+            );
 
+        } else if (duplicate) {
             message =
-                "BALLOT UNAVAILABLE. " +
-                "The ballot may be void, counted, or otherwise " +
-                "ineligible. Verify its status. " +
-                messageText;
+                "Duplicate or unavailable ballot. " +
+                "No new votes saved.";
 
-        } else if (blankBallot) {
-            retakeRequired = true;
-
-            message =
-                "NO SHADING DETECTED — No votes saved. " +
-                "Check the physical ballot and retake " +
-                "a clearer photo of the SAME ballot. " +
-                messageText;
-
-        } else if (qualityIssue) {
-            retakeRequired = true;
-
-            message =
-                "RETAKE PHOTO REQUIRED — No votes saved. " +
-                "Keep all four registration marks visible, " +
-                "avoid glare/shadows, and photograph " +
-                "the SAME ballot again. " +
-                messageText;
-
-        } else if (!error.status) {
-            // Network failure: posibleng na-commit sa server.
-            retakeRequired = true;
-
-            message =
-                "SCAN STATUS UNKNOWN. " +
-                "Check ballot status before retrying. " +
-                "Do not assume votes were not saved. " +
-                messageText;
-
-        } else if (error.status >= 500) {
-            // Server error: maaaring hindi tiyak ang commit.
-            retakeRequired = true;
-
-            message =
-                "SERVER ERROR — COUNTING STATUS UNKNOWN. " +
-                "Verify ballot status before retrying. " +
-                messageText;
+            window.showToast?.(
+                message,
+                "error"
+            );
 
         } else {
             message =
                 "OMR scan failed: " +
-                messageText;
+                error.message;
+
+            window.showToast?.(
+                message,
+                "error"
+            );
         }
-
-        lastQualityIssue =
-            payload.quality_issue || null;
-
-        backendQRPending = false;
-
-        // Huwag gawing confirmed ang QR sa failed scan.
-        backendQRVerified = false;
-        window.campusVoteQRVerified = false;
 
         status(
             "analysisStatus",
             message,
-            true
+            !blankBallot
         );
-
-        window.showToast?.(
-            message,
-            "error"
-        );
-
-        if (retakeRequired) {
-            if ($("imageStatus")) {
-                status(
-                    "imageStatus",
-                    duplicate || unavailable
-                        ? "Ballot unavailable. Verify ballot status."
-                        : !error.status || error.status >= 500
-                            ? "Counting status unknown. " +
-                              "Verify ballot status before retrying."
-                            : "Retake needed: use Open Phone Camera " +
-                              "or upload a clearer photo of the SAME ballot.",
-                    true
-                );
-            }
-
-            if ($("results")) {
-                $("results").replaceChildren();
-
-                const notice = document.createElement("p");
-                notice.className = "error";
-                notice.textContent = message;
-
-                $("results").appendChild(notice);
-            }
-
-            if ($("qrStatus")) {
-                $("qrStatus").textContent =
-                    "Scan not confirmed.\n" +
-                    (
-                        duplicate || unavailable
-                            ? "Verify ballot status."
-                            : !error.status || error.status >= 500
-                                ? "Counting status unknown."
-                                : "Backend rejected the scan. " +
-                                  "Retake the same ballot."
-                    );
-            }
-        }
 
         debug(
             "OMR SCAN RESULT\n" +
-            message +
-            (
-                lastQualityIssue
-                    ? "\nQuality issue: " + lastQualityIssue
-                    : ""
-            )
+            message
         );
 
     } finally {
         busy = false;
 
-        // Counted images cannot be submitted again.
+        // Keep counted images from being submitted again.
         if (window.confirmedOMRCounting === true) {
             if ($("analyzeBtn")) {
                 $("analyzeBtn").disabled = true;
@@ -1808,8 +1462,10 @@ async function backendPreview() {
 
 // RETAKE BALLOT / CLEAR IMAGE
 
+
 function retakePhoto() {
-    // Huwag palitan ang ballot habang may counting request.
+    // Prevent changing the image during counting.
+
     if (busy) {
         status(
             "imageStatus",
@@ -1819,52 +1475,56 @@ function retakePhoto() {
         return;
     }
 
-    // Stop previous camera stream.
+    // Stop any previous live camera stream.
+
     stopCamera();
 
-    // Clear current ballot state.
+    // Clear previous ballot information.
+
     sourceImage = null;
-    retakeRequired = false;
+    qrData = null;
+    qrResult = null;
 
-    resetBallotVerification();
+    window.campusVoteQRVerified = false;
+    window.confirmedOMRCounting = false;
 
-    // Invalidate previous QR verification requests.
+    // Invalidate any previous QR verification requests.
+
     imageVersion++;
 
-    // Clear original ballot canvas.
-    if (ctx && canvas) {
-        ctx.clearRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+    // Clear ballot preview.
 
-        canvas.width = 1;
-        canvas.height = 1;
-    }
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    canvas.width = 1;
+    canvas.height = 1;
 
     // Clear uploaded image input.
+
     if ($("fileInput")) {
         $("fileInput").value = "";
     }
 
     // Clear native phone camera input.
+
     if ($("phoneCameraInput")) {
         $("phoneCameraInput").value = "";
     }
 
-    // Clear corrected A5 preview.
-    clearCorrectedPreview();
-
     // Reset QR diagnostics.
+
     if ($("qrStatus")) {
         $("qrStatus").textContent =
-            "Waiting for a new ballot image.\n" +
-            "Backend QR verification will run during scanning.";
+            "Waiting for a new ballot image.";
     }
 
     // Reset analysis results and controls.
+
     reset();
 
     status(
@@ -1875,18 +1535,16 @@ function retakePhoto() {
 
     debug(
         "No ballot loaded.\n" +
-        "Capture or upload an A5 ballot to begin.\n" +
-        "Browser QR verification is optional.\n" +
-        "Backend QR verification is required."
+        "Capture or upload an A5 ballot to begin."
     );
 
     updateAnalyzeButton();
 }
 
-
 // SCANNER EVENT LISTENERS
 
 function setupScanner() {
+
     // Load ballot templates.
     $("loadBtn")?.addEventListener(
         "click",
@@ -1971,7 +1629,7 @@ function setupScanner() {
         }
     );
 
-    // Scan and count one A5 ballot.
+    // Scan and count one ballot.
     $("analyzeBtn")?.addEventListener(
         "click",
         async event => {
@@ -1989,16 +1647,6 @@ function setupScanner() {
                 return;
             }
 
-            if (retakeRequired) {
-                status(
-                    "analysisStatus",
-                    "Retake or verify ballot status before scanning again.",
-                    true
-                );
-                return;
-            }
-
-            // Backend-first QR and OMR processing.
             await backendPreview();
         }
     );
@@ -2063,8 +1711,7 @@ function setupScanner() {
 
     if ($("qrStatus")) {
         $("qrStatus").textContent =
-            "QR not scanned yet.\n" +
-            "Backend will verify the ballot during scanning.";
+            "QR not scanned yet.";
     }
 
     if ($("imageStatus")) {
@@ -2088,7 +1735,6 @@ window.addEventListener(
     "pagehide",
     () => {
         stopCamera();
-        clearCorrectedPreview();
     }
 );
 
