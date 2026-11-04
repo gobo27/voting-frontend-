@@ -10,7 +10,6 @@ const BallotAPI = (() => {
             localStorage.getItem("token");
     }
 
-
     async function request(path, options = {}) {
         const token = getToken();
 
@@ -60,12 +59,18 @@ const BallotAPI = (() => {
         const result = await request(
             `/election/${encodeURIComponent(requestedId)}/status`
         );
-        if (!result.election) throw new Error("Election not found.");
+
+        if (!result.election) {
+            throw new Error("Election not found.");
+        }
+
         return result.election;
     }
 
     async function getPositions(electionId) {
-        return request(`/positions/election/${encodeURIComponent(electionId)}`);
+        return request(
+            `/positions/election/${encodeURIComponent(electionId)}`
+        );
     }
 
     async function addPosition(payload) {
@@ -125,10 +130,19 @@ const BallotAPI = (() => {
         );
     }
 
+    // Original QR batch.
     async function generateQRBatch(payload) {
         return request("/ballots/qr/batches", {
             method: "POST",
             body: JSON.stringify(payload)
+        });
+    }
+
+    // Additional ballots: bagong QR IDs, same saved template.
+    async function generateAdditionalQRBatch(payload) {
+        return generateQRBatch({
+            ...payload,
+            batch_type: "ADDITIONAL"
         });
     }
 
@@ -140,6 +154,7 @@ const BallotAPI = (() => {
         }
 
         const query = params.toString();
+
         return request(
             `/ballots/qr/batches/election/${encodeURIComponent(electionId)}` +
             (query ? `?${query}` : "")
@@ -152,6 +167,7 @@ const BallotAPI = (() => {
         );
     }
 
+    // Confirm physical printing.
     async function confirmPrint(batchId, printType, quantity, eventId) {
         return request(
             `/ballots/qr/batches/${encodeURIComponent(batchId)}/confirm-print`,
@@ -196,6 +212,7 @@ const BallotAPI = (() => {
         addGridCoordinate,
         deleteTemplate,
         generateQRBatch,
+        generateAdditionalQRBatch,
         getQRBatches,
         getQRBatch,
         confirmPrint,

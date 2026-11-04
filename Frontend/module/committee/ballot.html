@@ -851,6 +851,7 @@
                 flex: 0 0 210mm !important;
             }
         }
+
         #toastContainer,
         #campusToastContainer {
             display: none !important;
@@ -1026,47 +1027,26 @@
 
             <hr class="section-divider">
 
-            <h2>Reprint Existing Batch</h2>
+            <h2>Print Additional Ballots</h2>
 
             <p class="helper">
-                Select a previously generated QR batch.
-                Reprinting uses the original ballot IDs and QR codes.
-                No new ballots will be registered.
+                Generate additional ballots using the selected saved
+                template. Each ballot receives a new unique QR code.
             </p>
 
-            <label for="reprintBatchSelect">
-                Select QR Print Batch
+            <label for="additionalQuantity">
+                Number of Additional Ballots
             </label>
 
-            <select id="reprintBatchSelect">
-                <option value="">
-                    Loading existing batches...
-                </option>
-            </select>
+            <input id="additionalQuantity" type="number" min="1" max="500" value="20">
 
             <div class="buttons">
-
-                <button id="refreshBatchesButton" type="button" class="secondary">
-                    Refresh Batches
+                <button id="generateAdditionalButton" type="button" class="primary">
+                    Print Additional Ballots
                 </button>
-
-                <button id="reprintBatchButton" type="button" class="primary">
-                    Reprint Selected Batch
-                </button>
-
             </div>
 
-            <p class="helper" id="batchInfo">
-                Select a batch to see its details.
-            </p>
-
-            <!-- Compatibility with existing JS -->
-            <input id="reprintBatchId" type="hidden" value="">
-
-            <!-- STATUS -->
-
-            <p id="status" role="status"></p>
-
+            <p class="helper" id="printingSummary"></p>
         </section>
 
         <!--LIVE A4 BALLOT PREVIEW-->
