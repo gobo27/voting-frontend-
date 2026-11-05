@@ -74,11 +74,11 @@ function canDeleteTemplates() {
     );
 }
 
+
 function updateActionButtons() {
     const saveButton = el("saveButton");
     const generateButton = el("generatePrintButton");
     const additionalButton = el("generateAdditionalButton");
-    const reprintButton = el("reprintBatchButton");
 
     const busy = state.printing ||
         state.saving ||
@@ -92,12 +92,9 @@ function updateActionButtons() {
     if (generateButton) {
         generateButton.disabled = !state.savedTemplateId || busy;
     }
+
     if (additionalButton) {
         additionalButton.disabled = !state.savedTemplateId || busy;
-    }
-
-    if (reprintButton) {
-        reprintButton.disabled = !state.savedTemplateId || busy;
     }
 
     document.querySelectorAll(".saved-template-delete")
@@ -105,6 +102,7 @@ function updateActionButtons() {
             button.disabled = busy;
         });
 }
+
 
 function setEditorLocked(locked) {
     for (const id of [
@@ -712,7 +710,6 @@ async function loadData() {
         render();
 
         await loadSavedTemplates();
-        await loadPrintBatches();
 
         setEditorLocked(electionLocked());
 
@@ -1272,25 +1269,11 @@ async function generateAndPrintBallots(batchType = "ORIGINAL") {
             );
         }
 
+
+
         state.printBatchId = batchId;
 
-        const reprintInput = el("reprintBatchId");
-
-        if (reprintInput) {
-            reprintInput.value = String(batchId);
-        }
-
-        await loadPrintBatches();
-
-        const batchSelect = el(
-            "reprintBatchSelect"
-        );
-
-        if (batchSelect) {
-            batchSelect.value = String(batchId);
-            updateSelectedBatchInfo();
-        }
-
+        // Isang print call lang para sa registered QR ballots
         await printRegisteredBallots(
             result.ballots
         );
@@ -1298,7 +1281,7 @@ async function generateAndPrintBallots(batchType = "ORIGINAL") {
         const recorded =
             await confirmPrintedBatch(
                 batchId,
-                "ORIGINAL", // New additional batch: first physical print.
+                "ORIGINAL",
                 result.ballots.length
             );
 
@@ -1339,236 +1322,6 @@ async function generateAndPrintBallots(batchType = "ORIGINAL") {
     }
 }
 
-async function reprintRegisteredBatch() {
-    if (
-        state.printing ||
-        state.saving ||
-        state.deleting ||
-        state.loadingTemplate
-    ) {
-        return;
-    }
-
-    const batchId = Number(
-        el("reprintBatchId")?.value
-    );
-
-    if (
-        !Number.isSafeInteger(batchId) ||
-        batchId < 1
-    ) {
-        return status(
-            "Please select a valid Batch ID.",
-            true
-        );
-    }
-
-    state.printing = true;
-    updateActionButtons();
-
-    const previous = {
-        copies: state.copies,
-        savedTemplateId: state.savedTemplateId,
-        printBatchId: state.printBatchId,
-        title: el("titleInput").value,
-        layout: state.layout
-    };
-
-    let prepared = false;
-
-    try {
-        status(
-            `Loading existing Batch #${batchId}...`,
-            false,
-            false
-        );
-
-        const result =
-            await BallotAPI.getQRBatch(
-                batchId
-            );
-
-        const ballots = result.ballots;
-
-        if (
-            !Array.isArray(ballots) ||
-            !ballots.length
-        ) {
-            throw new Error(
-                "No registered ballots found in this batch."
-            );
-        }
-
-        const templateId = Number(
-            ballots[0].template_id
-        );
-
-        const electionId = Number(
-            ballots[0].election_id
-        );
-
-        if (
-            !Number.isSafeInteger(templateId) ||
-            templateId < 1 ||
-            !Number.isSafeInteger(electionId) ||
-            electionId < 1
-        ) {
-            throw new Error(
-                "Batch is missing its template " +
-                "or election information."
-            );
-        }
-
-        if (
-            ballots.some(ballot =>
-                Number(ballot.template_id) !==
-                templateId ||
-                Number(ballot.election_id) !==
-                electionId
-            )
-        ) {
-            throw new Error(
-                "Batch contains mismatched " +
-                "templates or elections."
-            );
-        }
-
-        if (electionId !== state.electionId) {
-            throw new Error(
-                "This batch belongs to another election."
-            );
-        }
-
-        const saved =
-            await BallotAPI.getTemplate(
-                templateId
-            );
-
-        const template =
-            saved.template || saved;
-
-        if (
-            Number(template.template_id) !==
-            templateId ||
-            Number(template.election_id) !==
-            electionId
-        ) {
-            throw new Error(
-                "Saved template could not be verified."
-            );
-        }
-
-        const coordinates =
-            saved.coordinates ||
-            template.coordinates ||
-            saved.grid_coordinates ||
-            template.grid_coordinates;
-
-        const format = detectSavedLayout(
-            template,
-            coordinates
-        );
-
-        // Old A5 landscape ballots must keep their
-        // original OMR coordinates and orientation.
-        if (format.legacy) {
-            throw new Error(
-                "This batch uses the old A5 landscape " +
-                "layout. Reprint it using the previous " +
-                "ballot creator to preserve OMR coordinates."
-            );
-        }
-
-        state.copies = format.copies;
-
-        const expectedLayout = layoutBallot();
-
-        verifySavedCoordinates(
-            coordinates,
-            expectedLayout
-        );
-
-        state.savedTemplateId = templateId;
-        state.printBatchId = batchId;
-        state.layout = expectedLayout;
-
-        el("copiesInput").value =
-            String(format.copies);
-
-        if (template.template_name) {
-            el("titleInput").value =
-                template.template_name;
-        }
-
-        updateSelectedTemplateLabel();
-
-        prepared = true;
-
-        await printRegisteredBallots(
-            ballots
-        );
-
-        const recorded =
-            await confirmPrintedBatch(
-                batchId,
-                "REPRINT",
-                ballots.length
-            );
-
-        if (recorded) {
-            status(
-                `Batch #${batchId} reprinted successfully. ` +
-                "Existing QR codes reused; " +
-                "no new ballots created."
-            );
-        }
-
-    } catch (error) {
-        console.error(
-            "Reprint error:",
-            error
-        );
-
-        status(
-            `Reprint failed: ${error.message}`,
-            true
-        );
-
-    } finally {
-        if (!prepared) {
-            state.copies = previous.copies;
-
-            state.savedTemplateId =
-                previous.savedTemplateId;
-
-            state.printBatchId =
-                previous.printBatchId;
-
-            state.layout =
-                previous.layout;
-
-            el("copiesInput").value =
-                String(previous.copies);
-
-            el("titleInput").value =
-                previous.title;
-
-            updateSelectedTemplateLabel();
-        }
-
-        state.printing = false;
-        updateActionButtons();
-
-        try {
-            render();
-        } catch (error) {
-            console.error(
-                "Reprint preview error:",
-                error
-            );
-        }
-    }
-}
 
 // LOAD SAVED BALLOT TEMPLATES
 
@@ -1951,25 +1704,6 @@ async function deleteSavedTemplate(templateId) {
         return;
     }
 
-    // Bawal burahin kapag may registered QR ballots.
-    if (
-        registeredPrintBatches.some(
-            batch => Number(batch.template_id) === templateId
-        )
-    ) {
-        const message =
-            `Can't delete Ballot #${templateId} because this ballot ` +
-            "is currently being used and has registered QR ballots.";
-
-        status(message, true);
-
-        if (typeof window.showToast !== "function") {
-            alert(message);
-        }
-
-        return;
-    }
-
     try {
         // Kunin ang latest registered batches sa database.
         const batchResult = await BallotAPI.getQRBatches(
@@ -1979,8 +1713,6 @@ async function deleteSavedTemplate(templateId) {
         const batches = Array.isArray(batchResult.batches)
             ? batchResult.batches
             : [];
-
-        registeredPrintBatches = batches;
 
         const isBallotInUse = batches.some(
             batch => Number(batch.template_id) === templateId
@@ -2053,174 +1785,6 @@ async function deleteSavedTemplate(templateId) {
     }
 }
 
-// REGISTERED PRINT BATCHES
-
-let registeredPrintBatches = [];
-let loadingPrintBatches = false;
-
-// LOAD PRINT BATCHES
-
-async function loadPrintBatches() {
-    const select = el("reprintBatchSelect");
-
-    if (
-        !select ||
-        !state.electionId ||
-        loadingPrintBatches
-    ) {
-        return;
-    }
-
-    loadingPrintBatches = true;
-
-    const previousValue = select.value;
-
-    select.replaceChildren(
-        new Option(
-            "Loading existing batches...",
-            ""
-        )
-    );
-
-    select.disabled = true;
-
-    try {
-        const result =
-            await BallotAPI.getQRBatches(
-                state.electionId
-            );
-
-        registeredPrintBatches =
-            Array.isArray(result.batches)
-                ? result.batches
-                : [];
-
-        select.replaceChildren(
-            new Option(
-                "Select QR print batch",
-                ""
-            )
-        );
-
-        for (const batch of registeredPrintBatches) {
-            const date = batch.created_at
-                ? new Date(
-                    batch.created_at
-                ).toLocaleString()
-                : "Date unavailable";
-
-            const label =
-                `Batch #${batch.batch_id} | ` +
-                `${batch.quantity} ballots (${batch.batch_type || "ORIGINAL"}) | ` +
-                `Template #${batch.template_id} - ` +
-                `${batch.template_name} | ${date}`;
-
-            select.add(
-                new Option(
-                    label,
-                    String(batch.batch_id)
-                )
-            );
-        }
-
-        if (
-            previousValue &&
-            registeredPrintBatches.some(
-                batch =>
-                    String(batch.batch_id) === previousValue
-            )
-        ) {
-            select.value = previousValue;
-        } else {
-            select.value = "";
-        }
-
-        if (!registeredPrintBatches.length) {
-            select.replaceChildren(
-                new Option(
-                    "No registered QR batches yet",
-                    ""
-                )
-            );
-        }
-
-        updateSelectedBatchInfo();
-
-    } catch (error) {
-        console.error(
-            "Load print batches error:",
-            error
-        );
-
-        select.replaceChildren(
-            new Option(
-                "Unable to load QR batches",
-                ""
-            )
-        );
-
-        status(
-            "Failed to load print batches: " +
-            error.message,
-            true
-        );
-
-    } finally {
-        select.disabled = false;
-        loadingPrintBatches = false;
-    }
-}
-
-// SELECTED BATCH INFORMATION
-
-function updateSelectedBatchInfo() {
-    const select = el("reprintBatchSelect");
-    const info = el("printingSummary");
-    const hiddenInput = el("reprintBatchId");
-
-    if (
-        !select ||
-        !info ||
-        !hiddenInput
-    ) {
-        return;
-    }
-
-    const batchId = Number(select.value);
-
-    const batch = registeredPrintBatches.find(
-        item => Number(item.batch_id) === batchId
-    );
-
-    if (!batch) {
-        hiddenInput.value = "";
-
-        info.textContent =
-            "Select a batch to see its details.";
-
-        updateActionButtons();
-        return;
-    }
-
-    hiddenInput.value = String(batch.batch_id);
-
-    const batchType = String(
-        batch.batch_type || "ORIGINAL"
-    ).toUpperCase();
-
-    const createdAt = batch.created_at
-        ? new Date(batch.created_at).toLocaleString()
-        : "Date unavailable";
-
-    info.textContent =
-        `Batch #${batch.batch_id} | ` +
-        `Type: ${batchType} | ` +
-        `Template #${batch.template_id} | ` +
-        `Quantity: ${batch.quantity} | ` +
-        `Created: ${createdAt}`;
-
-    updateActionButtons();
-}
 
 // PRINT ADDITIONAL BALLOTS
 
@@ -2369,44 +1933,6 @@ function initializeAdditionalBallotControls() {
     }
 }
 
-// REFRESH PRINT BATCHES
-
-async function refreshPrintBatches() {
-    await loadPrintBatches();
-
-    status(
-        "QR print batches refreshed."
-    );
-}
-
-// REPRINT SELECTED EXISTING BATCH
-
-async function reprintSelectedBatch() {
-    const batchId = Number(
-        el("reprintBatchSelect")?.value
-    );
-
-    if (
-        !Number.isSafeInteger(batchId) ||
-        batchId < 1
-    ) {
-        return status(
-            "Select an existing QR print batch first.",
-            true
-        );
-    }
-
-    const hiddenInput = el(
-        "reprintBatchId"
-    );
-
-    if (hiddenInput) {
-        hiddenInput.value = String(batchId);
-    }
-
-    await reprintRegisteredBatch();
-}
-
 // PRINTING SUMMARY
 
 async function loadPrintingSummary() {
@@ -2550,18 +2076,6 @@ document.addEventListener(
             "generatePrintButton"
         );
 
-        const refreshBatchesButton = el(
-            "refreshBatchesButton"
-        );
-
-        const reprintBatchButton = el(
-            "reprintBatchButton"
-        );
-
-        const reprintBatchSelect = el(
-            "reprintBatchSelect"
-        );
-
         const copiesInput = el(
             "copiesInput"
         );
@@ -2620,27 +2134,6 @@ document.addEventListener(
             generatePrintButton.addEventListener(
                 "click",
                 () => generateAndPrintBallots("ORIGINAL")
-            );
-        }
-
-        if (refreshBatchesButton) {
-            refreshBatchesButton.addEventListener(
-                "click",
-                refreshPrintBatches
-            );
-        }
-
-        if (reprintBatchButton) {
-            reprintBatchButton.addEventListener(
-                "click",
-                reprintSelectedBatch
-            );
-        }
-
-        if (reprintBatchSelect) {
-            reprintBatchSelect.addEventListener(
-                "change",
-                updateSelectedBatchInfo
             );
         }
 
