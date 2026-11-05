@@ -10,6 +10,7 @@ let template = null;
 let coordinates = [];
 let sourceImage = null;
 let cameraStream = null;
+let uploadedBallotFile = null;
 
 let busy = false;
 let imageVersion = 0;
@@ -413,7 +414,7 @@ function showImage(image) {
     updateAnalyzeButton();
 }
 
-function loadImageFile(file) {
+function loadImageFile(file, source = "upload") {
     if (!file) return;
 
     const acceptedTypes = [
@@ -431,7 +432,6 @@ function loadImageFile(file) {
             "Use PNG/JPG/WEBP up to 30MB.",
             true
         );
-
         return;
     }
 
@@ -440,6 +440,12 @@ function loadImageFile(file) {
 
     image.onload = () => {
         URL.revokeObjectURL(url);
+
+        // Uploaded screenshot: preserve original file.
+        // Camera: gamitin pa rin ang existing conversion.
+        uploadedBallotFile =
+            source === "upload" ? file : null;
+
         showImage(image);
     };
 
@@ -454,6 +460,20 @@ function loadImageFile(file) {
     };
 
     image.src = url;
+}
+
+function phoneCameraCapture(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+        status(
+            "imageStatus",
+            "No photo captured."
+        );
+        return;
+    }
+
+    loadImageFile(file, "camera");
 }
 
 function upload(event) {
@@ -496,26 +516,7 @@ function openCamera() {
     );
     phoneCameraInput.click();
 }
-
-function phoneCameraCapture(event) {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-        status(
-            "imageStatus",
-            "No photo captured."
-        );
-        return;
-    }
-
-    // After the native camera returns the photo,
-    // showImage() automatically starts QR verification.
-    loadImageFile(file);
-}
-
-
 // OPTIONAL LEGACY CAMERA CLEANUP
-
 
 function stopCamera() {
     cameraStream?.getTracks().forEach(track => {
@@ -1023,6 +1024,12 @@ async function imageToBlob() {
     if (!sourceImage) {
         throw new Error("No ballot image loaded.");
     }
+    if (
+        uploadedBallotFile &&
+        uploadedBallotFile.size <= 9 * 1024 * 1024
+    ) {
+        return uploadedBallotFile;
+    }
 
     const MAX_BYTES = 9 * 1024 * 1024;
     const MAX_DIMENSION = 4000;
@@ -1377,10 +1384,18 @@ async function backendPreview() {
         );
 
         // One A5 ballot image per scan.
+        // Gamitin ang tamang filename ayon sa image format.
+        const ballotFilename =
+            blob.type === "image/png"
+                ? "ballot-scan.png"
+                : blob.type === "image/webp"
+                    ? "ballot-scan.webp"
+                    : "ballot-scan.jpg";
+
         form.append(
             "ballot_image",
             blob,
-            "ballot-scan.jpg"
+            ballotFilename
         );
 
         // Send ballot to the backend.
@@ -1585,6 +1600,7 @@ function retakePhoto() {
     // Clear previous ballot information.
 
     sourceImage = null;
+    uploadedBallotFile = null;
     qrData = null;
     qrResult = null;
 
