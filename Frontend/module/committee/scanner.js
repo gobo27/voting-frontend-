@@ -590,6 +590,7 @@ function getSource() {
 // READ QR CODE FROM IMAGE
 
 
+
 function readQR() {
     if (typeof window.jsQR !== "function") {
         throw new Error(
@@ -597,67 +598,169 @@ function readQR() {
         );
     }
 
-    const image = getSource();
+    if (!sourceImage) {
+        throw new Error("No ballot image loaded.");
+    }
 
-    // First attempt: scan the entire ballot image.
+    const width = sourceImage.naturalWidth || sourceImage.width;
+    const height = sourceImage.naturalHeight || sourceImage.height;
 
-    let result = window.jsQR(
-        image.data,
-        image.width,
-        image.height,
-        {
-            inversionAttempts: "attemptBoth"
-        }
+    // Gumamit ng bounded sizes para hindi mag-hang ang iPhone.
+    const maxSide = Math.max(width, height);
+    const scale = Math.min(1, 1800 / maxSide);
+
+    const work = document.createElement("canvas");
+    work.width = Math.max(1, Math.round(width * scale));
+    work.height = Math.max(1, Math.round(height * scale));
+
+    const ctx = work.getContext("2d", {
+        willReadFrequently: true
+    });
+
+    if (!ctx) {
+        throw new Error("QR canvas unavailable.");
+    }
+
+    ctx.drawImage(
+        sourceImage,
+        0,
+        0,
+        work.width,
+        work.height
     );
 
-    // Second attempt: scan the top-right area
-    // where the ballot QR code is normally printed.
+    const regions = [
+        // Full image.
+        {
+            x: 0,
+            y: 0,
+            w: 1,
+            h: 1
+        },
 
-    if (!result) {
-        const temp = document.createElement("canvas");
+        // Upper-right QR region.
+        {
+            x: 0.55,
+            y: 0,
+            w: 0.45,
+            h: 0.45
+        },
 
-        temp.width = image.width;
-        temp.height = image.height;
+        // Upper half, kung hindi eksaktong nasa corner.
+        {
+            x: 0,
+            y: 0,
+            w: 1,
+            h: 0.50
+        }
+    ];
 
-        const c = temp.getContext("2d", {
-            willReadFrequently: true
-        });
+    // Subukan ang normal at enlarged crops.
+    for (const region of regions) {
+        const sx = Math.floor(region.x * work.width);
+        const sy = Math.floor(region.y * work.height);
 
-        c.putImageData(image, 0, 0);
-
-        const x = Math.floor(image.width * 0.65);
-
-        const crop = c.getImageData(
-            x,
-            0,
-            image.width - x,
-            Math.max(
-                1,
-                Math.floor(image.height * 0.4)
+        const sw = Math.max(
+            1,
+            Math.min(
+                work.width - sx,
+                Math.round(region.w * work.width)
             )
         );
 
-        result = window.jsQR(
-            crop.data,
-            crop.width,
-            crop.height,
-            {
-                inversionAttempts: "attemptBoth"
+        const sh = Math.max(
+            1,
+            Math.min(
+                work.height - sy,
+                Math.round(region.h * work.height)
+            )
+        );
+
+        const crop = document.createElement("canvas");
+        crop.width = sw;
+        crop.height = sh;
+
+        const cropCtx = crop.getContext("2d", {
+            willReadFrequently: true
+        });
+
+        if (!cropCtx) continue;
+
+        cropCtx.drawImage(
+            work,
+            sx,
+            sy,
+            sw,
+            sh,
+            0,
+            0,
+            sw,
+            sh
+        );
+
+        const variants = [1, 1.5];
+
+        for (const factor of variants) {
+            const targetWidth = Math.round(sw * factor);
+            const targetHeight = Math.round(sh * factor);
+
+            // Limitahan ang processing cost.
+            if (
+                targetWidth > 2200 ||
+                targetHeight > 2200
+            ) {
+                continue;
             }
-        );
+
+            const temp = document.createElement("canvas");
+            temp.width = targetWidth;
+            temp.height = targetHeight;
+
+            const tempCtx = temp.getContext("2d", {
+                willReadFrequently: true
+            });
+
+            if (!tempCtx) continue;
+
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = "high";
+
+            tempCtx.drawImage(
+                crop,
+                0,
+                0,
+                targetWidth,
+                targetHeight
+            );
+
+            const pixels = tempCtx.getImageData(
+                0,
+                0,
+                targetWidth,
+                targetHeight
+            );
+
+            const result = window.jsQR(
+                pixels.data,
+                pixels.width,
+                pixels.height,
+                {
+                    inversionAttempts: "attemptBoth"
+                }
+            );
+
+            if (result?.data) {
+                return result.data;
+            }
+        }
     }
 
-    if (!result) {
-        throw new Error(
-            "QR NOT DETECTED. " +
-            "Retake a clearer photo with the " +
-            "entire A5 ballot visible."
-        );
-    }
-
-    return result.data;
+    throw new Error(
+        "QR NOT DETECTED. " +
+        "Move the camera closer, keep the QR sharp, " +
+        "and capture all four registration markers."
+    );
 }
-
 
 // VALIDATE CAMPUSVOTE QR FORMAT
 
