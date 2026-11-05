@@ -168,43 +168,42 @@ function renderStatus() {
 
   // ORIGINAL / REGISTERED BALLOTS
 
+
+  // Kunin ang total registered QR ballots para sa scan denominator.
   const registeredFromStatus = totals
     ? ["ISSUED", "CAST", "COUNTED", "VOID"].reduce(
-        (sum, status) =>
-          sum + safeNumber(totals[status]),
-        0
-      )
+      (sum, status) =>
+        sum + safeNumber(totals[status]),
+      0
+    )
     : null;
 
   const registered = printSummary
     ? safeNumber(printSummary.registered_unique)
     : registeredFromStatus;
 
+  // Original printed ballots lang.
   if ($("monitorOriginal")) {
-    $("monitorOriginal").textContent =
-      registered !== null ? registered : "—";
+    $("monitorOriginal").textContent = printSummary
+      ? safeNumber(printSummary.initial_printed)
+      : "—";
   }
 
-  // REPRINTS
-
+  // Additional printed ballots, hindi reprints.
   if ($("monitorReprints")) {
-    $("monitorReprints").textContent =
-      printSummary
-        ? safeNumber(printSummary.reprints)
-        : "—";
+    $("monitorReprints").textContent = printSummary
+      ? safeNumber(printSummary.additional_printed)
+      : "—";
   }
 
-  // OVERALL PRINTED
-
+  // Overall confirmed printed ballots.
   if ($("monitorTotal")) {
-    $("monitorTotal").textContent =
-      printSummary
-        ? safeNumber(printSummary.overall)
-        : "—";
+    $("monitorTotal").textContent = printSummary
+      ? safeNumber(printSummary.overall)
+      : "—";
   }
 
-  // TOTAL SCANNED / COUNTED BALLOTS
-
+  // Successfully counted unique ballots / registered QR ballots.
   const counted = totals
     ? safeNumber(totals.COUNTED)
     : null;
@@ -216,14 +215,15 @@ function renderStatus() {
         : "— / —";
   }
 
-  // MONITOR DESCRIPTION
-
+  // Tamang description ng printing monitor.
   if ($("monitorNote")) {
     $("monitorNote").textContent =
-      "Original = registered unique QR ballots. " +
-      "Reprints and Overall Printed = confirmed print records. " +
+      "Original = confirmed original ballot prints. " +
+      "Added Ballot = confirmed additional ballot prints. " +
+      "Overall Printed = total confirmed prints. " +
       "Total Scan Ballot = successfully counted unique ballots.";
   }
+
 
   // ELECTION STATUS
 
