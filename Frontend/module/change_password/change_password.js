@@ -127,9 +127,6 @@
             setTimeout(() => {
                 location.replace(loginUrl);
             }, 2000);
-
-            location.replace(loginUrl);
-
         } catch (error) {
             message.textContent = error.message;
 

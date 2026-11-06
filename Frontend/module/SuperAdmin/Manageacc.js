@@ -261,11 +261,15 @@ function renderAccounts() {
     tbody.innerHTML = accounts.map(account => {
         const id = account.id;
 
-        const editable =
-            id !== undefined &&
-            id !== null &&
-            ["adviser", "committee","super_admin"].includes(account.role);
+        const hasId = id !== undefined && id !== null;
 
+        const editable =
+            hasId &&
+            ["adviser", "committee"].includes(account.role);
+
+        const deletable =
+            hasId &&
+            ["adviser", "committee", "super_admin"].includes(account.role);
         return `
             <tr>
                 <td>
@@ -297,7 +301,7 @@ function renderAccounts() {
                             class="icon-btn edit"
                             data-edit="${escapeHtml(id)}"
                             title="Edit account"
-                            ${editable ? "" : "disabled"}
+                            ${deletable ? "" : "disabled"}
                         >
                             <svg viewBox="0 0 24 24">
                                 <path d="M12 20h9"/>
@@ -379,7 +383,7 @@ async function loadAccounts() {
     }
 }
 
-// CREATE ACCOUNT + RESEND
+// CREATE ACCOUNT
 
 async function addAccount(event) {
     event.preventDefault();
@@ -422,21 +426,14 @@ async function addAccount(event) {
         });
 
         if (data.emailSent === true) {
-            if (data.emailRedirected === true) {
-                notify(
-                    "Account created! Test email accepted by Resend.",
-                    "success"
-                );
-            } else {
-                notify(
-                    "Account created! Email accepted by Resend.",
-                    "success"
-                );
-            }
+            notify(
+                "Account created! Email accepted by EmailJS.",
+                "success"
+            );
 
         } else if (data.emailSent === false) {
             notify(
-                "Account created, but the email was not sent. Check Resend settings and logs.",
+                "Account created, but the email was not sent. Check EmailJS settings and logs.",
                 "warning"
             );
 
@@ -482,7 +479,7 @@ function openEditModal(id) {
     }
 
     if (
-        !["adviser", "committee","super_admin"].includes(account.role)
+        !["adviser", "committee", "super_admin"].includes(account.role)
     ) {
         notify(
             "This account cannot be edited here.",
@@ -607,7 +604,7 @@ async function deleteAccount(id) {
     }
 
     if (
-        !["adviser", "committee","super_admin"].includes(account.role)
+        !["adviser", "committee", "super_admin"].includes(account.role)
     ) {
         notify(
             "This account cannot be deleted here.",
@@ -692,7 +689,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     // GENERATE EDIT PASSWORD
-    
+
     $("generateEditPassword").addEventListener(
         "click",
         setEditPassword

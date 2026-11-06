@@ -3,7 +3,6 @@
 
 (() => {
     const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
-    const TEST_EMAIL = "vmaldea27@gmail.com";
 
     const forgotBtn = document.getElementById("forgotPasswordBtn");
     if (!forgotBtn) return;
@@ -165,8 +164,8 @@
                 >
 
                 <p class="reset-hint">
-                    Testing is currently limited to the
-                    designated CampusVote account.
+                    Enter the email address registered to your
+                    CampusVote account.
                 </p>
 
                 <div class="reset-actions">
@@ -183,7 +182,7 @@
             <form id="resetVerifyForm" class="reset-step">
                 <p>
                     Enter the 6-digit code sent to your
-                    registered test inbox.
+                    registered email address.
                 </p>
 
                 <label for="resetOtp">Verification Code</label>
@@ -271,7 +270,7 @@
     }
 
     function showStep(stepId) {
-        document.querySelectorAll(".reset-step").forEach(step => {
+        overlay.querySelectorAll(".reset-step").forEach(step => {
             step.classList.toggle(
                 "active",
                 step.id === stepId
@@ -291,6 +290,7 @@
         showStep("resetRequestForm");
     }
 
+    // API request papunta sa backend
     async function post(path, payload) {
         const response = await fetch(API_BASE + path, {
             method: "POST",
@@ -311,6 +311,7 @@
         return data;
     }
 
+    // Disable button habang may request
     async function submitWithLoading(form, callback) {
         const button = form.querySelector(
             'button[type="submit"]'
@@ -335,6 +336,7 @@
         }
     }
 
+    // Buksan ang Forgot Password modal
     forgotBtn.addEventListener("click", () => {
         overlay.classList.add("open");
         $("resetEmail").value =
@@ -356,26 +358,20 @@
     });
 
     document.addEventListener("keydown", event => {
-        if (event.key === "Escape" &&
-            overlay.classList.contains("open")) {
+        if (
+            event.key === "Escape" &&
+            overlay.classList.contains("open")
+        ) {
             closeModal();
         }
     });
 
+    // Step 1: Send OTP sa registered email
     $("resetRequestForm").addEventListener("submit", async event => {
         event.preventDefault();
 
         await submitWithLoading(event.currentTarget, async () => {
             const email = $("resetEmail").value.trim().toLowerCase();
-
-            // Restrict the testing interface to the test account.
-            // The backend also enforces this restriction.
-            if (email !== TEST_EMAIL) {
-                showMessage(
-                    "If this account is eligible, a verification code will be sent."
-                );
-                return;
-            }
 
             await post("/signin/password-reset/request", {
                 email
@@ -383,13 +379,16 @@
 
             resetEmail = email;
             showStep("resetVerifyForm");
+
             showMessage(
-                "If eligible, an OTP has been sent. Check your test inbox."
+                "If eligible, an OTP has been sent. Check your registered email inbox."
             );
+
             $("resetOtp").focus();
         });
     });
 
+    // Step 2: Verify ang 6-digit OTP
     $("resetVerifyForm").addEventListener("submit", async event => {
         event.preventDefault();
 
@@ -416,6 +415,7 @@
         });
     });
 
+    // Step 3: Save ang bagong password
     $("resetConfirmForm").addEventListener("submit", async event => {
         event.preventDefault();
 
@@ -442,11 +442,17 @@
 
             closeModal();
 
-            window.showToast(
-                "Password updated successfully. Please log in with your new password.",
-                "success",
-                4000
-            );
+            if (typeof window.showToast === "function") {
+                window.showToast(
+                    "Password updated successfully. Please log in with your new password.",
+                    "success",
+                    4000
+                );
+            } else {
+                alert(
+                    "Password updated successfully. Please log in with your new password."
+                );
+            }
         });
     });
 })();
