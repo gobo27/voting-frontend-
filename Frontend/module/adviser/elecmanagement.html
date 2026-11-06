@@ -575,19 +575,57 @@
                 grid-template-columns: 1fr;
             }
         }
+        
+/* Floating logout para sa mobile at tablet */
+.floating-logout {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .floating-logout {
+        position: fixed;
+        right: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom));
+        z-index: 9999;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        padding: 13px 18px;
+        background: #801224;
+        color: white;
+        border-radius: 10px;
+        text-decoration: none;
+
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 5px 16px #0003;
+    }
+
+    .floating-logout:hover {
+        background: #640d1b;
+        color: white;
+    }
+
+    .floating-logout svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .main {
+        padding-bottom: 95px;
+    }
+}
+
     </style>
 </head>
 
 <body>
 
-    <!-- SIDEBAR -->
-
     <aside class="sidebar">
 
-        <div class="brand">
-            <div class="brand-icon">
-                <i data-lucide="graduation-cap"></i>
-            </div>
 
             <div>
                 <h2>CampusVote.</h2>
@@ -827,6 +865,11 @@
         </div>
 
     </main>
+    
+    </main>
+    <a href="Adviserlogin.html"class="floating-logout"id="floatingLogoutLink">
+       <i data-lucide="log-out"></i>Log out</a>
+    <script src="../sheared/toast.js"></script>
 
     <script src="../sheared/toast.js"></script>
     <script src="./elecmanagement.js"></script>
