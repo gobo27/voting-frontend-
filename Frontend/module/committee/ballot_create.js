@@ -362,7 +362,10 @@ function verifySavedCoordinates(coordinates, expectedLayout) {
         if (
             !saved ||
             Number(saved.x_pos) !== mmToPx(row.x) ||
-            Number(saved.y_pos) !== mmToPx(row.y)
+            Number(saved.y_pos) !== mmToPx(row.y) ||
+            Number(saved.width) !== mmToPx(5) ||
+            Number(saved.height) !== mmToPx(5)
+
         ) {
             throw new Error(
                 "Saved OMR coordinates do not match the current layout."
