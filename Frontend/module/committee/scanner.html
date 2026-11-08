@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,21 +8,14 @@
 <style>
 :root {
     --maroon: #800000;
-    --maroon-dark: #650000;
     --bg: #f3f4f6;
     --border: #e5e7eb;
     --text: #242424;
     --muted: #667085;
 }
 
-* {
-    box-sizing: border-box;
-}
-
-html, body {
-    margin: 0;
-    min-height: 100%;
-}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
 
 body {
     background: var(--bg);
@@ -50,20 +42,9 @@ header {
     border-radius: 8px;
 }
 
-.back-link:hover {
-    background: rgba(255,255,255,.12);
-}
-
-header h1 {
-    margin: 0;
-    font-size: 22px;
-}
-
-header p {
-    margin: 5px 0 0;
-    font-size: 12px;
-    color: #f1d4d4;
-}
+.back-link:hover { background: rgba(255,255,255,.12); }
+header h1 { margin: 0; font-size: 22px; }
+header p { margin: 5px 0 0; font-size: 12px; color: #f1d4d4; }
 
 main {
     width: 100%;
@@ -85,15 +66,8 @@ main {
     min-width: 0;
 }
 
-h2 {
-    margin: 0 0 18px;
-    font-size: 20px;
-}
-
-h3 {
-    font-size: 15px;
-    margin: 18px 0 12px;
-}
+h2 { margin: 0 0 18px; font-size: 20px; }
+h3 { font-size: 15px; margin: 18px 0 12px; }
 
 label {
     display: block;
@@ -101,8 +75,7 @@ label {
     margin: 13px 0 7px;
 }
 
-input:not([type="range"]),
-select {
+input, select {
     width: 100%;
     min-height: 43px;
     padding: 10px 12px;
@@ -121,19 +94,8 @@ summary:focus-visible {
     outline-offset: 2px;
 }
 
-input[readonly] {
-    background: #f9fafb !important;
-}
-
-input[type="range"] {
-    width: 100%;
-    accent-color: var(--maroon);
-    cursor: pointer;
-}
-
-input[type="file"] {
-    padding: 9px !important;
-}
+input[readonly] { background: #f9fafb; }
+input[type="file"] { padding: 9px; }
 
 input[type="file"]::file-selector-button {
     border: 0;
@@ -161,24 +123,12 @@ button {
     min-height: 43px;
 }
 
-button:disabled {
-    opacity: .5;
-    cursor: not-allowed;
-}
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:not(:disabled):hover { filter: brightness(.95); }
+button[hidden] { display: none; }
 
-button:not(:disabled):hover {
-    filter: brightness(.95);
-}
-
-.primary {
-    background: var(--maroon);
-    color: white;
-}
-
-.secondary {
-    background: #e5e7eb;
-    color: #242424;
-}
+.primary { background: var(--maroon); color: white; }
+.secondary { background: #e5e7eb; color: #242424; }
 
 .outline {
     background: white;
@@ -192,40 +142,20 @@ button:not(:disabled):hover {
     font-size: 14px;
 }
 
-#retakeBtn {
-    width: 100%;
-}
+#retakeBtn, #cameraBtn { width: 100%; }
 
-.status,
-.note {
+.status, .note {
     font-size: 12px;
     line-height: 1.65;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
-.status {
-    margin: 10px 0;
-}
-
-.note {
-    color: var(--muted);
-}
-
-.error,
-.overvote {
-    color: #a00000;
-}
-
-.success,
-.valid {
-    color: #176b36;
-}
-
-.valid,
-.overvote {
-    font-weight: 600;
-}
+.status { margin: 10px 0; }
+.note { color: var(--muted); }
+.error, .overvote { color: #a00000; }
+.success, .valid { color: #176b36; }
+.valid, .overvote { font-weight: 600; }
 
 .divider {
     border: 0;
@@ -233,24 +163,7 @@ button:not(:disabled):hover {
     margin: 20px 0;
 }
 
-.camera-box {
-    border-radius: 10px;
-    overflow: hidden;
-    background: #111;
-    margin-top: 12px;
-}
-
-#video {
-    display: none;
-    width: 100%;
-    max-height: 350px;
-    object-fit: contain;
-    background: #111;
-}
-
-.preview-panel {
-    min-width: 0;
-}
+.preview-panel { min-width: 0; }
 
 .preview-heading {
     display: flex;
@@ -260,18 +173,7 @@ button:not(:disabled):hover {
     margin-bottom: 14px;
 }
 
-.preview-heading h2 {
-    margin: 0;
-}
-
-.preview-tag {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--maroon);
-    background: #fff1f2;
-    border-radius: 20px;
-    padding: 7px 10px;
-}
+.preview-heading h2 { margin: 0; }
 
 .canvas-wrap {
     position: relative;
@@ -307,21 +209,12 @@ button:not(:disabled):hover {
     color: #98a2b3;
 }
 
-.canvas-wrap:has(#scanCanvas[width="1"])
-.preview-placeholder {
+.canvas-wrap:has(#scanCanvas[width="1"]) .preview-placeholder {
     display: flex;
 }
 
-.placeholder-icon {
-    font-size: 34px;
-    color: #b0b6c0;
-}
-
-.preview-placeholder p {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.6;
-}
+.placeholder-icon { font-size: 34px; color: #b0b6c0; }
+.preview-placeholder p { margin: 0; font-size: 13px; line-height: 1.6; }
 
 .results-area {
     margin-top: 20px;
@@ -329,32 +222,19 @@ button:not(:disabled):hover {
     padding-top: 18px;
 }
 
-.results-area h3 {
-    margin-top: 0;
-}
-
-#results {
-    line-height: 1.6;
-    overflow-wrap: anywhere;
-}
+.results-area h3 { margin-top: 0; }
+#results { line-height: 1.6; overflow-wrap: anywhere; }
 
 .result-position {
     border: 1px solid var(--border);
     border-radius: 9px;
     padding: 13px;
     margin: 12px 0;
-    background: #fff;
+    background: white;
 }
 
-.result-position h4 {
-    margin: 0 0 9px;
-    font-size: 15px;
-}
-
-.result-position p {
-    margin: 7px 0;
-    font-size: 13px;
-}
+.result-position h4 { margin: 0 0 9px; font-size: 15px; }
+.result-position p { margin: 7px 0; font-size: 13px; }
 
 .counting-note {
     background: #f8fafc;
@@ -384,22 +264,10 @@ button:not(:disabled):hover {
     user-select: none;
 }
 
-.debug-content {
-    padding: 0 14px 14px;
-}
-
-#debugInfo,
-#qrStatus {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-#debugInfo {
-    max-height: 300px;
-    overflow: auto;
-}
-
-/* RESPONSIVE DESIGN */
+.debug-content { padding: 0 14px 14px; }
+#debugInfo, #qrStatus { white-space: pre-wrap; overflow-wrap: anywhere; }
+#debugInfo { max-height: 300px; overflow: auto; }
+#phoneCameraInput { display: none; }
 
 @media screen and (min-width: 1001px) {
     .scanner-controls {
@@ -436,44 +304,18 @@ button:not(:disabled):hover {
     }
 }
 
-@media screen and (min-width: 601px)
-and (max-width: 1000px) {
-    main {
-        grid-template-columns: 1fr;
-        max-width: 900px;
-    }
-
-    .scanner-controls {
-        order: 2;
-    }
-
-    .preview-panel {
-        order: 1;
-    }
-
-    .canvas-wrap {
-        max-height: 480px;
-    }
+@media screen and (min-width: 601px) and (max-width: 1000px) {
+    main { grid-template-columns: 1fr; max-width: 900px; }
+    .scanner-controls { order: 2; }
+    .preview-panel { order: 1; }
+    .canvas-wrap { max-height: 480px; }
 }
 
 @media screen and (max-width: 600px) {
-    header {
-        padding: 14px 12px;
-        gap: 8px;
-    }
-
-    header h1 {
-        font-size: 17px;
-    }
-
-    header p {
-        font-size: 11px;
-        line-height: 1.4;
-    }
-
-    .back-link {
-        font-size: 26px;
-    }
+    header { padding: 14px 12px; gap: 8px; }
+    header h1 { font-size: 17px; }
+    header p { font-size: 11px; line-height: 1.4; }
+    .back-link { font-size: 26px; }
 
     main {
         display: flex;
@@ -489,30 +331,10 @@ and (max-width: 1000px) {
         border-radius: 11px;
     }
 
-    .preview-panel {
-        order: 1;
-    }
-
-    .scanner-controls {
-        order: 2;
-    }
-
-    h2 {
-        font-size: 18px;
-    }
-
-    .preview-tag {
-        font-size: 10px;
-    }
-
-    .canvas-wrap {
-        min-height: 230px;
-        max-height: 380px;
-    }
-
-    #video {
-        max-height: 55vh;
-    }
+    .preview-panel { order: 1; }
+    .scanner-controls { order: 2; }
+    h2 { font-size: 18px; }
+    .canvas-wrap { min-height: 230px; max-height: 380px; }
 
     .buttons {
         display: grid;
@@ -526,77 +348,32 @@ and (max-width: 1000px) {
         font-size: 13px;
     }
 
-    #retakeBtn,
-    #loadBtn,
-    #analyzeBtn {
-        width: 100%;
-    }
-
-    input:not([type="range"]),
-    select {
-        font-size: 16px;
-    }
-
-    .results-area {
-        margin-top: 15px;
-    }
+    #retakeBtn, #loadBtn, #analyzeBtn { width: 100%; }
+    input, select { font-size: 16px; }
+    .results-area { margin-top: 15px; }
 }
-
-/* PHONE CAMERA */
-
-#phoneCameraInput {
-    display: none;
-}
-
-.camera-note {
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--muted);
-    margin: 10px 0;
-}
-
-#cameraBtn {
-    flex: 1;
-}
-
-#qrStatus {
-    line-height: 1.7;
-}
-
 </style>
 </head>
 
 <body>
-
 <header>
     <a
         href="Committee.html"
         class="back-link"
-        aria-label="Back to Committee Dashboard">
-        &#8592;
-    </a>
+        aria-label="Back to Committee Dashboard"
+    >&#8592;</a>
 
     <div>
         <h1>CampusVote — OMR Scanner</h1>
-        <p>
-            QR Verification • Ballot Scanning •
-            Automatic Vote Counting
-        </p>
+        <p>QR Verification • Ballot Scanning • Automatic Vote Counting</p>
     </div>
 </header>
 
 <main>
-
-    <!-- SCANNER CONTROLS -->
-
     <section class="panel scanner-controls">
-
         <h2>Scanner Controls</h2>
 
-        <label for="electionId">
-            Election ID
-        </label>
-
+        <label for="electionId">Election ID</label>
         <input
             id="electionId"
             type="number"
@@ -605,47 +382,28 @@ and (max-width: 1000px) {
         >
 
         <div class="buttons">
-            <button
-                id="loadBtn"
-                type="button"
-                class="secondary">
+            <button id="loadBtn" type="button" class="secondary">
                 Load Templates
             </button>
         </div>
 
-        <label for="templateSelect">
-            Ballot Template
-        </label>
-
+        <label for="templateSelect">Ballot Template</label>
         <select id="templateSelect">
-            <option value="">
-                Select a template
-            </option>
+            <option value="">Select an A5 template</option>
         </select>
 
-        <p
-            id="scannerStatus"
-            class="status"
-            role="status">
-        </p>
+        <p id="scannerStatus" class="status" role="status"></p>
 
         <hr class="divider">
 
-        <!-- BALLOT IMAGE -->
-
         <h3>Ballot Image</h3>
 
-        <label for="fileInput">
-            Upload Ballot Image
-        </label>
-
+        <label for="fileInput">Upload Ballot Image</label>
         <input
             id="fileInput"
             type="file"
             accept="image/png,image/jpeg,image/webp"
         >
-
-        <!-- NATIVE PHONE CAMERA INPUT -->
 
         <input
             id="phoneCameraInput"
@@ -656,57 +414,31 @@ and (max-width: 1000px) {
         >
 
         <div class="buttons">
-
-            <button
-                id="cameraBtn"
-                type="button"
-                class="primary">
+            <button id="cameraBtn" type="button" class="primary">
                 Open Phone Camera
             </button>
         </div>
-        <div class="camera-box">
-            <video
-                id="video"
-                autoplay
-                playsinline
-                muted>
-            </video>
-        </div>
 
-        <p
-            id="imageStatus"
-            class="status"
-            role="status">
-        </p>
+        <p id="imageStatus" class="status" role="status"></p>
 
         <div class="buttons">
-            <button
-                id="retakeBtn"
-                type="button"
-                class="outline">
+            <button id="retakeBtn" type="button" class="outline">
                 Retake Photo / Clear Image
             </button>
         </div>
 
         <hr class="divider">
 
-        <!-- OMR SETTINGS -->
-
         <h3>OMR Settings</h3>
 
-        <p class="note">
-            Portrait ballot • One ballot per scan •
-            Balanced shade detection
-        </p>
+        <p class="note">Portrait ballot • One ballot per scan • Balanced shade detection</p>
 
         <div class="counting-note">
             <strong>Automatic Vote Counting</strong>
-
             <p>
-                After you press Scan &amp; Count Ballot,
-                the backend verifies the QR, checks
-                registration marks and shaded bubbles,
-                and counts valid votes automatically.
+                After you press Scan &amp; Count Ballot, the backend
+                verifies the QR, checks registration marks and shaded
+                bubbles, and counts valid votes automatically.
                 Duplicate or invalid ballots are rejected.
             </p>
         </div>
@@ -716,109 +448,74 @@ and (max-width: 1000px) {
                 id="analyzeBtn"
                 type="button"
                 class="primary"
-                disabled>
-                Scan &amp; Count Ballot
-            </button>
+                disabled
+            >Scan &amp; Count Ballot</button>
         </div>
+
+        <div class="buttons">
+            <button
+                id="cancelBtn"
+                type="button"
+                class="secondary"
+                hidden
+            >Stop Waiting</button>
+
+            <button
+                id="checkStatusBtn"
+                type="button"
+                class="outline"
+                disabled
+            >Check Ballot Status</button>
+        </div>
+
+        <p class="note">If the result is not confirmed, check the ballot status before retrying.</p>
 
         <p
             id="analysisStatus"
             class="status"
             role="status"
-            aria-live="polite">
-        </p>
+            aria-live="polite"
+        ></p>
 
-        <p class="note">
-            Keep the entire ballot and all four
-            registration squares visible.
-            If alignment fails, retake the photo.
-        </p>
-
-        <!-- QR AND DEBUG STATUS -->
+        <p class="note">Keep the entire ballot and all four registration squares visible.</p>
 
         <details class="debug">
-            <summary>
-                Debug &amp; QR Diagnostics
-            </summary>
+            <summary>Debug &amp; QR Diagnostics</summary>
 
             <div class="debug-content">
-
-                <strong>
-                    Debug Diagnostics
-                </strong>
-
-                <div id="debugInfo">
-                    Load a template and image,
-                    then scan.
-                </div>
+                <strong>Debug Diagnostics</strong>
+                <p id="timingInfo" class="status" role="status"></p>
+                <div id="debugInfo">Load a template and image, then scan.</div>
 
                 <hr class="divider">
 
-                <strong>
-                    QR Diagnostics
-                </strong>
-
-                <p id="qrStatus">
-                    QR not scanned yet.
-                </p>
-
+                <strong>QR Diagnostics</strong>
+                <p id="qrStatus">QR and markers are verified during scanning.</p>
             </div>
         </details>
-
     </section>
 
-    <!-- BALLOT PREVIEW -->
-
     <section class="panel preview-panel">
-
         <div class="preview-heading">
             <h2>Ballot Preview</h2>
-
         </div>
 
         <div class="canvas-wrap">
-
-            <canvas
-                id="scanCanvas"
-                width="1"
-                height="1">
-            </canvas>
+            <canvas id="scanCanvas" width="1" height="1"></canvas>
 
             <div class="preview-placeholder">
-
-                <div class="placeholder-icon">
-                    &#9635;
-                </div>
-
-                <p>
-                    Upload or capture a ballot image
-                    to display it here.
-                </p>
-
+                <div class="placeholder-icon">&#9635;</div>
+                <p>Upload or capture a ballot image to display it here.</p>
             </div>
         </div>
-
-        <!-- DETECTED RESULTS -->
 
         <div class="results-area">
-
             <h3>Detected Results</h3>
-
-            <div id="results">
-                <p>No ballot analyzed yet.</p>
-            </div>
-
+            <div id="results"><p>No ballot analyzed yet.</p></div>
         </div>
-
     </section>
-
 </main>
 
-<!-- QR CODE LIBRARY -->
-
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-
-<script src="./scanner.js?v=20261103-omr-update"></script>
-
+<script src="./scanner.js?v=20261108-ready"></script>
 </body>
 </html>

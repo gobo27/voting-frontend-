@@ -1,1871 +1,1464 @@
-
 "use strict";
 
-const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
-const DPI = 300;
+(() => {
+    const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
+    const MAX_SIDE = 2600;
+    const MAX_FILE_BYTES = 30 * 1024 * 1024;
+    const SCAN_TIMEOUT_MS = 45000;
 
-const $ = id => document.getElementById(id);
+    const $ = id => document.getElementById(id);
+    const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-let template = null;
-let coordinates = [];
-let sourceImage = null;
-let cameraStream = null;
-let uploadedBallotFile = null;
+    const state = {
+        electionId: 0,
+        template: null,
+        photo: null,
+        upload: null,
+        revision: 0,
+        photoTicket: 0,
+        templateTicket: 0,
+        listTicket: 0,
+        loading: false,
+        preparing: false,
+        busy: false,
+        checking: false,
+        counted: false,
+        unavailable: false,
+        uncertain: false,
+        qrRaw: null,
+        photoInfo: null
+    };
 
-let busy = false;
-let imageVersion = 0;
+    let activeScan = null;
 
-let qrData = null;
-let qrResult = null;
-
-window.campusVoteQRVerified = false;
-window.confirmedOMRCounting = false;
-
-const canvas = $("scanCanvas");
-const ctx = canvas.getContext("2d", {
-    willReadFrequently: true
-});
-
-
-// AUTHENTICATION
-
-
-function token() {
-    return (
-        sessionStorage.getItem("voting_token") ||
-        localStorage.getItem("voting_token") ||
-        localStorage.getItem("token")
-    );
-}
-
-function validId(value) {
-    return (
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== "" &&
-        Number.isSafeInteger(Number(value)) &&
-        Number(value) > 0
-    );
-}
-
-function getElectionId() {
-    return Number($("electionId")?.value);
-}
-
-function getTemplateId() {
-    return Number($("templateSelect")?.value);
-}
-
-async function request(path, options = {}) {
-    const t = token();
-
-    if (!t) {
-        throw new Error(
-            "Session not found. Please log in again."
-        );
-    }
-
-    const response = await fetch(API_BASE + path, {
-        ...options,
-        headers: {
-            Authorization: "Bearer " + t,
-            ...(options.headers || {})
-        }
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-        const error = new Error(
-            data.message || `API error ${response.status}`
-        );
-
-        error.status = response.status;
-        error.data = data;
-
-        throw error;
-    }
-
-    return data;
-}
-
-
-// STATUS AND RESET
-
-
-function status(id, message, error = false) {
-    const el = $(id);
-
-    if (!el) return;
-
-    el.textContent = message;
-    el.className = "status" + (error ? " error" : "");
-}
-
-function debug(message) {
-    if ($("debugInfo")) {
-        $("debugInfo").textContent = message;
-    }
-}
-
-function disableSubmission() {
-    if ($("submitBtn")) {
-        $("submitBtn").disabled = true;
-    }
-}
-
-function updateAnalyzeButton() {
-    const button = $("analyzeBtn");
-    if (!button) return;
-
-    button.disabled =
-        busy ||
-        window.confirmedOMRCounting === true ||
-        window.campusVoteQRVerified !== true ||
-        !template ||
-        !sourceImage ||
-        !validId(getElectionId()) ||
-        !validId(getTemplateId());
-}
-
-function reset() {
-    if ($("results")) {
-        $("results").innerHTML =
-            "<p>No ballot analyzed yet.</p>";
-    }
-
-    status("analysisStatus", "");
-
-    debug(
-        "Load a template and ballot image, then scan."
-    );
-
+    window.campusVoteQRVerified = false;
     window.confirmedOMRCounting = false;
 
-    disableSubmission();
-    updateAnalyzeButton();
-}
+    const validId = value =>
+        Number.isSafeInteger(Number(value)) && Number(value) > 0;
 
+    const selectedTemplateId = () =>
+        Number($("templateSelect").value);
 
-// ELECTION AND TEMPLATES
+    function status(id, message, error = false) {
+        const element = $(id);
+        if (!element) return;
 
+        element.textContent = message;
+        element.className = "status" + (error ? " error" : "");
+    }
 
-async function loadTemplates() {
-    if (busy) return;
+    function debug(value) {
+        $("debugInfo").textContent =
+            typeof value === "string"
+                ? value
+                : JSON.stringify(value, null, 2);
+    }
 
-    try {
-        const electionId = getElectionId();
+    function controls() {
+        const locked =
+            state.busy || state.checking || state.loading;
 
-        if (!validId(electionId)) {
-            throw new Error(
-                "Current election ID unavailable."
+        for (const id of [
+            "loadBtn",
+            "templateSelect",
+            "fileInput",
+            "phoneCameraInput",
+            "cameraBtn"
+        ]) {
+            $(id).disabled = locked;
+        }
+
+        $("retakeBtn").disabled = locked;
+
+        $("analyzeBtn").disabled =
+            locked ||
+            state.preparing ||
+            !state.photo ||
+            !state.upload ||
+            !state.template ||
+            state.counted ||
+            state.unavailable ||
+            state.uncertain;
+
+        $("checkStatusBtn").disabled =
+            locked ||
+            state.preparing ||
+            !state.photo ||
+            !state.template;
+
+        $("cancelBtn").hidden = !state.busy;
+        $("cancelBtn").disabled = !activeScan;
+
+        $("analyzeBtn").setAttribute(
+            "aria-busy",
+            String(state.busy)
+        );
+    }
+
+    async function api(route, options = {}) {
+        const auth =
+            sessionStorage.getItem("voting_token") ||
+            localStorage.getItem("voting_token") ||
+            localStorage.getItem("token");
+
+        if (!auth) {
+            const error = new Error(
+                "Session not found. Please log in again."
+            );
+            error.requestNotSent = true;
+            throw error;
+        }
+
+        const {
+            timeoutMs = 15000,
+            signal,
+            ...requestOptions
+        } = options;
+
+        const controller = new AbortController();
+        let timedOut = false;
+
+        const stop = () => controller.abort();
+
+        if (signal?.aborted) {
+            controller.abort();
+        } else {
+            signal?.addEventListener(
+                "abort",
+                stop,
+                { once: true }
             );
         }
 
-        const data = await request(
-            `/ballots/templates/election/${electionId}`
-        );
+        const timer = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+        }, timeoutMs);
 
-        const select = $("templateSelect");
+        try {
+            const response = await fetch(API_BASE + route, {
+                ...requestOptions,
+                headers: {
+                    ...requestOptions.headers,
+                    Authorization: "Bearer " + auth
+                },
+                signal: controller.signal
+            });
 
-        select.replaceChildren(
-            new Option("Select a template", "")
-        );
+            const data = await response.json().catch(() => null);
 
-        for (const item of data.templates || []) {
-            if (String(item.paper_size).toUpperCase() !== "A5") {
-                continue;
+            if (!response.ok || !data) {
+                const error = new Error(
+                    data?.message ||
+                    `Unexpected server response (${response.status}).`
+                );
+
+                error.status = response.status;
+                error.data = data;
+                throw error;
             }
 
-            select.add(
-                new Option(
-                    `#${item.template_id} - ` +
-                    `${item.template_name} ` +
-                    `(${item.paper_size})`,
-                    item.template_id
-                )
-            );
+            return data;
+        } catch (error) {
+            if (controller.signal.aborted) {
+                const stopped = new Error(
+                    timedOut
+                        ? `The server did not respond within ${Math.round(timeoutMs / 1000)} seconds.`
+                        : "Stopped waiting for the response."
+                );
+
+                stopped.code = timedOut
+                    ? "TIMEOUT"
+                    : "STOPPED_WAITING";
+
+                throw stopped;
+            }
+
+            throw error;
+        } finally {
+            clearTimeout(timer);
+            signal?.removeEventListener("abort", stop);
+        }
+    }
+
+    function clearResults() {
+        $("results").replaceChildren();
+
+        const note = document.createElement("p");
+        note.textContent = "No ballot analyzed yet.";
+
+        $("results").appendChild(note);
+    }
+
+    function clearPhoto() {
+        state.photoTicket++;
+        state.revision++;
+
+        state.photo = null;
+        state.upload = null;
+        state.photoInfo = null;
+        state.qrRaw = null;
+
+        state.preparing = false;
+        state.counted = false;
+        state.unavailable = false;
+        state.uncertain = false;
+
+        window.campusVoteQRVerified = false;
+        window.confirmedOMRCounting = false;
+
+        const canvas = $("scanCanvas");
+        canvas.width = 1;
+        canvas.height = 1;
+
+        $("fileInput").value = "";
+        $("phoneCameraInput").value = "";
+
+        clearResults();
+
+        status("analysisStatus", "");
+        status(
+            "imageStatus",
+            "Upload or capture one complete A5 ballot."
+        );
+        status(
+            "qrStatus",
+            "QR and registration marks are verified during scanning."
+        );
+        status("timingInfo", "");
+
+        debug("Load an A5 template and one ballot photo.");
+        controls();
+    }
+
+    async function loadTemplates() {
+        if (state.busy || state.checking || state.loading) {
+            return;
         }
 
-        template = null;
-        coordinates = [];
+        const ticket = ++state.listTicket;
 
-        qrData = null;
-        qrResult = null;
+        state.templateTicket++;
+        state.loading = true;
+        state.template = null;
+        state.qrRaw = null;
+        state.revision++;
+
+        controls();
+
+        try {
+            if (!validId(state.electionId)) {
+                status(
+                    "scannerStatus",
+                    "Loading current election..."
+                );
+
+                const data = await api(
+                    "/positions/election/current"
+                );
+
+                const positions = Array.isArray(data)
+                    ? data
+                    : data.positions || [];
+
+                const id = Number(
+                    data.election_id ??
+                    data.election?.election_id ??
+                    data.current_election?.election_id ??
+                    data.data?.election_id ??
+                    data.data?.election?.election_id ??
+                    positions[0]?.election_id
+                );
+
+                if (!validId(id)) {
+                    throw new Error(
+                        "Current election ID was not found."
+                    );
+                }
+
+                if (ticket !== state.listTicket) return;
+
+                state.electionId = id;
+                $("electionId").value = id;
+            }
+
+            const data = await api(
+                `/ballots/templates/election/${state.electionId}`
+            );
+
+            if (ticket !== state.listTicket) return;
+
+            const select = $("templateSelect");
+
+            select.replaceChildren(
+                new Option("Select an A5 template", "")
+            );
+
+            for (const item of data.templates || []) {
+                if (
+                    String(item.paper_size).toUpperCase() !== "A5"
+                ) {
+                    continue;
+                }
+
+                select.add(
+                    new Option(
+                        `#${item.template_id} - ` +
+                        `${item.template_name} (${item.paper_size})`,
+                        item.template_id
+                    )
+                );
+            }
+
+            status(
+                "scannerStatus",
+                `${select.options.length - 1} A5 templates loaded.`
+            );
+        } catch (error) {
+            if (ticket === state.listTicket) {
+                status("scannerStatus", error.message, true);
+            }
+        } finally {
+            if (ticket === state.listTicket) {
+                state.loading = false;
+                controls();
+            }
+        }
+    }
+
+    async function selectTemplate() {
+        if (state.busy || state.checking || state.loading) {
+            return;
+        }
+
+        const ticket = ++state.templateTicket;
+        const id = selectedTemplateId();
+
+        state.template = null;
+        state.qrRaw = null;
+        state.revision++;
 
         window.campusVoteQRVerified = false;
 
-        imageVersion++;
-
-        reset();
-
-        status(
-            "scannerStatus",
-            `${select.options.length - 1} templates loaded.`
-        );
-
-    } catch (error) {
-        status(
-            "scannerStatus",
-            error.message,
-            true
-        );
-    }
-}
-
-async function selectTemplate() {
-    if (busy) return;
-
-    template = null;
-    coordinates = [];
-
-    qrData = null;
-    qrResult = null;
-
-    window.campusVoteQRVerified = false;
-
-    const version = ++imageVersion;
-    const id = $("templateSelect").value;
-
-    reset();
-
-    if (!id) return;
-
-    try {
-        const data = await request(
-            `/ballots/templates/${encodeURIComponent(id)}`
-        );
-
-        if (version !== imageVersion) return;
-
-        if (
-            !data.template ||
-            !Array.isArray(data.coordinates) ||
-            !data.coordinates.length
-        ) {
-            throw new Error(
-                "Template or coordinates missing."
-            );
-        }
-
-        if (String(data.template.paper_size).toUpperCase() !== "A5") {
-            throw new Error("A4 counting is not yet supported. Select an A5 portrait template.");
-        }
-
-        template = data.template;
-        coordinates = data.coordinates;
-
-        status(
-            "scannerStatus",
-            `Template #${id} loaded ` +
-            `(${template.paper_size}), ` +
-            `${coordinates.length} bubbles.`
-        );
-
-        reset();
-
-        if (sourceImage) {
-            await debugQR().catch(() => {
-                // QR error is already shown in the scanner status.
-            });
-        }
-
-    } catch (error) {
-        if (version === imageVersion) {
-            status(
-                "scannerStatus",
-                error.message,
-                true
-            );
-        }
-    }
-}
-
-async function currentElection() {
-    try {
-        const data = await request(
-            "/positions/election/current"
-        );
-
-        const positions = Array.isArray(data)
-            ? data
-            : Array.isArray(data.positions)
-                ? data.positions
-                : [];
-
-        const id = Number(
-            data.election_id ??
-            data.election?.election_id ??
-            data.current_election?.election_id ??
-            data.data?.election_id ??
-            data.data?.election?.election_id ??
-            positions[0]?.election_id
-        );
+        clearResults();
 
         if (!validId(id)) {
+            controls();
+            return;
+        }
+
+        state.loading = true;
+        controls();
+
+        try {
+            const data = await api(
+                `/ballots/templates/${id}`
+            );
+
+            if (
+                ticket !== state.templateTicket ||
+                id !== selectedTemplateId()
+            ) {
+                return;
+            }
+
+            if (
+                !data.template ||
+                !Array.isArray(data.coordinates) ||
+                !data.coordinates.length
+            ) {
+                throw new Error(
+                    "Template or bubble coordinates are missing."
+                );
+            }
+
+            if (
+                String(data.template.paper_size).toUpperCase() !== "A5" ||
+                Number(data.template.election_id) !== state.electionId ||
+                Number(data.template.template_id) !== id
+            ) {
+                throw new Error(
+                    "Select an A5 template belonging to the current election."
+                );
+            }
+
+            state.template = data.template;
+
+            status(
+                "scannerStatus",
+                `Template #${id}: ${data.coordinates.length} bubbles.`
+            );
+
+            status(
+                "qrStatus",
+                "Ready. The server will verify the QR against this template."
+            );
+        } catch (error) {
+            if (ticket === state.templateTicket) {
+                status("scannerStatus", error.message, true);
+            }
+        } finally {
+            if (ticket === state.templateTicket) {
+                state.loading = false;
+                controls();
+            }
+        }
+    }
+
+    async function loadPhoto(file) {
+        if (
+            !file ||
+            state.busy ||
+            state.checking ||
+            state.loading
+        ) {
+            return;
+        }
+
+        const allowed = [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+        ];
+
+        if (
+            !allowed.includes(file.type) ||
+            file.size > MAX_FILE_BYTES
+        ) {
+            status(
+                "imageStatus",
+                "Use a JPEG, PNG, or WebP image up to 30 MB.",
+                true
+            );
+            return;
+        }
+
+        const ticket = ++state.photoTicket;
+
+        state.revision++;
+        state.photo = null;
+        state.upload = null;
+        state.qrRaw = null;
+        state.counted = false;
+        state.unavailable = false;
+        state.uncertain = false;
+        state.preparing = true;
+
+        window.campusVoteQRVerified = false;
+        window.confirmedOMRCounting = false;
+
+        clearResults();
+        controls();
+
+        status("analysisStatus", "");
+        status("imageStatus", "Preparing photo...");
+
+        const started = performance.now();
+        const url = URL.createObjectURL(file);
+        const original = new Image();
+
+        try {
+            await new Promise((resolve, reject) => {
+                original.onload = resolve;
+
+                original.onerror = () => {
+                    reject(
+                        new Error("The image could not be opened.")
+                    );
+                };
+
+                original.src = url;
+            });
+
+            if (
+                ticket !== state.photoTicket ||
+                state.busy
+            ) {
+                return;
+            }
+
+            const inputWidth = original.naturalWidth;
+            const inputHeight = original.naturalHeight;
+
+            const scale = Math.min(
+                1,
+                MAX_SIDE / Math.max(inputWidth, inputHeight)
+            );
+
+            const photo = document.createElement("canvas");
+
+            photo.width = Math.max(
+                1,
+                Math.round(inputWidth * scale)
+            );
+
+            photo.height = Math.max(
+                1,
+                Math.round(inputHeight * scale)
+            );
+
+            const context = photo.getContext("2d");
+
+            if (!context) {
+                throw new Error(
+                    "This browser cannot prepare the photo."
+                );
+            }
+
+            context.fillStyle = "#fff";
+            context.fillRect(
+                0,
+                0,
+                photo.width,
+                photo.height
+            );
+
+            context.imageSmoothingEnabled = true;
+            context.imageSmoothingQuality = "high";
+
+            context.drawImage(
+                original,
+                0,
+                0,
+                photo.width,
+                photo.height
+            );
+
+            let upload = await new Promise(resolve => {
+                photo.toBlob(resolve, "image/jpeg", 0.92);
+            });
+
+            if (!upload) {
+                throw new Error(
+                    "Could not prepare the ballot image."
+                );
+            }
+
+            if (upload.size > 9 * 1024 * 1024) {
+                upload = await new Promise(resolve => {
+                    photo.toBlob(resolve, "image/jpeg", 0.86);
+                });
+            }
+
+            if (!upload || upload.size > 9 * 1024 * 1024) {
+                throw new Error(
+                    "The prepared image is too large."
+                );
+            }
+
+            if (
+                ticket !== state.photoTicket ||
+                state.busy
+            ) {
+                return;
+            }
+
+            // Commit the preview and upload together.
+            state.photo = photo;
+            state.upload = upload;
+
+            state.photoInfo = {
+                original_width: inputWidth,
+                original_height: inputHeight,
+                width: photo.width,
+                height: photo.height,
+                original_bytes: file.size,
+                upload_bytes: upload.size,
+                prepare_ms: Math.round(
+                    performance.now() - started
+                )
+            };
+
+            const preview = $("scanCanvas");
+
+            preview.width = photo.width;
+            preview.height = photo.height;
+
+            preview.getContext("2d").drawImage(
+                photo,
+                0,
+                0
+            );
+
+            status(
+                "imageStatus",
+                `Photo ready: ${photo.width} × ${photo.height}, ` +
+                `${(upload.size / 1048576).toFixed(2)} MB.`
+            );
+
+            status(
+                "qrStatus",
+                "QR and all four markers will be checked during scanning."
+            );
+
+            status("timingInfo", "");
+            debug({ photo: state.photoInfo });
+        } catch (error) {
+            if (ticket === state.photoTicket) {
+                status("imageStatus", error.message, true);
+            }
+        } finally {
+            original.onload = null;
+            original.onerror = null;
+            original.src = "";
+
+            URL.revokeObjectURL(url);
+
+            if (ticket === state.photoTicket) {
+                state.preparing = false;
+                controls();
+            }
+        }
+    }
+
+    function displayResults(data) {
+        const output = $("results");
+        output.replaceChildren();
+
+        const positions = Array.isArray(data.positions)
+            ? data.positions
+            : [];
+
+        for (const position of positions) {
+            const section = document.createElement("div");
+            section.className = "result-position";
+
+            const title = document.createElement("h4");
+
+            title.textContent =
+                `${position.position_name || "Position"} ` +
+                `(${position.marked ?? 0}/${position.max_selection ?? 1})`;
+
+            section.appendChild(title);
+
+            const candidates = Array.isArray(position.candidates)
+                ? position.candidates
+                : [];
+
+            for (const candidate of candidates) {
+                const text = document.createElement("p");
+
+                const label = candidate.unclear
+                    ? "UNCLEAR — REVIEW"
+                    : candidate.filled
+                        ? "SHADED"
+                        : "BLANK";
+
+                text.textContent =
+                    `${candidate.filled ? "●" : "○"} ` +
+                    `${candidate.name || "Candidate"} — ${label}`;
+
+                text.className = candidate.unclear
+                    ? "error"
+                    : candidate.filled
+                        ? "valid"
+                        : "";
+
+                section.appendChild(text);
+            }
+
+            const note = document.createElement("p");
+            const result = position.result || "";
+
+            if (
+                position.unclear ||
+                result === "NEEDS_REVIEW"
+            ) {
+                note.textContent =
+                    "NEEDS REVIEW: UNCLEAR SHADING";
+                note.className = "error";
+            } else if (
+                position.overvoted ||
+                result === "SKIPPED_OVERVOTE"
+            ) {
+                note.textContent = "SKIPPED: OVERVOTE";
+                note.className = "overvote";
+            } else if (result === "BLANK") {
+                note.textContent = "BLANK POSITION";
+            } else if (result.startsWith("SKIPPED")) {
+                note.textContent = result.replaceAll("_", " ");
+                note.className = "error";
+            } else {
+                note.textContent = "VALID POSITION";
+                note.className = "valid";
+            }
+
+            section.appendChild(note);
+            output.appendChild(section);
+        }
+
+        const summary = document.createElement("div");
+        summary.className = "counting-note";
+
+        summary.textContent = data.counted === true
+            ? `Ballot counted. Saved votes: ${data.saved_votes ?? 0}.`
+            : data.message || "No counting result confirmed.";
+
+        output.appendChild(summary);
+    }
+
+    function showTiming(data, elapsed) {
+        const processing = Number(data?.processing_ms);
+
+        status(
+            "timingInfo",
+            `Request: ${(elapsed / 1000).toFixed(1)} s` +
+            (
+                Number.isFinite(processing)
+                    ? ` · Server processing: ${(processing / 1000).toFixed(1)} s`
+                    : ""
+            )
+        );
+
+        debug({
+            photo: state.photoInfo,
+            request_ms: Math.round(elapsed),
+            processing_ms: data?.processing_ms,
+            stages_ms: data?.timing_ms,
+            preprocessing: data?.preprocessing,
+            alignment: data?.alignment_diagnostic
+        });
+    }
+
+    async function scan() {
+        if (
+            state.busy ||
+            state.checking ||
+            state.loading ||
+            state.preparing ||
+            !state.template ||
+            !state.photo ||
+            !state.upload ||
+            state.counted ||
+            state.unavailable ||
+            state.uncertain
+        ) {
+            return;
+        }
+
+        const snapshot = {
+            revision: state.revision,
+            photo: state.photo,
+            upload: state.upload,
+            electionId: state.electionId,
+            templateId: selectedTemplateId(),
+            qrRaw: state.qrRaw
+        };
+
+        if (
+            !validId(snapshot.electionId) ||
+            !validId(snapshot.templateId)
+        ) {
+            return;
+        }
+
+        state.busy = true;
+        activeScan = new AbortController();
+
+        controls();
+
+        const started = performance.now();
+
+        const clock = setInterval(() => {
+            status(
+                "analysisStatus",
+                `Scanning ballot… ${Math.floor(
+                    (performance.now() - started) / 1000
+                )} s`
+            );
+        }, 500);
+
+        let sent = false;
+
+        try {
+            status(
+                "analysisStatus",
+                "Uploading and scanning ballot..."
+            );
+
+            const form = new FormData();
+
+            form.append(
+                "election_id",
+                String(snapshot.electionId)
+            );
+
+            form.append(
+                "template_id",
+                String(snapshot.templateId)
+            );
+
+            form.append(
+                "ballot_image",
+                snapshot.upload,
+                "ballot-scan.jpg"
+            );
+
+            sent = true;
+
+            const data = await api("/omr/scan", {
+                method: "POST",
+                body: form,
+                timeoutMs: SCAN_TIMEOUT_MS,
+                signal: activeScan.signal
+            });
+
+            showTiming(
+                data,
+                performance.now() - started
+            );
+
+            const parsed = snapshot.qrRaw
+                ? parseQR(snapshot.qrRaw)
+                : null;
+
+            if (
+                state.revision !== snapshot.revision ||
+                state.photo !== snapshot.photo ||
+                Number(data.election_id) !== snapshot.electionId ||
+                Number(data.template_id) !== snapshot.templateId ||
+                !uuidPattern.test(String(data.ballot_id || "")) ||
+                (
+                    parsed &&
+                    parsed.ballotId !==
+                        String(data.ballot_id).toLowerCase()
+                ) ||
+                data.preview_only !== false ||
+                data.counted !== true ||
+                data.valid !== true
+            ) {
+                throw new Error(
+                    "The counting result could not be confirmed. " +
+                    "Check the ballot status."
+                );
+            }
+
+            state.counted = true;
+            state.uncertain = false;
+
+            state.qrRaw =
+                `CV1|${snapshot.electionId}|` +
+                `${String(data.ballot_id).toLowerCase()}|` +
+                `${snapshot.templateId}`;
+
+            window.campusVoteQRVerified = true;
+            window.confirmedOMRCounting = true;
+
+            displayResults(data);
+
+            status(
+                "analysisStatus",
+                data.message || "Ballot counted successfully."
+            );
+
+            status(
+                "qrStatus",
+                `QR verified by server. Status: COUNTED. ` +
+                `Ballot: ${data.ballot_id}`
+            );
+
+            window.showToast?.(
+                "Ballot counted successfully.",
+                "success"
+            );
+        } catch (error) {
+            const data = error.data;
+
+            showTiming(
+                data,
+                performance.now() - started
+            );
+
+            if (data?.positions) {
+                displayResults(data);
+            }
+
+            const rejected =
+                error.status >= 400 &&
+                error.status < 500 &&
+                data?.counted === false;
+
+            if (
+                sent &&
+                !rejected &&
+                !error.requestNotSent
+            ) {
+                state.uncertain = true;
+
+                status(
+                    "analysisStatus",
+                    `${error.message} Counting status is unknown. ` +
+                    "Use Check Ballot Status before retrying.",
+                    true
+                );
+            } else {
+                if (
+                    data?.status === "COUNTED" ||
+                    data?.duplicate === true
+                ) {
+                    state.counted = true;
+                    window.confirmedOMRCounting = true;
+                } else if (error.status === 409) {
+                    state.unavailable = true;
+                }
+
+                status(
+                    "analysisStatus",
+                    data?.message || error.message,
+                    true
+                );
+            }
+        } finally {
+            clearInterval(clock);
+
+            activeScan = null;
+            state.busy = false;
+
+            controls();
+        }
+    }
+
+    function parseQR(raw) {
+        const parts = String(raw || "")
+            .trim()
+            .split("|");
+
+        if (
+            parts.length !== 4 ||
+            parts[0] !== "CV1" ||
+            !validId(parts[1]) ||
+            !uuidPattern.test(parts[2]) ||
+            !validId(parts[3])
+        ) {
             throw new Error(
-                "Current election ID not found."
+                "This is not a valid CampusVote ballot QR."
             );
         }
 
-        $("electionId").value = id;
-
-        await loadTemplates();
-
-    } catch (error) {
-        status(
-            "scannerStatus",
-            "Failed to load current election: " +
-            error.message,
-            true
-        );
-    }
-}
-
-
-// IMAGE HANDLING
-
-
-function drawOriginal() {
-    if (!sourceImage) return;
-
-    canvas.width =
-        sourceImage.naturalWidth ||
-        sourceImage.width;
-
-    canvas.height =
-        sourceImage.naturalHeight ||
-        sourceImage.height;
-
-    ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    ctx.drawImage(
-        sourceImage,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-}
-
-function showImage(image) {
-    if (busy) {
-        status("imageStatus", "Wait until the current scan finishes.", true);
-        return;
+        return {
+            electionId: Number(parts[1]),
+            ballotId: parts[2].toLowerCase(),
+            templateId: Number(parts[3])
+        };
     }
 
-    imageVersion++;
+    async function checkBallotStatus() {
+        if (
+            state.busy ||
+            state.checking ||
+            state.loading ||
+            state.preparing ||
+            !state.photo ||
+            !state.template
+        ) {
+            return;
+        }
 
-    sourceImage = image;
+        state.checking = true;
+        controls();
 
-    qrData = null;
-    qrResult = null;
+        const revision = state.revision;
 
-    window.campusVoteQRVerified = false;
+        try {
+            status(
+                "qrStatus",
+                "Reading ballot identity for a status check..."
+            );
 
-    drawOriginal();
-    reset();
+            const raw =
+                state.qrRaw ||
+                await readPhotoQR(state.photo);
 
-    status(
-        "imageStatus",
-        `Image loaded: ${canvas.width} × ` +
-        `${canvas.height}. Checking QR code...`
-    );
+            const parsed = parseQR(raw);
 
-    if ($("qrStatus")) {
-        $("qrStatus").textContent =
-            "Automatically reading QR code...";
-    }
+            if (revision !== state.revision) return;
 
-    // Automatic QR verification after photo capture.
-    // This does NOT count votes.
-    if (template && validId(getTemplateId())) {
-        debugQR().then(result => {
-            if (result && sourceImage === image) {
-                status(
-                    "imageStatus",
-                    "Ballot image loaded. QR verified. " +
-                    "Ready for Scan & Count Ballot."
+            if (
+                parsed.electionId !== state.electionId ||
+                parsed.templateId !== selectedTemplateId()
+            ) {
+                throw new Error(
+                    "The QR belongs to a different election or template."
                 );
             }
-        }).catch(error => {
-            if (sourceImage === image) {
+
+            state.qrRaw = raw;
+
+            const data = await api("/omr/verify-qr", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    qr_data: raw
+                })
+            });
+
+            if (revision !== state.revision) return;
+
+            if (
+                data.valid !== true ||
+                !["ISSUED", "CAST"].includes(data.status) ||
+                String(data.ballot_id).toLowerCase() !== parsed.ballotId ||
+                Number(data.election_id) !== state.electionId ||
+                Number(data.template_id) !== selectedTemplateId()
+            ) {
+                throw new Error(
+                    "The ballot status could not be verified."
+                );
+            }
+
+            window.campusVoteQRVerified = true;
+
+            status(
+                "qrStatus",
+                `Ballot ${parsed.ballotId}: ${data.status}.`
+            );
+
+            if (state.uncertain) {
                 status(
-                    "imageStatus",
-                    "Image loaded, but QR verification failed: " +
+                    "analysisStatus",
+                    "The ballot is not yet marked counted. " +
+                    "An earlier request may still complete. " +
+                    "Check again before retrying.",
+                    true
+                );
+            }
+        } catch (error) {
+            if (revision !== state.revision) return;
+
+            if (
+                error.data?.status === "COUNTED" ||
+                error.data?.duplicate === true
+            ) {
+                state.counted = true;
+                state.uncertain = false;
+
+                window.campusVoteQRVerified = true;
+                window.confirmedOMRCounting = true;
+
+                status(
+                    "qrStatus",
+                    "This ballot is already COUNTED."
+                );
+
+                status(
+                    "analysisStatus",
+                    "Ballot already recorded. Load the next ballot."
+                );
+            } else {
+                if (error.status === 409) {
+                    state.unavailable = true;
+                }
+
+                status(
+                    "qrStatus",
                     error.message,
                     true
                 );
             }
-        });
-    } else {
-        status(
-            "imageStatus",
-            "Image loaded. Select a ballot template " +
-            "to verify its QR code."
-        );
-    }
-
-    updateAnalyzeButton();
-}
-
-function loadImageFile(file, source = "upload") {
-    if (!file) return;
-
-    const acceptedTypes = [
-        "image/png",
-        "image/jpeg",
-        "image/webp"
-    ];
-
-    if (
-        !acceptedTypes.includes(file.type) ||
-        file.size > 30 * 1024 * 1024
-    ) {
-        status(
-            "imageStatus",
-            "Use PNG/JPG/WEBP up to 30MB.",
-            true
-        );
-        return;
-    }
-
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-
-    image.onload = () => {
-        URL.revokeObjectURL(url);
-
-        // Uploaded screenshot: preserve original file.
-        // Camera: gamitin pa rin ang existing conversion.
-        uploadedBallotFile =
-            source === "upload" ? file : null;
-
-        showImage(image);
-    };
-
-    image.onerror = () => {
-        URL.revokeObjectURL(url);
-
-        status(
-            "imageStatus",
-            "Cannot open image.",
-            true
-        );
-    };
-
-    image.src = url;
-}
-
-function phoneCameraCapture(event) {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-        status(
-            "imageStatus",
-            "No photo captured."
-        );
-        return;
-    }
-
-    loadImageFile(file, "camera");
-}
-
-function upload(event) {
-    const file = event.target.files?.[0];
-
-    loadImageFile(file);
-}
-
-
-// DIRECT PHONE CAMERA - OPTION 1
-
-
-function openCamera() {
-    if (busy) {
-        status(
-            "imageStatus",
-            "Please wait for the current scan to finish.",
-            true
-        );
-        return;
-    }
-
-    const phoneCameraInput = $("phoneCameraInput");
-
-    if (!phoneCameraInput) {
-        status(
-            "imageStatus",
-            "Phone camera input not found.",
-            true
-        );
-        return;
-    }
-
-    phoneCameraInput.value = "";
-
-    status(
-        "imageStatus",
-        "Opening phone camera. Capture the complete " +
-        "A5 ballot with all four registration marks."
-    );
-    phoneCameraInput.click();
-}
-// OPTIONAL LEGACY CAMERA CLEANUP
-
-function stopCamera() {
-    cameraStream?.getTracks().forEach(track => {
-        track.stop();
-    });
-
-    cameraStream = null;
-
-    const video = $("video");
-
-    if (video) {
-        video.srcObject = null;
-        video.style.display = "none";
-    }
-
-    if ($("captureBtn")) {
-        $("captureBtn").disabled = true;
-    }
-
-    if ($("stopCameraBtn")) {
-        $("stopCameraBtn").disabled = true;
-    }
-}
-
-function capture() {
-    status(
-        "imageStatus",
-        "Use Open Phone Camera to capture a ballot."
-    );
-}
-
-
-// GET BALLOT IMAGE PIXELS
-
-
-function getSource() {
-    if (!sourceImage) {
-        throw new Error("No ballot image loaded.");
-    }
-
-    const temp = document.createElement("canvas");
-
-    temp.width =
-        sourceImage.naturalWidth ||
-        sourceImage.width;
-
-    temp.height =
-        sourceImage.naturalHeight ||
-        sourceImage.height;
-
-    const c = temp.getContext("2d", {
-        willReadFrequently: true
-    });
-
-    c.drawImage(
-        sourceImage,
-        0,
-        0,
-        temp.width,
-        temp.height
-    );
-
-    return c.getImageData(
-        0,
-        0,
-        temp.width,
-        temp.height
-    );
-}
-
-
-// READ QR CODE FROM IMAGE
-
-
-
-function readQR() {
-    if (typeof window.jsQR !== "function") {
-        throw new Error(
-            "QR library not loaded. Check jsQR.min.js."
-        );
-    }
-
-    if (!sourceImage) {
-        throw new Error("No ballot image loaded.");
-    }
-
-    const width = sourceImage.naturalWidth || sourceImage.width;
-    const height = sourceImage.naturalHeight || sourceImage.height;
-
-    // Gumamit ng bounded sizes para hindi mag-hang ang iPhone.
-    const maxSide = Math.max(width, height);
-    const scale = Math.min(1, 1800 / maxSide);
-
-    const work = document.createElement("canvas");
-    work.width = Math.max(1, Math.round(width * scale));
-    work.height = Math.max(1, Math.round(height * scale));
-
-    const ctx = work.getContext("2d", {
-        willReadFrequently: true
-    });
-
-    if (!ctx) {
-        throw new Error("QR canvas unavailable.");
-    }
-
-    ctx.drawImage(
-        sourceImage,
-        0,
-        0,
-        work.width,
-        work.height
-    );
-
-    const regions = [
-        // Full image.
-        {
-            x: 0,
-            y: 0,
-            w: 1,
-            h: 1
-        },
-
-        // Upper-right QR region.
-        {
-            x: 0.55,
-            y: 0,
-            w: 0.45,
-            h: 0.45
-        },
-
-        // Upper half, kung hindi eksaktong nasa corner.
-        {
-            x: 0,
-            y: 0,
-            w: 1,
-            h: 0.50
+        } finally {
+            state.checking = false;
+            controls();
         }
-    ];
+    }
 
-    // Subukan ang normal at enlarged crops.
-    for (const region of regions) {
-        const sx = Math.floor(region.x * work.width);
-        const sy = Math.floor(region.y * work.height);
+    // This worker is used only for the read-only status action.
+    function makeReadOnlyQRWorkerSource() {
+        return String.raw`
+"use strict";
 
-        const sw = Math.max(
+self.onmessage = function (event) {
+    try {
+        importScripts(
+            "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"
+        );
+
+        if (typeof self.jsQR !== "function") {
+            throw new Error("QR library unavailable.");
+        }
+
+        const { pixels, width, height } = event.data;
+        const rgba = new Uint8ClampedArray(pixels);
+
+        if (
+            !Number.isInteger(width) ||
+            !Number.isInteger(height) ||
+            width < 1 ||
+            height < 1 ||
+            width > 1800 ||
+            height > 1800 ||
+            rgba.length !== width * height * 4
+        ) {
+            throw new Error(
+                "Invalid photo for ballot status check."
+            );
+        }
+
+        const regions = [
+            [0.46, 0, 0.54, 0.50],
+            [0, 0.50, 0.54, 0.50],
+            [0, 0, 1, 0.55],
+            [0, 0, 1, 1]
+        ];
+
+        for (const inversionAttempts of [
+            "dontInvert",
+            "attemptBoth"
+        ]) {
+            for (const region of regions) {
+                const left = Math.floor(region[0] * width);
+                const top = Math.floor(region[1] * height);
+
+                const cropWidth = Math.max(
+                    1,
+                    Math.min(
+                        width - left,
+                        Math.round(region[2] * width)
+                    )
+                );
+
+                const cropHeight = Math.max(
+                    1,
+                    Math.min(
+                        height - top,
+                        Math.round(region[3] * height)
+                    )
+                );
+
+                let crop;
+
+                if (
+                    left === 0 &&
+                    top === 0 &&
+                    cropWidth === width &&
+                    cropHeight === height
+                ) {
+                    crop = rgba;
+                } else {
+                    crop = new Uint8ClampedArray(
+                        cropWidth * cropHeight * 4
+                    );
+
+                    for (let row = 0; row < cropHeight; row++) {
+                        const start =
+                            ((top + row) * width + left) * 4;
+
+                        crop.set(
+                            rgba.subarray(
+                                start,
+                                start + cropWidth * 4
+                            ),
+                            row * cropWidth * 4
+                        );
+                    }
+                }
+
+                const result = self.jsQR(
+                    crop,
+                    cropWidth,
+                    cropHeight,
+                    { inversionAttempts }
+                );
+
+                if (result && result.data) {
+                    self.postMessage({
+                        data: result.data
+                    });
+                    return;
+                }
+            }
+        }
+
+        throw new Error(
+            "QR code could not be read. Keep this ballot aside " +
+            "and check its record before retrying."
+        );
+    } catch (error) {
+        self.postMessage({
+            error: error && error.message
+                ? error.message
+                : "Ballot status QR check failed."
+        });
+    } finally {
+        self.close();
+    }
+};
+`;
+    }
+
+    async function readPhotoQR(photoCanvas) {
+        if (
+            !photoCanvas ||
+            typeof photoCanvas.getContext !== "function" ||
+            !Number.isInteger(photoCanvas.width) ||
+            !Number.isInteger(photoCanvas.height) ||
+            photoCanvas.width < 2 ||
+            photoCanvas.height < 2
+        ) {
+            throw new Error(
+                "Load the ballot photo before checking its status."
+            );
+        }
+
+        if (
+            typeof Worker !== "function" ||
+            typeof Blob !== "function" ||
+            typeof URL.createObjectURL !== "function"
+        ) {
+            throw new Error(
+                "This browser cannot read the status QR. " +
+                "Keep this ballot aside and check its record before retrying."
+            );
+        }
+
+        const started = performance.now();
+        const timeoutMs = 6000;
+
+        const scale = Math.min(
             1,
-            Math.min(
-                work.width - sx,
-                Math.round(region.w * work.width)
+            1800 / Math.max(
+                photoCanvas.width,
+                photoCanvas.height
             )
         );
 
-        const sh = Math.max(
+        const work = document.createElement("canvas");
+
+        work.width = Math.max(
             1,
-            Math.min(
-                work.height - sy,
-                Math.round(region.h * work.height)
-            )
+            Math.round(photoCanvas.width * scale)
         );
 
-        const crop = document.createElement("canvas");
-        crop.width = sw;
-        crop.height = sh;
+        work.height = Math.max(
+            1,
+            Math.round(photoCanvas.height * scale)
+        );
 
-        const cropCtx = crop.getContext("2d", {
+        const context = work.getContext("2d", {
             willReadFrequently: true
         });
 
-        if (!cropCtx) continue;
+        if (!context) {
+            throw new Error(
+                "This browser cannot prepare the ballot status photo."
+            );
+        }
 
-        cropCtx.drawImage(
-            work,
-            sx,
-            sy,
-            sw,
-            sh,
+        context.fillStyle = "#fff";
+        context.fillRect(0, 0, work.width, work.height);
+
+        context.drawImage(
+            photoCanvas,
             0,
             0,
-            sw,
-            sh
+            work.width,
+            work.height
         );
 
-        const variants = [1, 1.5];
-
-        for (const factor of variants) {
-            const targetWidth = Math.round(sw * factor);
-            const targetHeight = Math.round(sh * factor);
-
-            // Limitahan ang processing cost.
-            if (
-                targetWidth > 2200 ||
-                targetHeight > 2200
-            ) {
-                continue;
-            }
-
-            const temp = document.createElement("canvas");
-            temp.width = targetWidth;
-            temp.height = targetHeight;
-
-            const tempCtx = temp.getContext("2d", {
-                willReadFrequently: true
-            });
-
-            if (!tempCtx) continue;
-
-            tempCtx.imageSmoothingEnabled = true;
-            tempCtx.imageSmoothingQuality = "high";
-
-            tempCtx.drawImage(
-                crop,
-                0,
-                0,
-                targetWidth,
-                targetHeight
-            );
-
-            const pixels = tempCtx.getImageData(
-                0,
-                0,
-                targetWidth,
-                targetHeight
-            );
-
-            const result = window.jsQR(
-                pixels.data,
-                pixels.width,
-                pixels.height,
-                {
-                    inversionAttempts: "attemptBoth"
-                }
-            );
-
-            if (result?.data) {
-                return result.data;
-            }
-        }
-    }
-
-    throw new Error(
-        "QR NOT DETECTED. " +
-        "Move the camera closer, keep the QR sharp, " +
-        "and capture all four registration markers."
-    );
-}
-
-// VALIDATE CAMPUSVOTE QR FORMAT
-
-
-function validateQR(raw) {
-    if (typeof raw !== "string" || !raw.trim()) {
-        throw new Error(
-            "INVALID QR CODE. QR data is empty."
-        );
-    }
-
-    const parts = raw.split("|");
-
-    const uuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    if (
-        parts.length !== 4 ||
-        parts[0] !== "CV1" ||
-        !validId(parts[1]) ||
-        !uuid.test(parts[2]) ||
-        !validId(parts[3])
-    ) {
-        throw new Error(
-            "INVALID QR CODE. " +
-            "Not a valid CampusVote ballot."
-        );
-    }
-
-    const qrElectionId = Number(parts[1]);
-    const qrTemplateId = Number(parts[3]);
-
-    if (qrElectionId !== getElectionId()) {
-        throw new Error(
-            "WRONG ELECTION. " +
-            "This ballot belongs to another election."
-        );
-    }
-
-    if (qrTemplateId !== getTemplateId()) {
-        throw new Error(
-            "TEMPLATE MISMATCH. " +
-            `QR belongs to template #${qrTemplateId}.`
-        );
-    }
-
-    return {
-        election_id: qrElectionId,
-        ballot_id: parts[2],
-        template_id: qrTemplateId
-    };
-}
-
-
-// AUTOMATIC QR VERIFICATION
-
-
-async function debugQR() {
-    const version = imageVersion;
-    const selectedImage = sourceImage;
-    const selectedTemplateId = getTemplateId();
-    const selectedElectionId = getElectionId();
-
-    // Clear previous QR verification result.
-
-    qrData = null;
-    qrResult = null;
-
-    window.campusVoteQRVerified = false;
-
-    updateAnalyzeButton();
-
-    try {
-        if (!selectedImage) {
-            throw new Error(
-                "No ballot image loaded."
-            );
-        }
-
-        if (
-            !template ||
-            !validId(selectedTemplateId) ||
-            !validId(selectedElectionId)
-        ) {
-            throw new Error(
-                "Load the current election and " +
-                "select a ballot template first."
-            );
-        }
-
-        if (String(template.paper_size).toUpperCase() !== "A5") {
-            throw new Error(
-                "Only A5 portrait ballots are currently supported."
-            );
-        }
-
-        if ($("qrStatus")) {
-            $("qrStatus").textContent =
-                "Reading QR code automatically...";
-        }
-
-        // Detect QR from the captured image.
-
-        const raw = readQR();
-
-        // Check the ballot.
-
-        const parsedQR = validateQR(raw);
-
-        if (
-            version !== imageVersion ||
-            selectedImage !== sourceImage ||
-            selectedTemplateId !== getTemplateId() ||
-            selectedElectionId !== getElectionId()
-        ) {
-            return null;
-        }
-
-        if ($("qrStatus")) {
-            $("qrStatus").textContent =
-                "QR DETECTED\n" +
-                "Checking ballot record with server...";
-        }
-
-        // Verify the ballot with the backend.
-
-        const data = await request("/omr/verify-qr", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                qr_data: raw
-            })
-        });
-
-        if (
-            version !== imageVersion ||
-            selectedImage !== sourceImage ||
-            selectedTemplateId !== getTemplateId() ||
-            selectedElectionId !== getElectionId()
-        ) {
-            return null;
-        }
-
-        // Reject duplicate ballots.
-
-        if (
-            data.duplicate === true ||
-            data.status === "COUNTED"
-        ) {
-            throw new Error(
-                "DUPLICATE BALLOT. " +
-                "This ballot has already been counted."
-            );
-        }
-
-        // Reject void ballots.
-
-        if (data.status === "VOID") {
-            throw new Error(
-                "VOID BALLOT. " +
-                "This ballot cannot be counted."
-            );
-        }
-
-        // Check supported ballot status.
-
-        if (!["ISSUED", "CAST"].includes(data.status)) {
-            throw new Error(
-                "Unsupported ballot status: " +
-                (data.status || "UNKNOWN")
-            );
-        }
-
-        // Require explicit backend validation.
-
-        if (data.valid !== true) {
-            throw new Error(
-                "QR verification was not approved " +
-                "by the backend."
-            );
-        }
-
-        // Save verified QR information.
-
-        qrData = raw;
-        qrResult = {
-            ...data,
-            parsedQR
-        };
-
-        window.campusVoteQRVerified = true;
-        updateAnalyzeButton();
-
-        if ($("qrStatus")) {
-            $("qrStatus").textContent =
-                "QR VERIFIED SUCCESSFULLY\n" +
-                `Status: ${data.status}\n` +
-                "Duplicate: NO\n" +
-                `Election: #${parsedQR.election_id}\n` +
-                `Template: #${parsedQR.template_id}\n` +
-                "Ready for OMR scanning.";
-        }
-
-        status(
-            "imageStatus",
-            "QR verified successfully. " +
-            "You can now press Scan & Count Ballot."
+        const pixels = context.getImageData(
+            0,
+            0,
+            work.width,
+            work.height
         );
 
-        debug(
-            "QR VERIFICATION SUCCESSFUL\n" +
-            `Election: #${parsedQR.election_id}\n` +
-            `Template: #${parsedQR.template_id}\n` +
-            `Ballot status: ${data.status}\n` +
-            "No votes have been saved yet."
-        );
+        const remaining =
+            timeoutMs - (performance.now() - started);
 
-        return data;
-
-    } catch (error) {
-
-        if (
-            version === imageVersion &&
-            selectedImage === sourceImage &&
-            selectedTemplateId === getTemplateId() &&
-            selectedElectionId === getElectionId()
-        ) {
-            qrData = null;
-            qrResult = null;
-
-            window.campusVoteQRVerified = false;
-
-            if ($("qrStatus")) {
-                $("qrStatus").textContent =
-                    "QR VERIFICATION FAILED\n" +
-                    error.message;
-            }
-
-            status(
-                "imageStatus",
-                error.message,
-                true
-            );
-
-            debug(
-                "QR VERIFICATION ERROR\n" +
-                error.message
+        if (remaining <= 0) {
+            throw new Error(
+                "Ballot status QR reading timed out. " +
+                "This status check did not send a counting request."
             );
         }
 
-        throw error;
-    }
-}
-
-// CONVERT BALLOT IMAGE TO JPEG BLOB
-
-async function imageToBlob() {
-    if (!sourceImage) {
-        throw new Error("No ballot image loaded.");
-    }
-    if (
-        uploadedBallotFile &&
-        uploadedBallotFile.size <= 9 * 1024 * 1024
-    ) {
-        return uploadedBallotFile;
-    }
-
-    const MAX_BYTES = 9 * 1024 * 1024;
-    const MAX_DIMENSION = 4000;
-
-    const originalWidth =
-        sourceImage.naturalWidth || sourceImage.width;
-
-    const originalHeight =
-        sourceImage.naturalHeight || sourceImage.height;
-
-    const scale = Math.min(
-        1,
-        MAX_DIMENSION / Math.max(
-            originalWidth,
-            originalHeight
-        )
-    );
-
-    let width = Math.round(originalWidth * scale);
-    let height = Math.round(originalHeight * scale);
-
-    function encodeJPEG(w, h, quality) {
         return new Promise((resolve, reject) => {
-            const temp = document.createElement("canvas");
+            let worker = null;
+            let workerUrl = null;
+            let settled = false;
+            let timer = null;
 
-            temp.width = w;
-            temp.height = h;
+            function finish(error, data) {
+                if (settled) return;
+                settled = true;
 
-            const c = temp.getContext("2d");
+                clearTimeout(timer);
 
-            if (!c) {
-                reject(new Error("Canvas unavailable."));
-                return;
+                if (worker) worker.terminate();
+                if (workerUrl) URL.revokeObjectURL(workerUrl);
+
+                work.width = 1;
+                work.height = 1;
+
+                if (error) reject(error);
+                else resolve(data);
             }
 
-            c.fillStyle = "#ffffff";
-            c.fillRect(0, 0, w, h);
+            timer = setTimeout(() => {
+                finish(
+                    new Error(
+                        "Ballot status QR reading timed out. " +
+                        "This status check did not send a counting request."
+                    )
+                );
+            }, remaining);
 
-            c.drawImage(
-                sourceImage,
-                0,
-                0,
-                w,
-                h
-            );
+            try {
+                workerUrl = URL.createObjectURL(
+                    new Blob(
+                        [makeReadOnlyQRWorkerSource()],
+                        { type: "text/javascript" }
+                    )
+                );
 
-            temp.toBlob(blob => {
-                if (!blob) {
-                    reject(new Error(
-                        "Image conversion failed."
-                    ));
-                    return;
-                }
+                worker = new Worker(workerUrl);
 
-                resolve(blob);
-            }, "image/jpeg", quality);
+                worker.onmessage = event => {
+                    if (
+                        performance.now() - started >= timeoutMs
+                    ) {
+                        finish(
+                            new Error(
+                                "Ballot status QR reading timed out. " +
+                                "This status check did not send a counting request."
+                            )
+                        );
+                    } else if (
+                        event.data &&
+                        typeof event.data.data === "string" &&
+                        event.data.data.trim()
+                    ) {
+                        finish(null, event.data.data);
+                    } else {
+                        finish(
+                            new Error(
+                                event.data?.error ||
+                                "Ballot status QR could not be read."
+                            )
+                        );
+                    }
+                };
+
+                worker.onerror = event => {
+                    event.preventDefault?.();
+
+                    finish(
+                        new Error(
+                            "The status QR reader could not start or load its library. " +
+                            "Keep this ballot aside and check its record before retrying."
+                        )
+                    );
+                };
+
+                worker.postMessage(
+                    {
+                        pixels: pixels.data.buffer,
+                        width: pixels.width,
+                        height: pixels.height
+                    },
+                    [pixels.data.buffer]
+                );
+            } catch (_) {
+                finish(
+                    new Error(
+                        "The browser blocked the status QR reader. " +
+                        "Keep this ballot aside and check its record before retrying."
+                    )
+                );
+            }
         });
     }
 
-    let blob = await encodeJPEG(width, height, 0.92);
-
-    if (blob.size > MAX_BYTES) {
-        blob = await encodeJPEG(width, height, 0.82);
-    }
-
-    while (
-        blob.size > MAX_BYTES &&
-        Math.max(width, height) > 1600
-    ) {
-        width = Math.round(width * 0.85);
-        height = Math.round(height * 0.85);
-
-        blob = await encodeJPEG(width, height, 0.85);
-    }
-
-    if (blob.size > MAX_BYTES) {
-        throw new Error(
-            "Photo is still too large. " +
-            "Please use a lower camera resolution."
-        );
-    }
-
-    return blob;
-}
-
-// DISPLAY DETECTED OMR RESULTS
-
-function displayResults(data, countingEnabled) {
-    const positions = Array.isArray(data.positions)
-        ? data.positions
-        : [];
-
-    const results = $("results");
-
-    if (!results) return;
-
-    results.replaceChildren();
-
-    const lines = [
-        countingEnabled
-            ? "OMR COUNTING RESULT"
-            : "BACKEND OMR PREVIEW",
-
-        `Mode: ${countingEnabled
-            ? "LIVE COUNTING"
-            : "READ ONLY"
-        }`,
-
-        `Template: #${getTemplateId()} ` +
-        `(${data.paper_size || template?.paper_size || "A5"})`,
-
-        `Source: ${data.source?.width || "?"
-        } × ${data.source?.height || "?"
-        }`,
-
-        `Markers: ${data.markers_detected ?? "?"
-        } detected`,
-
-        `Sensitivity: ${data.sensitivity || "Balanced"
-        }`,
-
-        `Positions: ${positions.length}`,
-
-        `Selected bubbles: ${data.selected_bubbles ?? "?"
-        }`,
-
-        `Overvotes: ${data.overvotes ?? "?"
-        }`,
-
-        ""
-    ];
-
-    for (const position of positions) {
-        const section = document.createElement("div");
-        section.className = "result-position";
-
-        const title = document.createElement("h4");
-
-        const marked = Number(position.marked ?? 0);
-        const maxSelection = Number(
-            position.max_selection ?? 1
+    function setup() {
+        $("loadBtn").addEventListener(
+            "click",
+            loadTemplates
         );
 
-        title.textContent =
-            `${position.position_name || "Position"} ` +
-            `(${marked}/${maxSelection})`;
-
-        section.appendChild(title);
-        lines.push(title.textContent);
-
-        // Display candidates and detected shading.
-        for (const candidate of position.candidates || []) {
-            const filled = candidate.filled === true;
-
-            const candidateText =
-                `${filled ? "●" : "○"} ` +
-                `${candidate.name || "Unknown Candidate"} - ` +
-                `${filled ? "SHADED" : "BLANK"}`;
-
-            const p = document.createElement("p");
-
-            p.textContent = candidateText;
-
-            if (filled) {
-                p.className = "valid";
-            }
-
-            section.appendChild(p);
-            lines.push(candidateText);
-        }
-
-        // Validate the position's voting result.
-        const result =
-            position.result ||
-            (
-                position.overvoted
-                    ? "SKIPPED_OVERVOTE"
-                    : marked === 0
-                        ? "BLANK"
-                        : "VALID"
-            );
-
-        const info = document.createElement("p");
-
-        if (result === "SKIPPED_OVERVOTE") {
-            info.textContent = "SKIPPED: OVERVOTE";
-            info.className = "overvote";
-
-        } else if (result.startsWith("SKIPPED")) {
-            info.textContent = "SKIPPED: UNCLEAR SHADE";
-            info.className = "overvote";
-
-        } else if (result === "BLANK") {
-            info.textContent = "BLANK POSITION";
-
-        } else {
-            info.textContent = countingEnabled
-                ? "VALID POSITION"
-                : "VALID POSITION";
-
-            info.className = "valid";
-        }
-
-        section.appendChild(info);
-        results.appendChild(section);
-
-        lines.push(info.textContent, "");
-    }
-
-    // Show the backend counting summary.
-    const summary = document.createElement("div");
-    summary.className = "counting-note";
-
-    if (countingEnabled && data.counted === true) {
-        const savedVotes = Number(
-            data.saved_votes ?? 0
+        $("templateSelect").addEventListener(
+            "change",
+            selectTemplate
         );
 
-        summary.textContent =
-            `Ballot counted successfully. ` +
-            `Saved votes: ${savedVotes}.`;
-
-        lines.push(
-            "Ballot counted successfully.",
-            `Saved votes: ${savedVotes}`
+        $("fileInput").addEventListener(
+            "change",
+            event => loadPhoto(event.target.files?.[0])
         );
 
-    } else if (countingEnabled) {
-        summary.textContent =
-            "No confirmed vote-counting result.";
-
-        lines.push(
-            "No confirmed vote-counting result."
+        $("phoneCameraInput").addEventListener(
+            "change",
+            event => loadPhoto(event.target.files?.[0])
         );
 
-    } else {
-        summary.textContent =
-            "Preview only. No votes saved.";
-
-        lines.push(
-            "Preview only. No votes saved."
-        );
-    }
-
-    results.appendChild(summary);
-
-    debug(lines.join("\n"));
-}
-
-// BACKEND OMR PROCESSING AND LIVE VOTE COUNTING
-
-async function backendPreview() {
-    // Prevent simultaneous scans.
-    if (busy) return;
-
-    // Check template and ballot image.
-    if (!template || !sourceImage) {
-        status(
-            "analysisStatus",
-            "Load a template and ballot image first.",
-            true
-        );
-        return;
-    }
-
-    const electionId = getElectionId();
-    const templateId = getTemplateId();
-
-    if (
-        !validId(electionId) ||
-        !validId(templateId)
-    ) {
-        status(
-            "analysisStatus",
-            "Invalid election or template.",
-            true
-        );
-        return;
-    }
-
-    if (String(template.paper_size).toUpperCase() !== "A5") {
-        status(
-            "analysisStatus",
-            "Only A5 portrait ballots are currently supported.",
-            true
-        );
-        return;
-    }
-
-    const version = imageVersion;
-    const selectedImage = sourceImage;
-
-    busy = true;
-    updateAnalyzeButton();
-    disableSubmission();
-
-    try {
-        // Reverify QR before counting.
-        status(
-            "analysisStatus",
-            "Verifying QR code..."
-        );
-
-        debug(
-            "Checking ballot QR code before OMR counting..."
-        );
-
-        // The backend independently verifies the QR.
-        await debugQR();
-
-        if (
-            version !== imageVersion ||
-            selectedImage !== sourceImage ||
-            electionId !== getElectionId() ||
-            templateId !== getTemplateId()
-        ) {
-            throw new Error(
-                "Ballot image or template changed " +
-                "during verification. Please retry."
-            );
-        }
-
-        if (
-            window.campusVoteQRVerified !== true ||
-            !qrData ||
-            !qrResult
-        ) {
-            throw new Error(
-                "QR verification failed. " +
-                "No votes will be counted."
-            );
-        }
-
-        // Prepare one ballot image for upload.
-        status(
-            "analysisStatus",
-            "Preparing ballot image for OMR scanning..."
-        );
-
-        const blob = await imageToBlob();
-
-        const form = new FormData();
-
-        form.append(
-            "election_id",
-            String(electionId)
-        );
-
-        form.append(
-            "template_id",
-            String(templateId)
-        );
-
-        // One A5 ballot image per scan.
-        // Gamitin ang tamang filename ayon sa image format.
-        const ballotFilename =
-            blob.type === "image/png"
-                ? "ballot-scan.png"
-                : blob.type === "image/webp"
-                    ? "ballot-scan.webp"
-                    : "ballot-scan.jpg";
-
-        form.append(
-            "ballot_image",
-            blob,
-            ballotFilename
-        );
-
-        // Send ballot to the backend.
-        status(
-            "analysisStatus",
-            "Checking registration marks and shaded bubbles..."
-        );
-
-        debug(
-            "OMR PROCESSING\n" +
-            "QR: Verified\n" +
-            "Checking four registration marks...\n" +
-            "Analyzing shaded bubbles...\n" +
-            "Waiting for backend counting result..."
-        );
-
-        // Backend handles QR, markers, votes and duplicates.
-        const data = await request(
-            "/omr/scan",
-            {
-                method: "POST",
-                body: form
-            }
-        );
-
-        // Check that the response matches this ballot.
-        if (
-            version !== imageVersion ||
-            selectedImage !== sourceImage ||
-            electionId !== getElectionId() ||
-            templateId !== getTemplateId()
-        ) {
-            throw new Error(
-                "Image or template changed during scanning. " +
-                "Check the ballot status before retrying."
-            );
-        }
-
-        if (
-            Number(data.election_id) !== electionId ||
-            Number(data.template_id) !== templateId
-        ) {
-            throw new Error(
-                "Backend returned a different " +
-                "election or template. " +
-                "Check ballot status before retrying."
-            );
-        }
-
-        if (data.preview_only !== false) {
-            throw new Error(
-                "Unexpected backend counting mode. " +
-                "Check ballot status before retrying."
-            );
-        }
-
-        // Display detected positions and shaded bubbles.
-        displayResults(data, true);
-
-        // Confirm actual backend vote counting.
-        if (
-            data.counted === true &&
-            data.valid === true
-        ) {
-            window.confirmedOMRCounting = true;
-
-            if ($("qrStatus")) {
-                $("qrStatus").textContent =
-                    "QR VALIDATED\n" +
-                    "Status: COUNTED\n" +
-                    "Template: #" + templateId + "\n" +
-                    "Backend counting successful.";
-            }
-
-            status(
-                "analysisStatus",
-                data.message ||
-                "Ballot counted successfully. " +
-                "Votes saved to Live Results."
-            );
-
-            window.showToast?.(
-                "Ballot counted successfully! " +
-                "Votes saved to Live Results.",
-                "success"
-            );
-
-            // Prevent rescanning the counted image.
-            if ($("analyzeBtn")) {
-                $("analyzeBtn").disabled = true;
-            }
-
-        } else {
-            window.confirmedOMRCounting = false;
-
-            status(
-                "analysisStatus",
-                data.message ||
-                "Ballot was not confirmed as counted.",
-                true
-            );
-
-            window.showToast?.(
-                "Ballot was not confirmed as counted.",
-                "warning"
-            );
-        }
-
-    } catch (error) {
-
-        // Handle rejected or failed ballot scans.
-        window.confirmedOMRCounting = false;
-
-        const duplicate =
-            error.data?.duplicate === true ||
-            error.status === 409;
-
-        const blankBallot =
-            error.status === 422 &&
-            error.message?.includes(
-                "Blank ballot detected"
-            );
-
-        let message;
-
-        if (blankBallot) {
-            message =
-                "Blank ballot detected. No votes saved. " +
-                "This ballot can still be used.";
-
-            window.showToast?.(
-                message,
-                "warning"
-            );
-
-        } else if (duplicate) {
-            message =
-                "Duplicate or unavailable ballot. " +
-                "No new votes saved.";
-
-            window.showToast?.(
-                message,
-                "error"
-            );
-
-        } else {
-            message =
-                "OMR scan failed: " +
-                error.message;
-
-            window.showToast?.(
-                message,
-                "error"
-            );
-        }
-
-        status(
-            "analysisStatus",
-            message,
-            !blankBallot
-        );
-
-        debug(
-            "OMR SCAN RESULT\n" +
-            message
-        );
-
-    } finally {
-        busy = false;
-
-        // Keep counted images from being submitted again.
-        if (window.confirmedOMRCounting === true) {
-            if ($("analyzeBtn")) {
-                $("analyzeBtn").disabled = true;
-            }
-        } else {
-            updateAnalyzeButton();
-        }
-    }
-}
-
-
-// RETAKE BALLOT / CLEAR IMAGE
-
-
-function retakePhoto() {
-    // Prevent changing the image during counting.
-
-    if (busy) {
-        status(
-            "imageStatus",
-            "Please wait for the current scan to finish.",
-            true
-        );
-        return;
-    }
-
-    // Stop any previous live camera stream.
-
-    stopCamera();
-
-    // Clear previous ballot information.
-
-    sourceImage = null;
-    uploadedBallotFile = null;
-    qrData = null;
-    qrResult = null;
-
-    window.campusVoteQRVerified = false;
-    window.confirmedOMRCounting = false;
-
-    // Invalidate any previous QR verification requests.
-
-    imageVersion++;
-
-    // Clear ballot preview.
-
-    ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    canvas.width = 1;
-    canvas.height = 1;
-
-    // Clear uploaded image input.
-
-    if ($("fileInput")) {
-        $("fileInput").value = "";
-    }
-
-    // Clear native phone camera input.
-
-    if ($("phoneCameraInput")) {
-        $("phoneCameraInput").value = "";
-    }
-
-    // Reset QR diagnostics.
-
-    if ($("qrStatus")) {
-        $("qrStatus").textContent =
-            "Waiting for a new ballot image.";
-    }
-
-    // Reset analysis results and controls.
-
-    reset();
-
-    status(
-        "imageStatus",
-        "Ready for a new ballot. " +
-        "Open Phone Camera or upload an A5 image."
-    );
-
-    debug(
-        "No ballot loaded.\n" +
-        "Capture or upload an A5 ballot to begin."
-    );
-
-    updateAnalyzeButton();
-}
-
-// SCANNER EVENT LISTENERS
-
-function setupScanner() {
-
-    // Load ballot templates.
-    $("loadBtn")?.addEventListener(
-        "click",
-        async () => {
-            if (busy) return;
-
-            await loadTemplates();
-        }
-    );
-
-    // Select ballot template.
-    $("templateSelect")?.addEventListener(
-        "change",
-        async () => {
-            if (busy) return;
-
-            await selectTemplate();
-        }
-    );
-
-    // Upload ballot image.
-    $("fileInput")?.addEventListener(
-        "change",
-        event => {
-            if (busy) {
-                status(
-                    "imageStatus",
-                    "Please wait for the current scan.",
-                    true
-                );
+        $("cameraBtn").addEventListener("click", () => {
+            if (
+                state.busy ||
+                state.checking ||
+                state.loading
+            ) {
                 return;
             }
 
-            upload(event);
-        }
-    );
+            $("phoneCameraInput").value = "";
+            $("phoneCameraInput").click();
+        });
 
-    // Open native phone camera.
-    $("cameraBtn")?.addEventListener(
-        "click",
-        event => {
-            event.preventDefault();
-
-            openCamera();
-        }
-    );
-
-    // Receive captured phone camera photo.
-    $("phoneCameraInput")?.addEventListener(
-        "change",
-        event => {
-            if (busy) {
-                status(
-                    "imageStatus",
-                    "Please wait for the current scan.",
-                    true
-                );
+        $("retakeBtn").addEventListener("click", () => {
+            if (
+                state.busy ||
+                state.checking ||
+                state.loading
+            ) {
                 return;
             }
 
-            phoneCameraCapture(event);
-        }
-    );
+            const wasUncertain = state.uncertain;
 
-    // Legacy capture button.
-    $("captureBtn")?.addEventListener(
-        "click",
-        event => {
-            event.preventDefault();
+            clearPhoto();
 
-            capture();
-        }
-    );
-
-    // Stop camera.
-    $("stopCameraBtn")?.addEventListener(
-        "click",
-        event => {
-            event.preventDefault();
-
-            stopCamera();
-        }
-    );
-
-    // Scan and count one ballot.
-    $("analyzeBtn")?.addEventListener(
-        "click",
-        async event => {
-            event.preventDefault();
-
-            if (busy) return;
-
-            if (window.confirmedOMRCounting === true) {
+            if (wasUncertain) {
                 status(
                     "analysisStatus",
-                    "This ballot has already been counted. " +
-                    "Load a new ballot before scanning again.",
+                    "Keep the previous ballot aside until its counting status is confirmed.",
                     true
                 );
-                return;
             }
+        });
 
-            await backendPreview();
-        }
-    );
-
-    // Prevent legacy submission.
-    $("submitBtn")?.addEventListener(
-        "click",
-        event => {
-            event.preventDefault();
-
-            status(
-                "analysisStatus",
-                "Use Scan & Count Ballot " +
-                "for OMR processing.",
-                true
-            );
-        }
-    );
-
-    // Retake or clear the ballot.
-    $("retakeBtn")?.addEventListener(
-        "click",
-        event => {
-            event.preventDefault();
-
-            retakePhoto();
-        }
-    );
-
-    // Optional sensitivity control.
-    $("sensitivity")?.addEventListener(
-        "input",
-        () => {
-            const sensitivity = $("sensitivity");
-            const sensitivityValue = $("sensitivityValue");
-
-            if (!sensitivity || !sensitivityValue) {
-                return;
-            }
-
-            const names = {
-                1: "Strict",
-                2: "Balanced",
-                3: "Light Shade"
-            };
-
-            sensitivityValue.textContent =
-                names[sensitivity.value] || "Balanced";
-        }
-    );
-
-    // Initial button states.
-    disableSubmission();
-
-    if ($("captureBtn")) {
-        $("captureBtn").disabled = true;
-    }
-
-    if ($("stopCameraBtn")) {
-        $("stopCameraBtn").disabled = true;
-    }
-
-    if ($("qrStatus")) {
-        $("qrStatus").textContent =
-            "QR not scanned yet.";
-    }
-
-    if ($("imageStatus")) {
-        status(
-            "imageStatus",
-            "Ready. Open Phone Camera or upload " +
-            "an A5 ballot image."
+        $("analyzeBtn").addEventListener(
+            "click",
+            scan
         );
+
+        $("cancelBtn").addEventListener(
+            "click",
+            () => activeScan?.abort()
+        );
+
+        $("checkStatusBtn").addEventListener(
+            "click",
+            checkBallotStatus
+        );
+
+        window.addEventListener(
+            "pagehide",
+            () => activeScan?.abort()
+        );
+
+        clearPhoto();
+        loadTemplates();
     }
 
-    updateAnalyzeButton();
-
-    // Load current election.
-    currentElection();
-}
-
-
-// CLEANUP WHEN LEAVING PAGE
-
-window.addEventListener(
-    "pagehide",
-    () => {
-        stopCamera();
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            setup,
+            { once: true }
+        );
+    } else {
+        setup();
     }
-);
-
-
-// INITIALIZATION
-
-if (document.readyState === "loading") {
-    document.addEventListener(
-        "DOMContentLoaded",
-        setupScanner,
-        { once: true }
-    );
-} else {
-    setupScanner();
-}
+})();
