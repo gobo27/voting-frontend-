@@ -125,7 +125,7 @@ button {
 
 button:disabled { opacity: .5; cursor: not-allowed; }
 button:not(:disabled):hover { filter: brightness(.95); }
-button[hidden] { display: none; }
+[hidden] { display: none !important; }
 
 .primary { background: var(--maroon); color: white; }
 .secondary { background: #e5e7eb; color: #242424; }
@@ -267,7 +267,96 @@ button[hidden] { display: none; }
 .debug-content { padding: 0 14px 14px; }
 #debugInfo, #qrStatus { white-space: pre-wrap; overflow-wrap: anywhere; }
 #debugInfo { max-height: 300px; overflow: auto; }
-#phoneCameraInput { display: none; }
+
+/* LIVE CAMERA: video is displayed without cropping or mirroring. */
+.camera-panel {
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.camera-panel h2 { margin-bottom: 8px; }
+
+.camera-stage {
+    position: relative;
+    width: 100%;
+    height: clamp(240px, 48vh, 460px);
+    overflow: hidden;
+    border-radius: 10px;
+    background: #101828;
+    isolation: isolate;
+}
+
+#cameraVideo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* JavaScript fits this A5 guide inside the actual video content. */
+.camera-guide {
+    position: absolute;
+    left: 30%;
+    top: 10%;
+    width: 40%;
+    height: 80%;
+    border: 2px solid #fbbf24;
+    border-radius: 5px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.28);
+    pointer-events: none;
+}
+
+/* Blue indicates a ready camera stream, not a validated ballot. */
+.camera-stage.is-ready .camera-guide {
+    border-color: #38bdf8;
+}
+
+.camera-corner {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-color: inherit;
+    border-style: solid;
+    border-width: 0;
+}
+
+.camera-corner.top-left {
+    top: -3px;
+    left: -3px;
+    border-top-width: 4px;
+    border-left-width: 4px;
+}
+
+.camera-corner.top-right {
+    top: -3px;
+    right: -3px;
+    border-top-width: 4px;
+    border-right-width: 4px;
+}
+
+.camera-corner.bottom-left {
+    bottom: -3px;
+    left: -3px;
+    border-bottom-width: 4px;
+    border-left-width: 4px;
+}
+
+.camera-corner.bottom-right {
+    bottom: -3px;
+    right: -3px;
+    border-bottom-width: 4px;
+    border-right-width: 4px;
+}
+
+.camera-stage.is-capturing {
+    outline: 3px solid #38bdf8;
+    outline-offset: 2px;
+}
+
+.camera-actions button { flex: 1 1 150px; }
 
 @media screen and (min-width: 1001px) {
     .scanner-controls {
@@ -304,6 +393,19 @@ button[hidden] { display: none; }
     }
 }
 
+/* Keep live capture controls reachable while the camera is open. */
+.preview-panel:has(#cameraPanel:not([hidden])) {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+}
+
+.preview-panel:has(#cameraPanel:not([hidden])) .canvas-wrap {
+    flex: 0 0 auto;
+    min-height: 180px;
+    max-height: 360px;
+}
+
 @media screen and (min-width: 601px) and (max-width: 1000px) {
     main { grid-template-columns: 1fr; max-width: 900px; }
     .scanner-controls { order: 2; }
@@ -334,7 +436,11 @@ button[hidden] { display: none; }
     .preview-panel { order: 1; }
     .scanner-controls { order: 2; }
     h2 { font-size: 18px; }
-    .canvas-wrap { min-height: 230px; max-height: 380px; }
+
+    .canvas-wrap {
+        min-height: 230px;
+        max-height: 380px;
+    }
 
     .buttons {
         display: grid;
@@ -348,9 +454,19 @@ button[hidden] { display: none; }
         font-size: 13px;
     }
 
-    #retakeBtn, #loadBtn, #analyzeBtn { width: 100%; }
+    #retakeBtn, #cameraBtn, #loadBtn, #analyzeBtn {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
     input, select { font-size: 16px; }
     .results-area { margin-top: 15px; }
+    .camera-stage { height: clamp(240px, 48vh, 400px); }
+
+    .camera-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
 }
 </style>
 </head>
@@ -405,25 +521,29 @@ button[hidden] { display: none; }
             accept="image/png,image/jpeg,image/webp"
         >
 
-        <input
-            id="phoneCameraInput"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-        >
-
         <div class="buttons">
             <button id="cameraBtn" type="button" class="primary">
-                Open Phone Camera
+                Open Live Camera
             </button>
         </div>
 
-        <p id="imageStatus" class="status" role="status"></p>
+        <p
+            id="cameraStatus"
+            class="status"
+            role="status"
+            aria-live="polite"
+        >Camera is off. Open the live camera or upload a ballot image.</p>
+
+        <p
+            id="imageStatus"
+            class="status"
+            role="status"
+            aria-live="polite"
+        ></p>
 
         <div class="buttons">
             <button id="retakeBtn" type="button" class="outline">
-                Retake Photo / Clear Image
+                Clear Image / Retake
             </button>
         </div>
 
@@ -496,6 +616,66 @@ button[hidden] { display: none; }
     </section>
 
     <section class="panel preview-panel">
+        <!-- Live capture prepares a photo; counting remains an explicit action. -->
+        <section
+            id="cameraPanel"
+            class="camera-panel"
+            aria-labelledby="cameraHeading"
+            hidden
+        >
+            <h2 id="cameraHeading">Live Camera</h2>
+
+            <p id="cameraGuideText" class="note">
+                Fit one A5 portrait ballot inside the guide. Keep the entire
+                sheet, its QR, and all four registration squares visible.
+                The guide does not detect or validate marks.
+            </p>
+
+            <div id="cameraStage" class="camera-stage">
+                <video
+                    id="cameraVideo"
+                    autoplay
+                    playsinline
+                    muted
+                    aria-label="Live ballot camera preview"
+                    aria-describedby="cameraGuideText"
+                ></video>
+
+                <div
+                    id="cameraGuide"
+                    class="camera-guide"
+                    aria-hidden="true"
+                >
+                    <span class="camera-corner top-left"></span>
+                    <span class="camera-corner top-right"></span>
+                    <span class="camera-corner bottom-left"></span>
+                    <span class="camera-corner bottom-right"></span>
+                </div>
+            </div>
+
+            <div class="buttons camera-actions">
+                <button
+                    id="captureBtn"
+                    type="button"
+                    class="primary"
+                    disabled
+                >Capture Photo</button>
+
+                <button
+                    id="stopCameraBtn"
+                    type="button"
+                    class="secondary"
+                    disabled
+                >Stop Camera</button>
+            </div>
+
+            <p class="note">
+                Capture Photo prepares the image below. Review it, then
+                press Scan &amp; Count Ballot. Use Upload Ballot Image if
+                live camera access is unavailable.
+            </p>
+        </section>
+
         <div class="preview-heading">
             <h2>Ballot Preview</h2>
         </div>
@@ -511,11 +691,13 @@ button[hidden] { display: none; }
 
         <div class="results-area">
             <h3>Detected Results</h3>
-            <div id="results"><p>No ballot analyzed yet.</p></div>
+            <div id="results">
+                <p>No ballot analyzed yet.</p>
+            </div>
         </div>
     </section>
 </main>
 
-<script src="./scanner.js?v=20261108-ready"></script>
+<script src="./scanner.js?v=20261112-live-camera"></script>
 </body>
 </html>

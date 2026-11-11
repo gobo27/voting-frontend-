@@ -7,6 +7,7 @@
     const SCAN_TIMEOUT_MS = 45000;
 
     const $ = id => document.getElementById(id);
+
     const uuidPattern =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -30,13 +31,25 @@
         photoInfo: null
     };
 
+    // LIVE CAMERA: ticket prevents stale permission/capture results.
+    const camera = {
+        stream: null,
+        ticket: 0,
+        opening: false,
+        ready: false,
+        capturing: false,
+        startAbort: null,
+        observer: null
+    };
+
     let activeScan = null;
 
     window.campusVoteQRVerified = false;
     window.confirmedOMRCounting = false;
 
     const validId = value =>
-        Number.isSafeInteger(Number(value)) && Number(value) > 0;
+        Number.isSafeInteger(Number(value)) &&
+        Number(value) > 0;
 
     const selectedTemplateId = () =>
         Number($("templateSelect").value);
@@ -46,7 +59,8 @@
         if (!element) return;
 
         element.textContent = message;
-        element.className = "status" + (error ? " error" : "");
+        element.className =
+            "status" + (error ? " error" : "");
     }
 
     function debug(value) {
@@ -58,23 +72,57 @@
 
     function controls() {
         const locked =
-            state.busy || state.checking || state.loading;
+            state.busy ||
+            state.checking ||
+            state.loading;
+
+        const cameraActive =
+            camera.opening ||
+            Boolean(camera.stream) ||
+            camera.capturing;
 
         for (const id of [
             "loadBtn",
             "templateSelect",
-            "fileInput",
-            "phoneCameraInput",
-            "cameraBtn"
+            "fileInput"
         ]) {
-            $(id).disabled = locked;
+            $(id).disabled =
+                locked || camera.capturing;
         }
+
+        $("cameraBtn").disabled =
+            state.busy ||
+            state.checking ||
+            state.preparing ||
+            cameraActive;
+
+        $("cameraBtn").setAttribute(
+            "aria-controls",
+            "cameraPanel"
+        );
+
+        $("cameraBtn").setAttribute(
+            "aria-expanded",
+            String(!$("cameraPanel").hidden)
+        );
 
         $("retakeBtn").disabled = locked;
 
+        $("captureBtn").disabled =
+            locked ||
+            state.preparing ||
+            camera.capturing ||
+            !camera.ready ||
+            !camera.stream;
+
+        $("stopCameraBtn").disabled = !cameraActive;
+        $("cameraGuide").hidden = !camera.ready;
+
+        // Prevent counting an old photo while a new live ballot is shown.
         $("analyzeBtn").disabled =
             locked ||
             state.preparing ||
+            cameraActive ||
             !state.photo ||
             !state.upload ||
             !state.template ||
@@ -85,6 +133,7 @@
         $("checkStatusBtn").disabled =
             locked ||
             state.preparing ||
+            cameraActive ||
             !state.photo ||
             !state.template;
 
@@ -97,6 +146,579 @@
         );
     }
 
+    /* LIVE CAMERA LIFECYCLE */
+
+    function stopTracks(stream) {
+        stream?.getTracks().forEach(track => {
+            track.stop();
+        });
+    }
+
+    function stopCamera({
+        quiet = false,
+        message = "Camera stopped."
+    } = {}) {
+        camera.ticket++;
+
+        camera.startAbort?.abort();
+        camera.startAbort = null;
+
+        const stream = camera.stream;
+
+        camera.stream = null;
+        camera.opening = false;
+        camera.ready = false;
+        camera.capturing = false;
+
+        camera.observer?.disconnect();
+        stopTracks(stream);
+
+        const video = $("cameraVideo");
+        video.pause();
+        video.srcObject = null;
+
+        $("cameraPanel").hidden = true;
+        $("cameraStage").classList.remove(
+            "is-ready",
+            "is-capturing"
+        );
+        $("cameraGuide").hidden = true;
+
+        if (!quiet) {
+            status("cameraStatus", message);
+        }
+
+        controls();
+    }
+
+    /*
+     * Fit an A5 guide inside the actual visible video content.
+     * This accounts for letterboxing caused by object-fit: contain.
+     */
+    function updateCameraGuide() {
+        const video = $("cameraVideo");
+        const stage = $("cameraStage");
+
+        if (
+            !camera.ready ||
+            !video.videoWidth ||
+            !video.videoHeight ||
+            !stage.clientWidth ||
+            !stage.clientHeight
+        ) {
+            return;
+        }
+
+        const scale = Math.min(
+            stage.clientWidth / video.videoWidth,
+            stage.clientHeight / video.videoHeight
+        );
+
+        const contentWidth =
+            video.videoWidth * scale;
+
+        const contentHeight =
+            video.videoHeight * scale;
+
+        const a5Ratio = 148.5 / 210;
+
+        const width = Math.min(
+            contentWidth * 0.86,
+            contentHeight * 0.86 * a5Ratio
+        );
+
+        const height = width / a5Ratio;
+
+        Object.assign($("cameraGuide").style, {
+            left: `${(stage.clientWidth - width) / 2}px`,
+            top: `${(stage.clientHeight - height) / 2}px`,
+            width: `${width}px`,
+            height: `${height}px`
+        });
+    }
+
+    function waitForVideo(video, signal) {
+        return new Promise((resolve, reject) => {
+            let timer;
+
+            const events = [
+                "loadeddata",
+                "canplay",
+                "resize"
+            ];
+
+            const finish = error => {
+                clearTimeout(timer);
+
+                events.forEach(name => {
+                    video.removeEventListener(name, check);
+                });
+
+                signal.removeEventListener(
+                    "abort",
+                    abort
+                );
+
+                if (error) reject(error);
+                else resolve();
+            };
+
+            const check = () => {
+                if (
+                    video.readyState >= 2 &&
+                    video.videoWidth > 0 &&
+                    video.videoHeight > 0
+                ) {
+                    finish();
+                }
+            };
+
+            const abort = () => {
+                finish(
+                    new DOMException(
+                        "Camera stopped.",
+                        "AbortError"
+                    )
+                );
+            };
+
+            if (signal.aborted) {
+                abort();
+                return;
+            }
+
+            events.forEach(name => {
+                video.addEventListener(name, check);
+            });
+
+            signal.addEventListener(
+                "abort",
+                abort,
+                { once: true }
+            );
+
+            timer = setTimeout(() => {
+                finish(
+                    new Error(
+                        "The camera did not provide a video frame. " +
+                        "Try again or upload a photo."
+                    )
+                );
+            }, 10000);
+
+            check();
+        });
+    }
+
+    function cameraError(error) {
+        const messages = {
+            NotAllowedError:
+                "Camera permission was denied. Allow camera access " +
+                "in the browser settings, or upload a ballot image.",
+
+            PermissionDeniedError:
+                "Camera permission was denied. Allow camera access " +
+                "or upload a ballot image.",
+
+            NotFoundError:
+                "No camera was found. Connect a webcam " +
+                "or upload a ballot image.",
+
+            DevicesNotFoundError:
+                "No camera was found. Connect a webcam " +
+                "or upload a ballot image.",
+
+            NotReadableError:
+                "The camera could not be opened. Close other apps " +
+                "using it, or upload a ballot image.",
+
+            TrackStartError:
+                "The camera is busy. Close other apps using it, " +
+                "or upload a ballot image.",
+
+            OverconstrainedError:
+                "The camera cannot use these settings. Try another " +
+                "camera or upload a ballot image.",
+
+            SecurityError:
+                "Camera access is blocked. Open the scanner over " +
+                "HTTPS or localhost, or upload an image."
+        };
+
+        return (
+            messages[error?.name] ||
+            error?.message ||
+            "Could not open the camera. Upload a ballot image instead."
+        );
+    }
+
+    async function startCamera() {
+        if (
+            state.busy ||
+            state.checking ||
+            state.preparing ||
+            camera.opening ||
+            camera.stream ||
+            camera.capturing
+        ) {
+            return;
+        }
+
+        if (!window.isSecureContext) {
+            status(
+                "cameraStatus",
+                "Live camera requires HTTPS or localhost. " +
+                "You can still upload a ballot image.",
+                true
+            );
+            return;
+        }
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+            status(
+                "cameraStatus",
+                "Live camera is unavailable in this browser. " +
+                "Upload a ballot image instead.",
+                true
+            );
+            return;
+        }
+
+        const ticket = ++camera.ticket;
+        const startAbort = new AbortController();
+
+        camera.startAbort = startAbort;
+        camera.opening = true;
+        camera.ready = false;
+
+        $("cameraPanel").hidden = false;
+
+        status(
+            "cameraStatus",
+            "Allow camera access. Opening the back camera " +
+            "or available webcam..."
+        );
+
+        controls();
+
+        $("cameraPanel").scrollIntoView?.({
+            behavior: "smooth",
+            block: "nearest"
+        });
+
+        let stream;
+
+        try {
+            const constraints = {
+                audio: false,
+                video: {
+                    facingMode: {
+                        ideal: "environment"
+                    },
+                    width: {
+                        ideal: 1920
+                    },
+                    height: {
+                        ideal: 1080
+                    }
+                }
+            };
+
+            try {
+                stream =
+                    await navigator.mediaDevices.getUserMedia(
+                        constraints
+                    );
+            } catch (error) {
+                if (
+                    ticket !== camera.ticket ||
+                    startAbort.signal.aborted
+                ) {
+                    return;
+                }
+
+                if (
+                    error.name !== "OverconstrainedError" &&
+                    error.name !== "TypeError"
+                ) {
+                    throw error;
+                }
+
+                // Fallback for webcams/browsers with simpler constraints.
+                stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: false
+                    });
+            }
+
+            /*
+             * getUserMedia cannot itself be cancelled while permission
+             * is pending. Discard any stream arriving after Stop.
+             */
+            if (
+                ticket !== camera.ticket ||
+                document.hidden ||
+                state.busy ||
+                state.checking
+            ) {
+                stopTracks(stream);
+
+                if (ticket === camera.ticket) {
+                    stopCamera({ quiet: true });
+                }
+
+                return;
+            }
+
+            camera.stream = stream;
+
+            const video = $("cameraVideo");
+            video.muted = true;
+            video.playsInline = true;
+            video.srcObject = stream;
+
+            const playing = video.play();
+
+            await Promise.all([
+                Promise.resolve(playing),
+                waitForVideo(video, startAbort.signal)
+            ]);
+
+            if (
+                ticket !== camera.ticket ||
+                document.hidden
+            ) {
+                stopTracks(stream);
+
+                if (ticket === camera.ticket) {
+                    stopCamera({ quiet: true });
+                }
+
+                return;
+            }
+
+            camera.opening = false;
+            camera.ready = true;
+
+            $("cameraStage").classList.add("is-ready");
+
+            if (typeof ResizeObserver === "function") {
+                camera.observer ||=
+                    new ResizeObserver(updateCameraGuide);
+
+                camera.observer.observe(
+                    $("cameraStage")
+                );
+            }
+
+            stream.getVideoTracks().forEach(track => {
+                track.addEventListener(
+                    "ended",
+                    () => {
+                        if (camera.stream === stream) {
+                            stopCamera({
+                                message:
+                                    "The camera stream ended. " +
+                                    "Open it again or upload a photo."
+                            });
+                        }
+                    },
+                    { once: true }
+                );
+            });
+
+            updateCameraGuide();
+
+            status(
+                "cameraStatus",
+                `Camera ready: ${video.videoWidth} × ` +
+                `${video.videoHeight}. Fit one A5 ballot ` +
+                "inside the guide, then capture."
+            );
+        } catch (error) {
+            stopTracks(stream);
+
+            if (ticket === camera.ticket) {
+                stopCamera({ quiet: true });
+
+                status(
+                    "cameraStatus",
+                    cameraError(error),
+                    true
+                );
+            }
+        } finally {
+            if (ticket === camera.ticket) {
+                camera.opening = false;
+            }
+
+            controls();
+        }
+    }
+
+    async function capturePhoto() {
+        if (
+            state.busy ||
+            state.checking ||
+            state.loading ||
+            state.preparing ||
+            camera.capturing ||
+            !camera.ready ||
+            !camera.stream
+        ) {
+            return;
+        }
+
+        const video = $("cameraVideo");
+
+        if (
+            video.readyState < 2 ||
+            !video.videoWidth ||
+            !video.videoHeight
+        ) {
+            status(
+                "cameraStatus",
+                "Wait until the live camera is ready.",
+                true
+            );
+            return;
+        }
+
+        const ticket = camera.ticket;
+
+        camera.capturing = true;
+
+        $("cameraStage").classList.add(
+            "is-capturing"
+        );
+
+        status(
+            "cameraStatus",
+            "Capturing photo..."
+        );
+
+        controls();
+
+        const frame = document.createElement("canvas");
+
+        try {
+            const ratio = Math.min(
+                1,
+                MAX_SIDE / Math.max(
+                    video.videoWidth,
+                    video.videoHeight
+                )
+            );
+
+            frame.width = Math.max(
+                1,
+                Math.round(video.videoWidth * ratio)
+            );
+
+            frame.height = Math.max(
+                1,
+                Math.round(video.videoHeight * ratio)
+            );
+
+            const context = frame.getContext("2d");
+
+            if (!context) {
+                throw new Error(
+                    "This browser cannot capture the video frame."
+                );
+            }
+
+            // Capture the full frame; the guide is not a crop rectangle.
+            context.drawImage(
+                video,
+                0,
+                0,
+                frame.width,
+                frame.height
+            );
+
+            /*
+             * Lossless intermediate File.
+             * loadPhoto performs the final JPEG preparation.
+             */
+            const blob = await new Promise(resolve => {
+                frame.toBlob(resolve, "image/png");
+            });
+
+            if (
+                ticket !== camera.ticket ||
+                !camera.stream
+            ) {
+                return;
+            }
+
+            if (!blob) {
+                throw new Error(
+                    "The camera photo could not be captured. Try again."
+                );
+            }
+
+            const file = new File(
+                [blob],
+                `ballot-camera-${Date.now()}.png`,
+                {
+                    type: "image/png",
+                    lastModified: Date.now()
+                }
+            );
+
+            stopCamera({ quiet: true });
+
+            const photoTicket =
+                state.photoTicket + 1;
+
+            // Same pipeline as uploaded images.
+            await loadPhoto(file);
+
+            if (
+                state.photoTicket === photoTicket &&
+                state.photo
+            ) {
+                status(
+                    "cameraStatus",
+                    "Photo captured. Review the preview, then " +
+                    "press Scan & Count Ballot."
+                );
+
+                if (!$("analyzeBtn").disabled) {
+                    $("analyzeBtn").focus({
+                        preventScroll: true
+                    });
+                }
+            }
+        } catch (error) {
+            if (ticket === camera.ticket) {
+                status(
+                    "cameraStatus",
+                    error.message ||
+                    "Could not capture the photo.",
+                    true
+                );
+            }
+        } finally {
+            frame.width = 1;
+            frame.height = 1;
+
+            if (ticket === camera.ticket) {
+                camera.capturing = false;
+
+                $("cameraStage").classList.remove(
+                    "is-capturing"
+                );
+            }
+
+            controls();
+        }
+    }
+
+    /* API REQUESTS */
+
     async function api(route, options = {}) {
         const auth =
             sessionStorage.getItem("voting_token") ||
@@ -107,6 +729,7 @@
             const error = new Error(
                 "Session not found. Please log in again."
             );
+
             error.requestNotSent = true;
             throw error;
         }
@@ -118,6 +741,7 @@
         } = options;
 
         const controller = new AbortController();
+
         let timedOut = false;
 
         const stop = () => controller.abort();
@@ -138,16 +762,20 @@
         }, timeoutMs);
 
         try {
-            const response = await fetch(API_BASE + route, {
-                ...requestOptions,
-                headers: {
-                    ...requestOptions.headers,
-                    Authorization: "Bearer " + auth
-                },
-                signal: controller.signal
-            });
+            const response = await fetch(
+                API_BASE + route,
+                {
+                    ...requestOptions,
+                    headers: {
+                        ...requestOptions.headers,
+                        Authorization: "Bearer " + auth
+                    },
+                    signal: controller.signal
+                }
+            );
 
-            const data = await response.json().catch(() => null);
+            const data = await response.json()
+                .catch(() => null);
 
             if (!response.ok || !data) {
                 const error = new Error(
@@ -157,6 +785,7 @@
 
                 error.status = response.status;
                 error.data = data;
+
                 throw error;
             }
 
@@ -179,9 +808,15 @@
             throw error;
         } finally {
             clearTimeout(timer);
-            signal?.removeEventListener("abort", stop);
+
+            signal?.removeEventListener(
+                "abort",
+                stop
+            );
         }
     }
+
+    /* ELECTION, TEMPLATE AND PHOTO STATE */
 
     function clearResults() {
         $("results").replaceChildren();
@@ -193,6 +828,14 @@
     }
 
     function clearPhoto() {
+        stopCamera({ quiet: true });
+
+        status(
+            "cameraStatus",
+            "Camera is off. Open the live camera " +
+            "or upload a ballot image."
+        );
+
         state.photoTicket++;
         state.revision++;
 
@@ -200,7 +843,6 @@
         state.upload = null;
         state.photoInfo = null;
         state.qrRaw = null;
-
         state.preparing = false;
         state.counted = false;
         state.unavailable = false;
@@ -214,7 +856,6 @@
         canvas.height = 1;
 
         $("fileInput").value = "";
-        $("phoneCameraInput").value = "";
 
         clearResults();
 
@@ -229,12 +870,19 @@
         );
         status("timingInfo", "");
 
-        debug("Load an A5 template and one ballot photo.");
+        debug(
+            "Load an A5 template and one ballot photo."
+        );
+
         controls();
     }
 
     async function loadTemplates() {
-        if (state.busy || state.checking || state.loading) {
+        if (
+            state.busy ||
+            state.checking ||
+            state.loading
+        ) {
             return;
         }
 
@@ -278,7 +926,9 @@
                     );
                 }
 
-                if (ticket !== state.listTicket) return;
+                if (ticket !== state.listTicket) {
+                    return;
+                }
 
                 state.electionId = id;
                 $("electionId").value = id;
@@ -288,12 +938,17 @@
                 `/ballots/templates/election/${state.electionId}`
             );
 
-            if (ticket !== state.listTicket) return;
+            if (ticket !== state.listTicket) {
+                return;
+            }
 
             const select = $("templateSelect");
 
             select.replaceChildren(
-                new Option("Select an A5 template", "")
+                new Option(
+                    "Select an A5 template",
+                    ""
+                )
             );
 
             for (const item of data.templates || []) {
@@ -318,7 +973,11 @@
             );
         } catch (error) {
             if (ticket === state.listTicket) {
-                status("scannerStatus", error.message, true);
+                status(
+                    "scannerStatus",
+                    error.message,
+                    true
+                );
             }
         } finally {
             if (ticket === state.listTicket) {
@@ -329,7 +988,11 @@
     }
 
     async function selectTemplate() {
-        if (state.busy || state.checking || state.loading) {
+        if (
+            state.busy ||
+            state.checking ||
+            state.loading
+        ) {
             return;
         }
 
@@ -397,7 +1060,11 @@
             );
         } catch (error) {
             if (ticket === state.templateTicket) {
-                status("scannerStatus", error.message, true);
+                status(
+                    "scannerStatus",
+                    error.message,
+                    true
+                );
             }
         } finally {
             if (ticket === state.templateTicket) {
@@ -407,6 +1074,10 @@
         }
     }
 
+    /*
+     * Shared image entry point:
+     * uploaded File and live-capture File both use this function.
+     */
     async function loadPhoto(file) {
         if (
             !file ||
@@ -434,6 +1105,8 @@
             );
             return;
         }
+
+        stopCamera({ quiet: true });
 
         const ticket = ++state.photoTicket;
 
@@ -465,7 +1138,9 @@
 
                 original.onerror = () => {
                     reject(
-                        new Error("The image could not be opened.")
+                        new Error(
+                            "The image could not be opened."
+                        )
                     );
                 };
 
@@ -484,7 +1159,10 @@
 
             const scale = Math.min(
                 1,
-                MAX_SIDE / Math.max(inputWidth, inputHeight)
+                MAX_SIDE / Math.max(
+                    inputWidth,
+                    inputHeight
+                )
             );
 
             const photo = document.createElement("canvas");
@@ -527,7 +1205,11 @@
             );
 
             let upload = await new Promise(resolve => {
-                photo.toBlob(resolve, "image/jpeg", 0.92);
+                photo.toBlob(
+                    resolve,
+                    "image/jpeg",
+                    0.92
+                );
             });
 
             if (!upload) {
@@ -538,11 +1220,18 @@
 
             if (upload.size > 9 * 1024 * 1024) {
                 upload = await new Promise(resolve => {
-                    photo.toBlob(resolve, "image/jpeg", 0.86);
+                    photo.toBlob(
+                        resolve,
+                        "image/jpeg",
+                        0.86
+                    );
                 });
             }
 
-            if (!upload || upload.size > 9 * 1024 * 1024) {
+            if (
+                !upload ||
+                upload.size > 9 * 1024 * 1024
+            ) {
                 throw new Error(
                     "The prepared image is too large."
                 );
@@ -555,7 +1244,7 @@
                 return;
             }
 
-            // Commit the preview and upload together.
+            // Preview and upload are committed together.
             state.photo = photo;
             state.upload = upload;
 
@@ -594,10 +1283,15 @@
             );
 
             status("timingInfo", "");
+
             debug({ photo: state.photoInfo });
         } catch (error) {
             if (ticket === state.photoTicket) {
-                status("imageStatus", error.message, true);
+                status(
+                    "imageStatus",
+                    error.message,
+                    true
+                );
             }
         } finally {
             original.onload = null;
@@ -612,6 +1306,8 @@
             }
         }
     }
+
+    /* RESULTS AND TIMINGS */
 
     function displayResults(data) {
         const output = $("results");
@@ -673,12 +1369,14 @@
                 position.overvoted ||
                 result === "SKIPPED_OVERVOTE"
             ) {
-                note.textContent = "SKIPPED: OVERVOTE";
+                note.textContent =
+                    "SKIPPED: OVERVOTE";
                 note.className = "overvote";
             } else if (result === "BLANK") {
                 note.textContent = "BLANK POSITION";
             } else if (result.startsWith("SKIPPED")) {
-                note.textContent = result.replaceAll("_", " ");
+                note.textContent =
+                    result.replaceAll("_", " ");
                 note.className = "error";
             } else {
                 note.textContent = "VALID POSITION";
@@ -722,6 +1420,8 @@
         });
     }
 
+    /* EXPLICIT BACKEND COUNTING */
+
     async function scan() {
         if (
             state.busy ||
@@ -733,7 +1433,10 @@
             !state.upload ||
             state.counted ||
             state.unavailable ||
-            state.uncertain
+            state.uncertain ||
+            camera.opening ||
+            camera.stream ||
+            camera.capturing
         ) {
             return;
         }
@@ -850,7 +1553,8 @@
 
             status(
                 "analysisStatus",
-                data.message || "Ballot counted successfully."
+                data.message ||
+                "Ballot counted successfully."
             );
 
             status(
@@ -920,6 +1624,8 @@
         }
     }
 
+    /* READ-ONLY BALLOT STATUS */
+
     function parseQR(raw) {
         const parts = String(raw || "")
             .trim()
@@ -951,7 +1657,10 @@
             state.loading ||
             state.preparing ||
             !state.photo ||
-            !state.template
+            !state.template ||
+            camera.opening ||
+            camera.stream ||
+            camera.capturing
         ) {
             return;
         }
@@ -1065,7 +1774,10 @@
         }
     }
 
-    // This worker is used only for the read-only status action.
+    /*
+     * QR worker is only for the optional read-only status action.
+     * Actual counting QR validation remains on the backend.
+     */
     function makeReadOnlyQRWorkerSource() {
         return String.raw`
 "use strict";
@@ -1142,7 +1854,11 @@ self.onmessage = function (event) {
                         cropWidth * cropHeight * 4
                     );
 
-                    for (let row = 0; row < cropHeight; row++) {
+                    for (
+                        let row = 0;
+                        row < cropHeight;
+                        row++
+                    ) {
                         const start =
                             ((top + row) * width + left) * 4;
 
@@ -1248,7 +1964,13 @@ self.onmessage = function (event) {
         }
 
         context.fillStyle = "#fff";
-        context.fillRect(0, 0, work.width, work.height);
+
+        context.fillRect(
+            0,
+            0,
+            work.width,
+            work.height
+        );
 
         context.drawImage(
             photoCanvas,
@@ -1287,8 +2009,13 @@ self.onmessage = function (event) {
 
                 clearTimeout(timer);
 
-                if (worker) worker.terminate();
-                if (workerUrl) URL.revokeObjectURL(workerUrl);
+                if (worker) {
+                    worker.terminate();
+                }
+
+                if (workerUrl) {
+                    URL.revokeObjectURL(workerUrl);
+                }
 
                 work.width = 1;
                 work.height = 1;
@@ -1331,7 +2058,10 @@ self.onmessage = function (event) {
                         typeof event.data.data === "string" &&
                         event.data.data.trim()
                     ) {
-                        finish(null, event.data.data);
+                        finish(
+                            null,
+                            event.data.data
+                        );
                     } else {
                         finish(
                             new Error(
@@ -1372,6 +2102,8 @@ self.onmessage = function (event) {
         });
     }
 
+    /* EVENT HANDLERS */
+
     function setup() {
         $("loadBtn").addEventListener(
             "click",
@@ -1388,45 +2120,72 @@ self.onmessage = function (event) {
             event => loadPhoto(event.target.files?.[0])
         );
 
-        $("phoneCameraInput").addEventListener(
-            "change",
-            event => loadPhoto(event.target.files?.[0])
+        $("cameraBtn").addEventListener(
+            "click",
+            startCamera
         );
 
-        $("cameraBtn").addEventListener("click", () => {
-            if (
-                state.busy ||
-                state.checking ||
-                state.loading
-            ) {
-                return;
+        $("captureBtn").addEventListener(
+            "click",
+            capturePhoto
+        );
+
+        $("stopCameraBtn").addEventListener(
+            "click",
+            () => {
+                stopCamera();
+
+                $("cameraBtn").focus({
+                    preventScroll: true
+                });
             }
+        );
 
-            $("phoneCameraInput").value = "";
-            $("phoneCameraInput").click();
-        });
+        $("cameraVideo").addEventListener(
+            "resize",
+            updateCameraGuide
+        );
 
-        $("retakeBtn").addEventListener("click", () => {
-            if (
-                state.busy ||
-                state.checking ||
-                state.loading
-            ) {
-                return;
+        window.addEventListener(
+            "resize",
+            updateCameraGuide
+        );
+
+        // Stop only the camera when hidden; an active count keeps waiting.
+        document.addEventListener(
+            "visibilitychange",
+            () => {
+                if (document.hidden) {
+                    stopCamera({ quiet: true });
+                }
             }
+        );
 
-            const wasUncertain = state.uncertain;
+        $("retakeBtn").addEventListener(
+            "click",
+            () => {
+                if (
+                    state.busy ||
+                    state.checking ||
+                    state.loading
+                ) {
+                    return;
+                }
 
-            clearPhoto();
+                const wasUncertain = state.uncertain;
 
-            if (wasUncertain) {
-                status(
-                    "analysisStatus",
-                    "Keep the previous ballot aside until its counting status is confirmed.",
-                    true
-                );
+                clearPhoto();
+
+                if (wasUncertain) {
+                    status(
+                        "analysisStatus",
+                        "Keep the previous ballot aside until " +
+                        "its counting status is confirmed.",
+                        true
+                    );
+                }
             }
-        });
+        );
 
         $("analyzeBtn").addEventListener(
             "click",
@@ -1445,7 +2204,10 @@ self.onmessage = function (event) {
 
         window.addEventListener(
             "pagehide",
-            () => activeScan?.abort()
+            () => {
+                stopCamera({ quiet: true });
+                activeScan?.abort();
+            }
         );
 
         clearPhoto();
