@@ -601,6 +601,7 @@
         controls();
 
         const frame = document.createElement("canvas");
+        let handedOff = false;
 
         try {
             const ratio = Math.min(
@@ -638,10 +639,7 @@
                 frame.height
             );
 
-            /*
-             * Lossless intermediate File.
-             * loadPhoto performs the final JPEG preparation.
-             */
+
             const blob = await new Promise(resolve => {
                 frame.toBlob(resolve, "image/png");
             });
@@ -670,9 +668,8 @@
 
             stopCamera({ quiet: true });
 
-            const photoTicket =
-                state.photoTicket + 1;
-
+            const photoTicket = state.photoTicket + 1;
+            handedOff = true;
             // Same pipeline as uploaded images.
             await loadPhoto(file);
 
@@ -693,7 +690,8 @@
                 }
             }
         } catch (error) {
-            if (ticket === camera.ticket) {
+
+            if (handedOff || ticket === camera.ticket) {
                 status(
                     "cameraStatus",
                     error.message ||
@@ -1526,7 +1524,7 @@
                 (
                     parsed &&
                     parsed.ballotId !==
-                        String(data.ballot_id).toLowerCase()
+                    String(data.ballot_id).toLowerCase()
                 ) ||
                 data.preview_only !== false ||
                 data.counted !== true ||
@@ -1594,7 +1592,8 @@
                 status(
                     "analysisStatus",
                     `${error.message} Counting status is unknown. ` +
-                    "Use Check Ballot Status before retrying.",
+                    "Keep this ballot aside and use Check Ballot Status; " +
+                    "do not immediately rescan.",
                     true
                 );
             } else {
@@ -1726,12 +1725,16 @@
                 `Ballot ${parsed.ballotId}: ${data.status}.`
             );
 
+
             if (state.uncertain) {
                 status(
                     "analysisStatus",
-                    "The ballot is not yet marked counted. " +
-                    "An earlier request may still complete. " +
-                    "Check again before retrying.",
+                    `Ballot status is ${data.status}, but the previous ` +
+                    "scan response was not confirmed. " +
+                    "An earlier scan may still finish. " +
+                    "Do not rescan this ballot yet; check its status " +
+                    "again or ask the election operator to " +
+                    "reconcile the record.",
                     true
                 );
             }
