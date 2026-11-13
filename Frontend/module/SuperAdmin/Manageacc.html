@@ -500,6 +500,90 @@
             margin-top: 18px;
         }
 
+        /* Committee department/grade assignment UI */
+        .scope-panel {
+            margin-top: 24px;
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: #fbfbfc;
+        }
+
+        .scope-panel h3 {
+            margin: 0 0 6px;
+            font-size: 16px;
+            color: var(--primary);
+        }
+
+        .scope-info {
+            color: #5d6570;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 0 14px;
+        }
+
+        .scope-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .scope-actions button {
+            padding: 8px 13px;
+            border: 1px solid #d7c2c5;
+            border-radius: 6px;
+            background: white;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .scope-actions button:hover {
+            background: #fff0f1;
+        }
+
+        .scope-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,
+                    minmax(135px, 1fr));
+            gap: 10px;
+        }
+
+        .scope-choice {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .scope-choice:hover {
+            border-color: var(--primary);
+        }
+
+        .scope-choice input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .scope-state {
+            margin: 12px 0 0;
+            color: #56606a;
+            font-size: 13px;
+        }
+
+        .scope-state.error {
+            color: #b91c1c;
+        }
+
+
         [hidden] {
             display: none !important;
         }
@@ -633,8 +717,8 @@
             </a>
         </div>
     </aside>
-    
-<a href="SuperAdminlog.html" class="mobile-logout">Log out</a>
+
+    <a href="SuperAdminlog.html" class="mobile-logout">Log out</a>
 
     <main class="main">
         <h1>Super admin dashboard</h1>
@@ -711,6 +795,30 @@
                     </div>
 
                 </div>
+
+                <!-- Committee scanner assignments -->
+                <section class="scope-panel" id="createScopeSection" hidden>
+                    <h3>Committee scanner assignments</h3>
+
+                    <p class="scope-info" id="createScopeElection">
+                        Loading current election...
+                    </p>
+
+                    <div class="scope-actions">
+                        <button type="button" id="createSelectAll">
+                            Select all
+                        </button>
+
+                        <button type="button" id="createClearAll">
+                            Clear all
+                        </button>
+                    </div>
+
+                    <div class="scope-grid" id="createScopeList"></div>
+
+                    <p class="scope-state" id="createScopeState" aria-live="polite"></p>
+                </section>
+
 
                 <div class="form-footer">
                     <button class="btn btn-light" type="reset">
@@ -795,6 +903,29 @@
                         Click Generate to create a new 9-character password.
                     </p>
                 </div>
+
+                <!-- Edit Committee scanner assignments -->
+                <section class="scope-panel" id="editScopeSection" hidden>
+                    <h3>Committee scanner assignments</h3>
+
+                    <p class="scope-info" id="editScopeElection">
+                        Loading assignments...
+                    </p>
+
+                    <div class="scope-actions">
+                        <button type="button" id="editSelectAll">
+                            Select all
+                        </button>
+
+                        <button type="button" id="editClearAll">
+                            Clear all
+                        </button>
+                    </div>
+
+                    <div class="scope-grid" id="editScopeList"></div>
+
+                    <p class="scope-state" id="editScopeState" aria-live="polite"></p>
+                </section>
 
                 <div class="form-footer">
                     <button class="btn btn-light" type="button" id="cancelEdit">

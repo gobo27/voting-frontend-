@@ -7,6 +7,12 @@ const ACCOUNT_PATH = "/createAccount/accounts";
 const $ = id => document.getElementById(id);
 
 let accounts = [];
+let currentScopes = [];
+let scopeElection = null;
+let scopesLoaded = false;
+let scopesManageable = false;
+let editAssignmentsLoaded = false;
+let editLoadVersion = 0;
 
 // AUTHENTICATION
 
@@ -170,6 +176,294 @@ async function apiRequest(path = "", options = {}) {
     return data;
 }
 
+// Current-election scopes use a different URL than /accounts.
+async function scopeRequest(path, options = {}) {
+    const token = getToken();
+    if (!token) throw new Error("Please log in again.");
+
+    let response;
+    try {
+        response = await fetch(API_BASE + "/createAccount" + path, {
+            ...options,
+            headers: {
+                ...getHeaders(),
+                ...(options.headers || {})
+            }
+        });
+    } catch (_) {
+        throw new Error(
+            "Cannot connect to backend. Check your server."
+        );
+    }
+
+    const raw = await response.text();
+    let data = {};
+
+    if (raw) {
+        try {
+            data = JSON.parse(raw);
+        } catch (_) {
+            throw new Error(
+                `Invalid server response (HTTP ${response.status}).`
+            );
+        }
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            data.message ||
+            `Request failed (HTTP ${response.status}).`
+        );
+    }
+
+    return data;
+}
+
+// Kunin ang selected department/grade IDs
+function checkedScopeIds(containerId) {
+    return Array.from(
+        $(containerId).querySelectorAll(
+            'input[type="checkbox"]:checked'
+        )
+    ).map(input => Number(input.value));
+}
+
+function setScopeChecks(containerId, ids) {
+    const selected = new Set(ids.map(Number));
+
+    $(containerId)
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach(input => {
+            input.checked = selected.has(Number(input.value));
+        });
+
+    showScopeCount(containerId);
+}
+
+function showScopeCount(containerId) {
+    const stateId = containerId === "createScopeList"
+        ? "createScopeState"
+        : "editScopeState";
+
+    const total = $(containerId)
+        .querySelectorAll('input[type="checkbox"]').length;
+
+    const selected = checkedScopeIds(containerId).length;
+
+    if (scopesLoaded && scopesManageable) {
+        $(stateId).textContent =
+            `${selected} of ${total} selected`;
+
+        $(stateId).classList.remove("error");
+    }
+}
+
+// Dynamic checkboxes mula sa database
+function renderScopeChoices(containerId) {
+    $(containerId).innerHTML = currentScopes.map(scope => `
+        <label class="scope-choice">
+            <input
+                type="checkbox"
+                value="${Number(scope.scope_id)}"
+                ${
+                    Number(scope.is_active) !== 1 ||
+                    !scopesManageable
+                        ? "disabled"
+                        : ""
+                }
+            >
+            <span>${escapeHtml(scope.scope_name)}</span>
+        </label>
+    `).join("");
+
+    showScopeCount(containerId);
+}
+
+function scopeSectionVisible(role, isEdit) {
+    $(
+        isEdit
+            ? "editScopeSection"
+            : "createScopeSection"
+    ).hidden = role !== "committee";
+}
+
+// Load available departments/grades
+async function loadScopes() {
+    scopesLoaded = false;
+    scopesManageable = false;
+
+    $("createScopeState").textContent =
+        "Loading departments/grades...";
+
+    $("editScopeState").textContent =
+        "Loading departments/grades...";
+
+    try {
+        const data = await scopeRequest("/scopes");
+
+        if (!Array.isArray(data.scopes)) {
+            throw new Error(
+                "Unexpected scopes API response."
+            );
+        }
+
+        currentScopes = data.scopes.filter(
+            scope => Number(scope.is_active) === 1
+        );
+
+        scopeElection = data.election;
+        scopesManageable = data.can_manage === true;
+        scopesLoaded = true;
+
+        const description = scopeElection
+            ? `${scopeElection.title} · ` +
+              `${scopeElection.school_level} · ` +
+              `Election #${scopeElection.election_id}`
+            : "Current election";
+
+        $("createScopeElection").textContent = description;
+        $("editScopeElection").textContent = description;
+
+        renderScopeChoices("createScopeList");
+        renderScopeChoices("editScopeList");
+
+        if (!currentScopes.length) {
+            $("createScopeState").textContent =
+                "No departments/grades configured for this election.";
+
+            $("editScopeState").textContent =
+                "No departments/grades configured for this election.";
+
+        } else if (!scopesManageable) {
+            $("createScopeState").textContent =
+                "Assignments are locked for this election.";
+
+            $("editScopeState").textContent =
+                "Assignments are locked for this election.";
+        }
+
+        $("createScopeState").classList.remove("error");
+        $("editScopeState").classList.remove("error");
+
+    } catch (error) {
+        console.error("Load scopes error:", error);
+
+        currentScopes = [];
+        scopeElection = null;
+
+        $("createScopeList").innerHTML = "";
+        $("editScopeList").innerHTML = "";
+
+        $("createScopeState").textContent = error.message;
+        $("editScopeState").textContent = error.message;
+
+        $("createScopeState").classList.add("error");
+        $("editScopeState").classList.add("error");
+
+        notify(
+            "Unable to load scanner assignments: " +
+            error.message,
+            "warning"
+        );
+    }
+}
+
+// Prevent saving kapag hindi loaded ang scopes
+function requireScopesReady() {
+    if (
+        !scopesLoaded ||
+        !scopesManageable ||
+        !scopeElection
+    ) {
+        notify(
+            "Assignments are unavailable. Refresh or check the current election.",
+            "warning"
+        );
+        return false;
+    }
+
+    return true;
+}
+
+// Load saved assignments sa Edit Account
+async function loadEditAssignments(id) {
+    const version = ++editLoadVersion;
+
+    editAssignmentsLoaded = false;
+
+    $("editScopeState").textContent =
+        "Loading saved assignments...";
+
+    try {
+        if (!scopesLoaded) {
+            await loadScopes();
+        }
+
+        if (!scopesLoaded || !scopeElection) {
+            throw new Error(
+                "Election scopes are unavailable."
+            );
+        }
+
+        const existingAccount = accounts.find(
+            account => String(account.id) === String(id)
+        );
+
+        if (existingAccount?.role === "adviser") {
+            if (version !== editLoadVersion) return;
+
+            setScopeChecks("editScopeList", []);
+            editAssignmentsLoaded = true;
+            return;
+        }
+
+        const data = await scopeRequest(
+            `/accounts/${encodeURIComponent(id)}/assignments`
+        );
+
+        if (
+            version !== editLoadVersion ||
+            String($("editId").value) !== String(id)
+        ) {
+            return;
+        }
+
+        if (!Array.isArray(data.assignments)) {
+            throw new Error(
+                "Unexpected assignments response."
+            );
+        }
+
+        setScopeChecks(
+            "editScopeList",
+            data.assignments
+                .filter(a => Number(a.is_active) === 1)
+                .map(a => Number(a.scope_id))
+        );
+
+        editAssignmentsLoaded = true;
+
+        if (!scopesManageable) {
+            $("editScopeState").textContent =
+                "Assignments cannot be changed after election starts.";
+        }
+
+    } catch (error) {
+        if (version !== editLoadVersion) return;
+
+        $("editScopeState").textContent =
+            "Could not load assignments: " + error.message;
+
+        $("editScopeState").classList.add("error");
+
+        notify(
+            "Failed to load Committee assignments: " +
+            error.message,
+            "error"
+        );
+    }
+}
+
 // HELPERS
 
 function escapeHtml(value) {
@@ -260,7 +554,6 @@ function renderAccounts() {
 
     tbody.innerHTML = accounts.map(account => {
         const id = account.id;
-
         const hasId = id !== undefined && id !== null;
 
         const editable =
@@ -269,7 +562,9 @@ function renderAccounts() {
 
         const deletable =
             hasId &&
-            ["adviser", "committee", "super_admin"].includes(account.role);
+            ["adviser", "committee", "super_admin"]
+                .includes(account.role);
+
         return `
             <tr>
                 <td>
@@ -301,7 +596,7 @@ function renderAccounts() {
                             class="icon-btn edit"
                             data-edit="${escapeHtml(id)}"
                             title="Edit account"
-                            ${deletable ? "" : "disabled"}
+                            ${editable ? "" : "disabled"}
                         >
                             <svg viewBox="0 0 24 24">
                                 <path d="M12 20h9"/>
@@ -314,7 +609,7 @@ function renderAccounts() {
                             class="icon-btn delete"
                             data-delete="${escapeHtml(id)}"
                             title="Delete account"
-                            ${editable ? "" : "disabled"}
+                            ${deletable ? "" : "disabled"}
                         >
                             <svg viewBox="0 0 24 24">
                                 <path d="M3 6h18"/>
@@ -359,7 +654,6 @@ async function loadAccounts() {
         }
 
         accounts = list.map(normalizeAccount);
-
         renderAccounts();
 
     } catch (error) {
@@ -411,18 +705,21 @@ async function addAccount(event) {
         return;
     }
 
+    if (role === "committee" && !requireScopesReady()) return;
+
+    const payload = { name, email, password, role };
+
+    if (role === "committee") {
+        payload.scope_ids = checkedScopeIds("createScopeList");
+    }
+
     try {
         button.disabled = true;
         button.textContent = "Creating...";
 
         const data = await apiRequest("", {
             method: "POST",
-            body: JSON.stringify({
-                name,
-                email,
-                password,
-                role
-            })
+            body: JSON.stringify(payload)
         });
 
         if (data.emailSent === true) {
@@ -447,6 +744,9 @@ async function addAccount(event) {
         $("userName").value = "";
         $("accountEmail").value = "";
         $("role").value = "adviser";
+
+        scopeSectionVisible("adviser", false);
+        setScopeChecks("createScopeList", []);
 
         setCreatePassword();
 
@@ -479,7 +779,7 @@ function openEditModal(id) {
     }
 
     if (
-        !["adviser", "committee", "super_admin"].includes(account.role)
+        !["adviser", "committee"].includes(account.role)
     ) {
         notify(
             "This account cannot be edited here.",
@@ -494,13 +794,25 @@ function openEditModal(id) {
     $("editRole").value = account.role;
     $("editPassword").value = "";
 
+    editAssignmentsLoaded = false;
+
+    setScopeChecks("editScopeList", []);
+    scopeSectionVisible(account.role, true);
+
     $("editModal").classList.add("open");
     $("editName").focus();
+
+    if (account.role === "committee") {
+        loadEditAssignments(id);
+    }
 }
 
 // CLOSE EDIT MODAL
 
 function closeEditModal() {
+    ++editLoadVersion;
+    editAssignmentsLoaded = false;
+
     $("editModal").classList.remove("open");
     $("editAccountForm").reset();
 }
@@ -542,6 +854,20 @@ async function saveEdit(event) {
 
     if (password) {
         payload.password = password;
+    }
+
+    if (role === "committee") {
+        if (!requireScopesReady()) return;
+
+        if (!editAssignmentsLoaded) {
+            notify(
+                "Wait until the saved assignments have loaded.",
+                "warning"
+            );
+            return;
+        }
+
+        payload.scope_ids = checkedScopeIds("editScopeList");
     }
 
     try {
@@ -604,7 +930,8 @@ async function deleteAccount(id) {
     }
 
     if (
-        !["adviser", "committee", "super_admin"].includes(account.role)
+        !["adviser", "committee", "super_admin"]
+            .includes(account.role)
     ) {
         notify(
             "This account cannot be deleted here.",
@@ -613,8 +940,7 @@ async function deleteAccount(id) {
         return;
     }
 
-    // NEW: CONFIRMATION USING SEPARATE toast.js
-
+    // Confirmation gamit ang existing toast.js
     if (typeof window.showConfirmToast !== "function") {
         notify(
             "Confirmation toast is unavailable. Check toast.js.",
@@ -670,6 +996,68 @@ async function deleteAccount(id) {
 
 document.addEventListener("DOMContentLoaded", () => {
 
+    // Load current election scopes
+    loadScopes();
+
+    scopeSectionVisible($("role").value, false);
+
+    $("role").addEventListener("change", () => {
+        scopeSectionVisible($("role").value, false);
+    });
+
+    $("editRole").addEventListener("change", () => {
+        scopeSectionVisible($("editRole").value, true);
+
+        if ($("editRole").value === "committee") {
+            loadEditAssignments($("editId").value);
+        }
+    });
+
+    // Select All at Clear All sa Create/Edit
+    for (const [prefix, container] of [
+        ["create", "createScopeList"],
+        ["edit", "editScopeList"]
+    ]) {
+        $(prefix + "SelectAll").addEventListener(
+            "click",
+            () => {
+                if (!scopesManageable) return;
+
+                $(container)
+                    .querySelectorAll(
+                        'input[type="checkbox"]:not(:disabled)'
+                    )
+                    .forEach(checkbox => {
+                        checkbox.checked = true;
+                    });
+
+                showScopeCount(container);
+            }
+        );
+
+        $(prefix + "ClearAll").addEventListener(
+            "click",
+            () => {
+                if (!scopesManageable) return;
+
+                $(container)
+                    .querySelectorAll(
+                        'input[type="checkbox"]:not(:disabled)'
+                    )
+                    .forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+
+                showScopeCount(container);
+            }
+        );
+
+        $(container).addEventListener(
+            "change",
+            () => showScopeCount(container)
+        );
+    }
+
     // GENERATE INITIAL PASSWORD
 
     setCreatePassword();
@@ -700,7 +1088,11 @@ document.addEventListener("DOMContentLoaded", () => {
     $("addAccountForm").addEventListener(
         "reset",
         () => {
-            setTimeout(setCreatePassword, 0);
+            setTimeout(() => {
+                setCreatePassword();
+                scopeSectionVisible($("role").value, false);
+                setScopeChecks("createScopeList", []);
+            }, 0);
         }
     );
 
