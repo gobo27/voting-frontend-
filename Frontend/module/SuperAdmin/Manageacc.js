@@ -265,12 +265,11 @@ function renderScopeChoices(containerId) {
             <input
                 type="checkbox"
                 value="${Number(scope.scope_id)}"
-                ${
-                    Number(scope.is_active) !== 1 ||
-                    !scopesManageable
-                        ? "disabled"
-                        : ""
-                }
+                ${Number(scope.is_active) !== 1 ||
+            !scopesManageable
+            ? "disabled"
+            : ""
+        }
             >
             <span>${escapeHtml(scope.scope_name)}</span>
         </label>
@@ -312,13 +311,18 @@ async function loadScopes() {
         );
 
         scopeElection = data.election;
-        scopesManageable = data.can_manage === true;
+        const canManageValue = data.can_manage ?? data.canManage;
+
+        scopesManageable =
+            canManageValue === true ||
+            canManageValue === 1 ||
+            canManageValue === "1";
         scopesLoaded = true;
 
         const description = scopeElection
             ? `${scopeElection.title} · ` +
-              `${scopeElection.school_level} · ` +
-              `Election #${scopeElection.election_id}`
+            `${scopeElection.school_level} · ` +
+            `Election #${scopeElection.election_id}`
             : "Current election";
 
         $("createScopeElection").textContent = description;
