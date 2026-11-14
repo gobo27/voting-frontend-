@@ -59,7 +59,7 @@ function secureRandomIndex(length) {
     let number;
 
     do {
-        crypto.getRandomValues(buffer);
+        window.crypto.getRandomValues(buffer);
         number = buffer[0];
     } while (number >= limit);
 
@@ -176,21 +176,30 @@ async function apiRequest(path = "", options = {}) {
     return data;
 }
 
-// Current-election scopes use a different URL than /accounts.
+// CURRENT ELECTION SCOPE REQUEST
+
 async function scopeRequest(path, options = {}) {
     const token = getToken();
-    if (!token) throw new Error("Please log in again.");
+
+    if (!token) {
+        throw new Error("Please log in again.");
+    }
 
     let response;
+
     try {
-        response = await fetch(API_BASE + "/createAccount" + path, {
-            ...options,
-            headers: {
-                ...getHeaders(),
-                ...(options.headers || {})
+        response = await fetch(
+            API_BASE + "/createAccount" + path,
+            {
+                ...options,
+                headers: {
+                    ...getHeaders(),
+                    ...(options.headers || {})
+                }
             }
-        });
-    } catch (_) {
+        );
+
+    } catch (error) {
         throw new Error(
             "Cannot connect to backend. Check your server."
         );
@@ -202,7 +211,7 @@ async function scopeRequest(path, options = {}) {
     if (raw) {
         try {
             data = JSON.parse(raw);
-        } catch (_) {
+        } catch {
             throw new Error(
                 `Invalid server response (HTTP ${response.status}).`
             );
@@ -219,19 +228,30 @@ async function scopeRequest(path, options = {}) {
     return data;
 }
 
-// Kunin ang selected department/grade IDs
+// COMMITTEE SCOPE HELPERS
+
 function checkedScopeIds(containerId) {
+    const container = $(containerId);
+
+    if (!container) return [];
+
     return Array.from(
-        $(containerId).querySelectorAll(
+        container.querySelectorAll(
             'input[type="checkbox"]:checked'
         )
     ).map(input => Number(input.value));
 }
 
 function setScopeChecks(containerId, ids) {
-    const selected = new Set(ids.map(Number));
+    const container = $(containerId);
 
-    $(containerId)
+    if (!container) return;
+
+    const selected = new Set(
+        (ids || []).map(Number)
+    );
+
+    container
         .querySelectorAll('input[type="checkbox"]')
         .forEach(input => {
             input.checked = selected.has(Number(input.value));
@@ -245,22 +265,33 @@ function showScopeCount(containerId) {
         ? "createScopeState"
         : "editScopeState";
 
-    const total = $(containerId)
-        .querySelectorAll('input[type="checkbox"]').length;
+    const container = $(containerId);
+    const state = $(stateId);
+
+    if (!container || !state) return;
+
+    const total = container.querySelectorAll(
+        'input[type="checkbox"]'
+    ).length;
 
     const selected = checkedScopeIds(containerId).length;
 
     if (scopesLoaded && scopesManageable) {
-        $(stateId).textContent =
+        state.textContent =
             `${selected} of ${total} selected`;
 
-        $(stateId).classList.remove("error");
+        state.classList.remove("error");
     }
 }
 
-// Dynamic checkboxes mula sa database
+// RENDER DYNAMIC COMMITTEE CHECKBOXES
+
 function renderScopeChoices(containerId) {
-    $(containerId).innerHTML = currentScopes.map(scope => `
+    const container = $(containerId);
+
+    if (!container) return;
+
+    container.innerHTML = currentScopes.map(scope => `
         <label class="scope-choice">
             <input
                 type="checkbox"
@@ -271,6 +302,7 @@ function renderScopeChoices(containerId) {
             : ""
         }
             >
+
             <span>${escapeHtml(scope.scope_name)}</span>
         </label>
     `).join("");
@@ -279,14 +311,19 @@ function renderScopeChoices(containerId) {
 }
 
 function scopeSectionVisible(role, isEdit) {
-    $(
+    const section = $(
         isEdit
             ? "editScopeSection"
             : "createScopeSection"
-    ).hidden = role !== "committee";
+    );
+
+    if (!section) return;
+
+    section.hidden = role !== "committee";
 }
 
-// Load available departments/grades
+// LOAD AVAILABLE DEPARTMENTS / GRADES
+
 async function loadScopes() {
     scopesLoaded = false;
     scopesManageable = false;
@@ -311,12 +348,15 @@ async function loadScopes() {
         );
 
         scopeElection = data.election;
-        const canManageValue = data.can_manage ?? data.canManage;
+
+        const canManageValue =
+            data.can_manage ?? data.canManage;
 
         scopesManageable =
             canManageValue === true ||
             canManageValue === 1 ||
             canManageValue === "1";
+
         scopesLoaded = true;
 
         const description = scopeElection
@@ -372,7 +412,8 @@ async function loadScopes() {
     }
 }
 
-// Prevent saving kapag hindi loaded ang scopes
+// CHECK IF SCOPE ASSIGNMENTS ARE READY
+
 function requireScopesReady() {
     if (
         !scopesLoaded ||
@@ -383,13 +424,15 @@ function requireScopesReady() {
             "Assignments are unavailable. Refresh or check the current election.",
             "warning"
         );
+
         return false;
     }
 
     return true;
 }
 
-// Load saved assignments sa Edit Account
+// LOAD SAVED ASSIGNMENTS IN EDIT ACCOUNT
+
 async function loadEditAssignments(id) {
     const version = ++editLoadVersion;
 
@@ -418,6 +461,7 @@ async function loadEditAssignments(id) {
 
             setScopeChecks("editScopeList", []);
             editAssignmentsLoaded = true;
+
             return;
         }
 
@@ -441,8 +485,14 @@ async function loadEditAssignments(id) {
         setScopeChecks(
             "editScopeList",
             data.assignments
-                .filter(a => Number(a.is_active) === 1)
-                .map(a => Number(a.scope_id))
+                .filter(
+                    assignment =>
+                        Number(assignment.is_active) === 1
+                )
+                .map(
+                    assignment =>
+                        Number(assignment.scope_id)
+                )
         );
 
         editAssignmentsLoaded = true;
@@ -468,7 +518,7 @@ async function loadEditAssignments(id) {
     }
 }
 
-// HELPERS
+// GENERAL HELPERS
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -486,12 +536,90 @@ function normalizeRole(role) {
         .replace(/\s+/g, "_");
 }
 
+function normalizeSchoolLevel(level) {
+    const value = String(level || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[\s/_-]+/g, "");
+
+    if (value.includes("elementary")) {
+        return "elementary";
+    }
+
+    if (
+        value.includes("highschool") ||
+        value === "ssg"
+    ) {
+        return "highschool";
+    }
+
+    if (value.includes("college")) {
+        return "college";
+    }
+
+    return value;
+}
+
+function schoolLevelLabel(level) {
+    const normalized = normalizeSchoolLevel(level);
+
+    if (normalized === "elementary") {
+        return "Elementary";
+    }
+
+    if (normalized === "highschool") {
+        return "SSG / High School";
+    }
+
+    if (normalized === "college") {
+        return "College";
+    }
+
+    return level || "";
+}
+
+// NORMALIZE ACCOUNT DATA FROM BACKEND
+
 function normalizeAccount(account) {
+    const rawLevels =
+        account.assigned_school_levels ??
+        account.assignedSchoolLevels ??
+        "";
+
+    const rawScopes =
+        account.assigned_scopes ??
+        account.assignedScopes ??
+        "";
+
+    const assignedSchoolLevels = Array.isArray(rawLevels)
+        ? rawLevels
+            .map(normalizeSchoolLevel)
+            .filter(Boolean)
+        : String(rawLevels)
+            .split(",")
+            .map(normalizeSchoolLevel)
+            .filter(Boolean);
+
+    const assignedScopes = Array.isArray(rawScopes)
+        ? rawScopes
+            .map(value => String(value).trim())
+            .filter(Boolean)
+        : String(rawScopes)
+            .split(",")
+            .map(value => value.trim())
+            .filter(Boolean);
+
     return {
         id: account.user_id ?? account.id,
         name: account.name ?? account.username ?? "",
         email: account.email ?? "",
-        role: normalizeRole(account.role)
+        role: normalizeRole(account.role),
+        assignedSchoolLevels: [
+            ...new Set(assignedSchoolLevels)
+        ],
+        assignedScopes: [
+            ...new Set(assignedScopes)
+        ]
     };
 }
 
@@ -534,31 +662,96 @@ function updateStats() {
             account => account.role === "committee"
         ).length
     );
+}
 
-    $("listCount").textContent = accounts.length;
+// FILTER ACCOUNTS BY SCHOOL LEVEL
+
+function getFilteredAccounts() {
+    const filter = $("schoolLevelFilter")?.value || "all";
+
+    if (filter === "all") {
+        return accounts;
+    }
+
+    if (filter === "unassigned") {
+        return accounts.filter(
+            account =>
+                !account.assignedSchoolLevels.length
+        );
+    }
+
+    return accounts.filter(
+        account =>
+            account.assignedSchoolLevels.includes(filter)
+    );
+}
+
+// RENDER SCHOOL LEVEL BADGES
+
+function renderSchoolLevels(account) {
+    if (!account.assignedSchoolLevels.length) {
+        return "—";
+    }
+
+    return account.assignedSchoolLevels
+        .map(level => `
+            <span class="account-school-level">
+                ${escapeHtml(schoolLevelLabel(level))}
+            </span>
+        `)
+        .join("");
+}
+
+// RENDER ASSIGNED GRADES / DEPARTMENTS
+
+function renderAssignedScopes(account) {
+    if (!account.assignedScopes.length) {
+        return `
+            <span class="account-scope-list">—</span>
+        `;
+    }
+
+    return `
+        <span class="account-scope-list">
+            ${account.assignedScopes
+            .map(scope => escapeHtml(scope))
+            .join(", ")}
+        </span>
+    `;
 }
 
 // RENDER ACCOUNT LIST
 
 function renderAccounts() {
     const tbody = $("accountsTableBody");
+    const visibleAccounts = getFilteredAccounts();
 
-    if (!accounts.length) {
+    updateStats();
+
+    $("listCount").textContent = visibleAccounts.length;
+
+    if (!visibleAccounts.length) {
+        const message = accounts.length
+            ? "No accounts match this school level."
+            : "No accounts found.";
+
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" style="text-align:center">
-                    No accounts found.
+                <td colspan="6" style="text-align:center">
+                    ${escapeHtml(message)}
                 </td>
             </tr>
         `;
 
-        updateStats();
         return;
     }
 
-    tbody.innerHTML = accounts.map(account => {
+    tbody.innerHTML = visibleAccounts.map(account => {
         const id = account.id;
-        const hasId = id !== undefined && id !== null;
+
+        const hasId =
+            id !== undefined &&
+            id !== null;
 
         const editable =
             hasId &&
@@ -566,8 +759,11 @@ function renderAccounts() {
 
         const deletable =
             hasId &&
-            ["adviser", "committee", "super_admin"]
-                .includes(account.role);
+            [
+                "adviser",
+                "committee",
+                "super_admin"
+            ].includes(account.role);
 
         return `
             <tr>
@@ -587,6 +783,14 @@ function renderAccounts() {
                     <span class="role ${escapeHtml(account.role)}">
                         ${escapeHtml(roleLabel(account.role))}
                     </span>
+                </td>
+
+                <td>
+                    ${renderSchoolLevels(account)}
+                </td>
+
+                <td>
+                    ${renderAssignedScopes(account)}
                 </td>
 
                 <td class="email">
@@ -627,8 +831,6 @@ function renderAccounts() {
             </tr>
         `;
     }).join("");
-
-    updateStats();
 }
 
 // LOAD ACCOUNTS
@@ -638,7 +840,7 @@ async function loadAccounts() {
 
     tbody.innerHTML = `
         <tr>
-            <td colspan="4" style="text-align:center">
+            <td colspan="6" style="text-align:center">
                 Loading accounts...
             </td>
         </tr>
@@ -658,6 +860,7 @@ async function loadAccounts() {
         }
 
         accounts = list.map(normalizeAccount);
+
         renderAccounts();
 
     } catch (error) {
@@ -666,7 +869,7 @@ async function loadAccounts() {
         tbody.innerHTML = `
             <tr>
                 <td
-                    colspan="4"
+                    colspan="6"
                     style="text-align:center;color:#dc2626"
                 >
                     Unable to load accounts.
@@ -698,6 +901,7 @@ async function addAccount(event) {
             "Please complete all fields.",
             "warning"
         );
+
         return;
     }
 
@@ -706,15 +910,28 @@ async function addAccount(event) {
             "Password must contain exactly 9 characters.",
             "warning"
         );
+
         return;
     }
 
-    if (role === "committee" && !requireScopesReady()) return;
+    if (
+        role === "committee" &&
+        !requireScopesReady()
+    ) {
+        return;
+    }
 
-    const payload = { name, email, password, role };
+    const payload = {
+        name,
+        email,
+        password,
+        role
+    };
 
+    // Committee lang ang may scope assignments.
     if (role === "committee") {
-        payload.scope_ids = checkedScopeIds("createScopeList");
+        payload.scope_ids =
+            checkedScopeIds("createScopeList");
     }
 
     try {
@@ -750,7 +967,11 @@ async function addAccount(event) {
         $("role").value = "adviser";
 
         scopeSectionVisible("adviser", false);
-        setScopeChecks("createScopeList", []);
+
+        setScopeChecks(
+            "createScopeList",
+            []
+        );
 
         setCreatePassword();
 
@@ -789,6 +1010,7 @@ function openEditModal(id) {
             "This account cannot be edited here.",
             "warning"
         );
+
         return;
     }
 
@@ -800,7 +1022,11 @@ function openEditModal(id) {
 
     editAssignmentsLoaded = false;
 
-    setScopeChecks("editScopeList", []);
+    setScopeChecks(
+        "editScopeList",
+        []
+    );
+
     scopeSectionVisible(account.role, true);
 
     $("editModal").classList.add("open");
@@ -839,6 +1065,7 @@ async function saveEdit(event) {
             "Please complete all required fields.",
             "warning"
         );
+
         return;
     }
 
@@ -847,6 +1074,7 @@ async function saveEdit(event) {
             "New password must contain exactly 9 characters.",
             "warning"
         );
+
         return;
     }
 
@@ -860,18 +1088,23 @@ async function saveEdit(event) {
         payload.password = password;
     }
 
+    // Committee lang ang may scope assignments.
     if (role === "committee") {
-        if (!requireScopesReady()) return;
+        if (!requireScopesReady()) {
+            return;
+        }
 
         if (!editAssignmentsLoaded) {
             notify(
                 "Wait until the saved assignments have loaded.",
                 "warning"
             );
+
             return;
         }
 
-        payload.scope_ids = checkedScopeIds("editScopeList");
+        payload.scope_ids =
+            checkedScopeIds("editScopeList");
     }
 
     try {
@@ -934,22 +1167,28 @@ async function deleteAccount(id) {
     }
 
     if (
-        !["adviser", "committee", "super_admin"]
-            .includes(account.role)
+        ![
+            "adviser",
+            "committee",
+            "super_admin"
+        ].includes(account.role)
     ) {
         notify(
             "This account cannot be deleted here.",
             "warning"
         );
+
         return;
     }
 
-    // Confirmation gamit ang existing toast.js
-    if (typeof window.showConfirmToast !== "function") {
+    if (
+        typeof window.showConfirmToast !== "function"
+    ) {
         notify(
             "Confirmation toast is unavailable. Check toast.js.",
             "error"
         );
+
         return;
     }
 
@@ -1000,24 +1239,50 @@ async function deleteAccount(id) {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    // Load current election scopes
+    // LOAD CURRENT ELECTION SCOPES
+
     loadScopes();
 
-    scopeSectionVisible($("role").value, false);
+    // CREATE ROLE CHANGE
+
+    scopeSectionVisible(
+        $("role").value,
+        false
+    );
 
     $("role").addEventListener("change", () => {
-        scopeSectionVisible($("role").value, false);
+        scopeSectionVisible(
+            $("role").value,
+            false
+        );
     });
 
-    $("editRole").addEventListener("change", () => {
-        scopeSectionVisible($("editRole").value, true);
+    // EDIT ROLE CHANGE
 
-        if ($("editRole").value === "committee") {
-            loadEditAssignments($("editId").value);
+    $("editRole").addEventListener("change", () => {
+        const role = $("editRole").value;
+
+        scopeSectionVisible(role, true);
+
+        if (role === "committee") {
+            loadEditAssignments(
+                $("editId").value
+            );
+        } else {
+            editAssignmentsLoaded = true;
+            setScopeChecks("editScopeList", []);
         }
     });
 
-    // Select All at Clear All sa Create/Edit
+    // SCHOOL LEVEL FILTER
+
+    $("schoolLevelFilter").addEventListener(
+        "change",
+        renderAccounts
+    );
+
+    // SELECT ALL / CLEAR ALL
+
     for (const [prefix, container] of [
         ["create", "createScopeList"],
         ["edit", "editScopeList"]
@@ -1062,7 +1327,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
     }
 
-    // GENERATE INITIAL PASSWORD
+    // INITIAL PASSWORD
 
     setCreatePassword();
 
@@ -1094,8 +1359,16 @@ document.addEventListener("DOMContentLoaded", () => {
         () => {
             setTimeout(() => {
                 setCreatePassword();
-                scopeSectionVisible($("role").value, false);
-                setScopeChecks("createScopeList", []);
+
+                scopeSectionVisible(
+                    $("role").value,
+                    false
+                );
+
+                setScopeChecks(
+                    "createScopeList",
+                    []
+                );
             }, 0);
         }
     );
@@ -1121,7 +1394,7 @@ document.addEventListener("DOMContentLoaded", () => {
         closeEditModal
     );
 
-    // CLOSE EDIT MODAL ON BACKDROP CLICK
+    // CLOSE MODAL ON BACKDROP CLICK
 
     $("editModal").addEventListener(
         "click",
