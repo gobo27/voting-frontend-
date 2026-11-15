@@ -582,6 +582,28 @@ function renderHistory() {
             archiveBtn.textContent = "Archive";
 
             archiveBtn.addEventListener("click", async () => {
+                try {
+                    const status = await request(
+                        `/election_archive/${encodeURIComponent(
+                            election.election_id
+                        )}/report-status`
+                    );
+
+                    if (!status.ready_to_archive) {
+                        message(
+                            "Cannot archive yet. Send the report to the " +
+                            "selected Advisers and resolve any unconfirmed emails first.",
+                            true
+                        );
+                        return;
+                    }
+                } catch (error) {
+                    message(
+                        "Unable to verify email status: " + error.message,
+                        true
+                    );
+                    return;
+                }
                 const confirmed = await window.showConfirmToast(
                     `Archive election #${election.election_id}?\n\n` +
                     "Historical records will remain saved.",
