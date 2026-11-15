@@ -342,6 +342,233 @@ function renderHistory() {
         });
 
         buttons.appendChild(viewBtn);
+        if (
+            !election.archived_at &&
+            election.status === "completed"
+        ) {
+            const emailBtn = document.createElement("button");
+
+            emailBtn.type = "button";
+            emailBtn.className = "view-btn";
+            emailBtn.textContent = "Email Report Link";
+
+            emailBtn.addEventListener("click", async () => {
+                emailBtn.disabled = true;
+
+                try {
+                    const electionId = election.election_id;
+
+                    const data = await request(
+                        `/election_archive/${encodeURIComponent(electionId)}/report-advisers`
+                    );
+
+                    const advisers = Array.isArray(data.advisers)
+                        ? data.advisers
+                        : [];
+
+                    if (!advisers.length) {
+                        message(
+                            "No active Advisers assigned to this election.",
+                            true
+                        );
+                        return;
+                    }
+
+                    // Create a temporary Adviser selection dialog
+                    const dialog = document.createElement("dialog");
+                    dialog.style.cssText = [
+                        "border:1px solid #ddd",
+                        "border-radius:12px",
+                        "padding:25px",
+                        "max-width:480px",
+                        "width:90%",
+                        "box-shadow:0 12px 40px #0003"
+                    ].join(";");
+
+                    const title = document.createElement("h3");
+                    title.textContent = "Select Adviser Recipients";
+
+                    const description = document.createElement("p");
+                    description.textContent =
+                        "Choose one or more Advisers to receive the PDF download link.";
+
+                    dialog.append(title, description);
+
+                    const selections = [];
+
+                    advisers.forEach(adviser => {
+                        const label = document.createElement("label");
+
+                        label.style.cssText =
+                            "display:block;margin:14px 0;cursor:pointer";
+
+                        const check = document.createElement("input");
+                        check.type = "checkbox";
+                        check.value = String(adviser.id);
+
+                        const name = document.createElement("span");
+                        name.textContent =
+                            ` ${adviser.name} (${adviser.email})`;
+
+                        label.append(check, name);
+                        dialog.appendChild(label);
+
+                        selections.push(check);
+                    });
+
+                    const actions = document.createElement("div");
+                    actions.style.cssText =
+                        "display:flex;gap:10px;justify-content:flex-end;margin-top:20px";
+
+                    const cancel = document.createElement("button");
+                    cancel.type = "button";
+                    cancel.className = "btn btn-light";
+                    cancel.textContent = "Cancel";
+
+                    const send = document.createElement("button");
+                    send.type = "button";
+                    send.className = "btn btn-primary";
+                    send.textContent = "Send Email";
+
+                    actions.append(cancel, send);
+                    dialog.appendChild(actions);
+                    document.body.appendChild(dialog);
+
+                    const closeDialog = () => dialog.close();
+
+                    dialog.addEventListener(
+                        "close",
+                        () => dialog.remove(),
+                        { once: true }
+                    );
+
+                    cancel.addEventListener("click", closeDialog);
+
+                    send.addEventListener("click", async () => {
+                        const selectedIds = selections
+                            .filter(check => check.checked)
+                            .map(check => Number(check.value));
+
+                        if (!selectedIds.length) {
+                            alert("Please select at least one Adviser.");
+                            return;
+                        }
+
+                        const confirmed = confirm(
+                            `Send election report links to ` +
+                            `${selectedIds.length} Adviser(s)?`
+                        );
+
+                        if (!confirmed) return;
+
+                        send.disabled = true;
+                        cancel.disabled = true;
+
+                        try {
+                            const result = await request(
+                                `/election_archive/${encodeURIComponent(electionId)}/notify-advisers`,
+                                {
+                                    method: "POST",
+                                    body: JSON.stringify({
+                                        adviser_ids: selectedIds
+                                    })
+                                }
+                            );
+
+                            closeDialog();
+
+                            message(result.message);
+
+                            if (result.accepted_count !== result.total) {
+                                message(
+                                    "Some emails were not accepted. " +
+                                    "Check the backend logs before retrying.",
+                                    true
+                                );
+                            }
+
+                        } catch (error) {
+                            message(error.message, true);
+                            send.disabled = false;
+                            cancel.disabled = false;
+                        }
+                    });
+
+                    dialog.showModal();
+
+                } catch (error) {
+                    message(error.message, true);
+
+                } finally {
+                    emailBtn.disabled = false;
+                }
+            });
+
+            buttons.appendChild(emailBtn);
+        }
+        const pdfBtn = document.createElement("button");
+
+        pdfBtn.type = "button";
+        pdfBtn.className = "view-btn";
+        pdfBtn.textContent = "Download PDF";
+
+        pdfBtn.addEventListener("click", async () => {
+            pdfBtn.disabled = true;
+
+            try {
+                const electionId = election.election_id;
+
+                const response = await fetch(
+                    API_BASE +
+                    `/election_archive/${encodeURIComponent(electionId)}/report.pdf`,
+                    {
+                        method: "GET",
+                        headers: {
+                            ...(token()
+                                ? { Authorization: "Bearer " + token() }
+                                : {})
+                        },
+                        cache: "no-store"
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorData = await response.json()
+                        .catch(() => ({}));
+
+                    throw new Error(
+                        errorData.message ||
+                        `PDF download failed (${response.status})`
+                    );
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement("a");
+
+                link.href = url;
+                link.download = `election-report-${electionId}.pdf`;
+
+                document.body.appendChild(link);
+
+                link.click();
+                link.remove();
+
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 60000);
+
+            } catch (error) {
+                console.error("PDF DOWNLOAD ERROR:", error);
+                message(error.message, true);
+
+            } finally {
+                pdfBtn.disabled = false;
+            }
+        });
+
+        buttons.appendChild(pdfBtn);
 
         // Archive remains protected by the backend
         if (
