@@ -25,6 +25,7 @@
         busy: false,
         checking: false,
         counted: false,
+        review: null,
         unavailable: false,
         uncertain: false,
         qrRaw: null,
@@ -133,6 +134,11 @@
             state.unavailable ||
             state.uncertain;
 
+        $("confirmCountBtn").disabled =
+            $("analyzeBtn").disabled ||
+            !state.review ||
+            state.review.revision !== state.revision ||
+            Date.now() >= state.review.expiresAt;
         $("checkStatusBtn").disabled =
             locked ||
             state.preparing ||
@@ -939,7 +945,7 @@
 
         state.photoTicket++;
         state.revision++;
-
+        state.review = null;
         state.photo = null;
         state.upload = null;
         state.photoInfo = null;
@@ -994,7 +1000,7 @@
         state.template = null;
         state.qrRaw = null;
         state.revision++;
-
+        state.review = null;
         controls();
 
         try {
@@ -1103,6 +1109,7 @@
         state.template = null;
         state.qrRaw = null;
         state.revision++;
+        state.review = null;
 
         window.campusVoteQRVerified = false;
 
@@ -1212,6 +1219,7 @@
         const ticket = ++state.photoTicket;
 
         state.revision++;
+        state.review = null;
         state.photo = null;
         state.upload = null;
         state.qrRaw = null;
@@ -1523,7 +1531,8 @@
 
     /* EXPLICIT BACKEND COUNTING */
 
-    async function scan() {
+
+    async function scan(counting = false) {
         if (
             state.busy ||
             state.checking ||
@@ -1538,8 +1547,37 @@
             camera.opening ||
             camera.stream ||
             camera.capturing
+        ) return;
+
+        const review = state.review;
+
+        if (
+            counting &&
+            (
+                !review ||
+                review.revision !== state.revision ||
+                Date.now() >= review.expiresAt
+            )
         ) {
+            state.review = null;
+
+            status(
+                "analysisStatus",
+                "Please scan and validate the ballot first.",
+                true
+            );
+
+            controls();
             return;
+        }
+
+        if (counting) {
+            const confirmed = window.confirm(
+                "Have you reviewed all detected selections? " +
+                "Confirm to permanently count this ballot."
+            );
+
+            if (!confirmed) return;
         }
 
         const snapshot = {
@@ -1547,39 +1585,31 @@
             photo: state.photo,
             upload: state.upload,
             electionId: state.electionId,
-            templateId: selectedTemplateId(),
-            qrRaw: state.qrRaw
+            templateId: selectedTemplateId()
         };
 
         if (
             !validId(snapshot.electionId) ||
             !validId(snapshot.templateId)
-        ) {
-            return;
-        }
+        ) return;
 
+        state.review = null;
         state.busy = true;
+
         activeScan = new AbortController();
 
         controls();
 
         const started = performance.now();
 
-        const clock = setInterval(() => {
-            status(
-                "analysisStatus",
-                `Scanning ballot… ${Math.floor(
-                    (performance.now() - started) / 1000
-                )} s`
-            );
-        }, 500);
-
         let sent = false;
 
         try {
             status(
                 "analysisStatus",
-                "Uploading and scanning ballot..."
+                counting
+                    ? "Confirming and counting ballot..."
+                    : "Scanning and validating ballot..."
             );
 
             const form = new FormData();
@@ -1600,23 +1630,31 @@
                 "ballot-scan.jpg"
             );
 
+            if (counting) {
+                form.append(
+                    "review_token",
+                    review.token
+                );
+            }
+
             sent = true;
 
-            const data = await api("/omr/scan", {
-                method: "POST",
-                body: form,
-                timeoutMs: SCAN_TIMEOUT_MS,
-                signal: activeScan.signal
-            });
+            const data = await api(
+                counting
+                    ? "/omr/scan"
+                    : "/omr/preview",
+                {
+                    method: "POST",
+                    body: form,
+                    timeoutMs: SCAN_TIMEOUT_MS,
+                    signal: activeScan.signal
+                }
+            );
 
             showTiming(
                 data,
                 performance.now() - started
             );
-
-            const parsed = snapshot.qrRaw
-                ? parseQR(snapshot.qrRaw)
-                : null;
 
             if (
                 state.revision !== snapshot.revision ||
@@ -1624,23 +1662,19 @@
                 Number(data.election_id) !== snapshot.electionId ||
                 Number(data.template_id) !== snapshot.templateId ||
                 !uuidPattern.test(String(data.ballot_id || "")) ||
+                data.valid !== true ||
+                data.preview_only !== !counting ||
+                data.counted !== counting ||
                 (
-                    parsed &&
-                    parsed.ballotId !==
-                    String(data.ballot_id).toLowerCase()
-                ) ||
-                data.preview_only !== false ||
-                data.counted !== true ||
-                data.valid !== true
+                    counting &&
+                    String(data.ballot_id).toLowerCase() !==
+                    review.ballotId
+                )
             ) {
                 throw new Error(
-                    "The counting result could not be confirmed. " +
-                    "Check the ballot status."
+                    "Unable to verify the scanning response."
                 );
             }
-
-            state.counted = true;
-            state.uncertain = false;
 
             state.qrRaw =
                 `CV1|${snapshot.electionId}|` +
@@ -1648,9 +1682,61 @@
                 `${snapshot.templateId}`;
 
             window.campusVoteQRVerified = true;
-            window.confirmedOMRCounting = true;
 
             displayResults(data);
+
+            if (!counting) {
+                window.confirmedOMRCounting = false;
+
+                if (
+                    data.can_confirm === true &&
+                    data.review_required !== true &&
+                    typeof data.review_token === "string" &&
+                    data.review_token
+                ) {
+                    state.review = {
+                        token: data.review_token,
+                        ballotId:
+                            String(data.ballot_id).toLowerCase(),
+                        revision: snapshot.revision,
+
+                        // Frontend expires slightly before backend.
+                        expiresAt: Date.now() + 9 * 60 * 1000
+                    };
+
+                    status(
+                        "analysisStatus",
+                        "Validation successful. Review the " +
+                        "detected selections before counting."
+                    );
+
+                    status(
+                        "qrStatus",
+                        "QR and department verified. Not counted yet."
+                    );
+
+                } else {
+                    status(
+                        "analysisStatus",
+                        data.message ||
+                        "Ballot cannot be confirmed.",
+                        true
+                    );
+                }
+
+                $("results").scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest"
+                });
+
+                return;
+            }
+
+            // Counting is confirmed by the backend.
+            state.counted = true;
+            state.uncertain = false;
+
+            window.confirmedOMRCounting = true;
 
             status(
                 "analysisStatus",
@@ -1660,16 +1746,18 @@
 
             status(
                 "qrStatus",
-                `QR verified by server. Status: COUNTED. ` +
-                `Ballot: ${data.ballot_id}`
+                "Ballot status: COUNTED"
             );
 
             window.showToast?.(
                 "Ballot counted successfully.",
                 "success"
             );
+
         } catch (error) {
             const data = error.data;
+
+            state.review = null;
 
             showTiming(
                 data,
@@ -1686,6 +1774,7 @@
                 data?.counted === false;
 
             if (
+                counting &&
                 sent &&
                 !rejected &&
                 !error.requestNotSent
@@ -1694,20 +1783,21 @@
 
                 status(
                     "analysisStatus",
-                    `${error.message} Counting status is unknown. ` +
-                    "Keep this ballot aside and use Check Ballot Status; " +
-                    "do not immediately rescan.",
+                    "Counting status is unknown. Use Check Ballot " +
+                    "Status before retrying.",
                     true
                 );
+
             } else {
                 if (
-                    data?.status === "COUNTED" ||
-                    data?.duplicate === true
+                    data?.duplicate === true ||
+                    data?.status === "COUNTED"
                 ) {
                     state.counted = true;
-                    window.confirmedOMRCounting = true;
-                } else if (error.status === 409 ||
-                    error.data?.scope_denied === true) {
+                } else if (
+                    error.status === 409 ||
+                    data?.scope_denied === true
+                ) {
                     state.unavailable = true;
                 }
 
@@ -1717,15 +1807,15 @@
                     true
                 );
             }
-        } finally {
-            clearInterval(clock);
 
+        } finally {
             activeScan = null;
             state.busy = false;
 
             controls();
         }
     }
+
 
     /* READ-ONLY BALLOT STATUS */
 
@@ -2303,8 +2393,14 @@ self.onmessage = function (event) {
 
         $("analyzeBtn").addEventListener(
             "click",
-            scan
+            () => scan(false)
         );
+
+        $("confirmCountBtn").addEventListener(
+            "click",
+            () => scan(true)
+        );
+
 
         $("cancelBtn").addEventListener(
             "click",

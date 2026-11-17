@@ -639,6 +639,37 @@
                 grid-template-columns: 1fr 1fr;
             }
         }
+
+        #confirmCountBtn {
+            width: 100%;
+            min-height: 48px;
+            background: #176b36;
+            color: white;
+            margin-top: 10px;
+        }
+
+        #confirmCountBtn:disabled {
+            background: #9ca3af;
+            opacity: .65;
+            cursor: not-allowed;
+        }
+
+        .ballot-processing-panel {
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+        }
+
+        .preview-panel {
+            height: auto;
+            max-height: none;
+            overflow: visible;
+        }
+
+        .preview-panel .results-area {
+            max-height: none;
+            overflow: visible;
+        }
     </style>
 </head>
 
@@ -698,22 +729,23 @@
 
             <hr class="divider">
 
-            <h3>OMR Settings</h3>
+            <h3>Ballot Processing</h3>
 
             <p class="note">Portrait ballot • One ballot per scan • Balanced shade detection</p>
 
+
             <div class="counting-note">
-                <strong>Automatic Vote Counting</strong>
+                <strong>Ballot Validation and Counting</strong>
                 <p>
-                    After you press Scan &amp; Count Ballot, the backend
-                    verifies the QR, checks registration marks and shaded
-                    bubbles, and counts valid votes automatically.
-                    Duplicate or invalid ballots are rejected.
+                    Scan the ballot first and review the detected
+                    selections. Votes will only be recorded after
+                    pressing Confirm &amp; Count Ballot.
                 </p>
             </div>
 
+
             <div class="buttons">
-                <button id="analyzeBtn" type="button" class="primary" disabled>Scan &amp; Count Ballot</button>
+                <button id="analyzeBtn" type="button" class="primary" disabled>Scan &amp; Validate Ballot</button>
             </div>
 
             <div class="buttons">
@@ -750,7 +782,7 @@
                 <h2 id="cameraHeading">Live Camera</h2>
 
                 <p id="cameraGuideText" class="note">
-                    Fit one A5 portrait ballot inside the guide. Keep the entire
+                    Fit one portrait ballot inside the guide. Keep the entire
                     sheet, its QR, and all four registration squares visible.
                     The guide does not detect or validate marks.
                 </p>
@@ -804,10 +836,21 @@
                     <p>No ballot analyzed yet.</p>
                 </div>
             </div>
+
+            <div class="buttons">
+                <button id="confirmCountBtn" type="button" class="primary" disabled>
+                    Confirm &amp; Count Ballot
+                </button>
+            </div>
+
+            <p class="note">
+                Confirm only after checking all detected selections.
+            </p>
+
         </section>
     </main>
 
-    <script src="./scanner.js?v=20261118-camera-flash"></script>
+    <script src="./scanner.js?v=20261118-review-count"></script>
 </body>
 
 </html>
