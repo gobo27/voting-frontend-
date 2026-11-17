@@ -131,6 +131,7 @@ const BallotAPI = (() => {
     }
 
     // Original QR batch.
+
     async function generateQRBatch(payload) {
         return request("/ballots/qr/batches", {
             method: "POST",
@@ -138,12 +139,12 @@ const BallotAPI = (() => {
         });
     }
 
-    // Additional ballots: bagong QR IDs, same saved template.
-    async function generateAdditionalQRBatch(payload) {
-        return generateQRBatch({
-            ...payload,
-            batch_type: "ADDITIONAL"
-        });
+
+    async function getElectionScopes(electionId) {
+        return request(
+            `/ballots/qr/scopes/election/${encodeURIComponent(electionId)
+            }`
+        );
     }
 
     async function getQRBatches(electionId, templateId = null) {
@@ -212,12 +213,12 @@ const BallotAPI = (() => {
         addGridCoordinate,
         deleteTemplate,
         generateQRBatch,
-        generateAdditionalQRBatch,
         getQRBatches,
         getQRBatch,
         confirmPrint,
         confirmQRPrint,
-        getPrintSummary
+        getPrintSummary,
+        getElectionScopes
     };
 })();
 

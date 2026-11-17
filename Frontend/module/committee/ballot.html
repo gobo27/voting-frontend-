@@ -955,9 +955,9 @@
             <h2>Saved Ballots</h2>
 
             <p class="helper">
-                Select a previously saved ballot template.
-                You can generate additional QR ballots using
-                the selected template without saving it again.
+                Select a previously saved ballot template
+                to generate its original registered QR ballots
+                or view existing ballot information.
             </p>
 
             <div class="saved-ballot-section">
@@ -1009,6 +1009,19 @@
                 Every newly generated ballot receives a unique QR code.
             </p>
 
+            <label for="ballotScope">
+                Department / Grade
+            </label>
+
+            <select id="ballotScope" required>
+                <option value="">Loading scopes...</option>
+            </select>
+
+            <p class="helper" id="ballotScopeStatus">
+                One registered batch per department or grade.
+            </p>
+
+
             <label for="ballotQuantity">
                 Number of Ballots
             </label>
@@ -1022,31 +1035,6 @@
                 </button>
 
             </div>
-
-            <!--REPRINT EXISTING BATCH -->
-
-            <hr class="section-divider">
-
-            <h2>Print Additional Ballots</h2>
-
-            <p class="helper">
-                Generate additional ballots using the selected saved
-                template. Each ballot receives a new unique QR code.
-            </p>
-
-            <label for="additionalQuantity">
-                Number of Additional Ballots
-            </label>
-
-            <input id="additionalQuantity" type="number" min="1" max="500" value="20">
-
-            <div class="buttons">
-                <button id="generateAdditionalButton" type="button" class="primary">
-                    Print Additional Ballots
-                </button>
-            </div>
-
-            <p class="helper" id="printingSummary"></p>
         </section>
 
         <!--LIVE A4 BALLOT PREVIEW-->
@@ -1070,9 +1058,8 @@
 
 
     <script src="../sheared/toast.js"></script>
-    <script src="./ballot.js?v=20261105-printcount2"></script>
-    <script src="./ballot_create.js?v=20261105-printcount2"></script>
-
+    <script src="./ballot.js?v=20261117-scopes"></script>
+    <script src="./ballot_create.js?v=20261117-scopes"></script>
 
 </body>
 

@@ -19,7 +19,8 @@ const state = {
     loadingTemplate: false,
     loadingTemplates: false,
     savedTemplates: [],
-    selectedTemplateLabel: ""
+    selectedTemplateLabel: "",
+    scopes: []
 };
 
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
@@ -78,29 +79,40 @@ function canDeleteTemplates() {
 function updateActionButtons() {
     const saveButton = el("saveButton");
     const generateButton = el("generatePrintButton");
-    const additionalButton = el("generateAdditionalButton");
 
-    const busy = state.printing ||
+    const busy =
+        state.printing ||
         state.saving ||
         state.deleting ||
         state.loadingTemplate;
 
     if (saveButton) {
-        saveButton.disabled = electionLocked() || busy;
+        saveButton.disabled =
+            electionLocked() || busy;
     }
 
     if (generateButton) {
-        generateButton.disabled = !state.savedTemplateId || busy;
+        const scopeId = Number(
+            el("ballotScope")?.value
+        );
+
+        const scope = state.scopes.find(
+            item => Number(item.scope_id) === scopeId
+        );
+
+        generateButton.disabled =
+            !state.savedTemplateId ||
+            !scope ||
+            Boolean(scope.existing_batch_id) ||
+            electionLocked() ||
+            busy;
     }
 
-    if (additionalButton) {
-        additionalButton.disabled = !state.savedTemplateId || busy;
-    }
-
-    document.querySelectorAll(".saved-template-delete")
-        .forEach(button => {
-            button.disabled = busy;
-        });
+    document.querySelectorAll(
+        ".saved-template-delete"
+    ).forEach(button => {
+        button.disabled = busy;
+    });
 }
 
 
@@ -570,8 +582,8 @@ function createHalf(ballot = null) {
 
         const code = document.createElement("div");
         code.className = "ballot-qr-id";
-        code.textContent = ballot.ballot_id;
-
+        code.textContent =
+            ballot.serial_number || ballot.ballot_id;
         qrBox.append(image, code);
         half.appendChild(qrBox);
     }
@@ -653,6 +665,7 @@ function render() {
 
 // LOAD ELECTION DATA
 
+
 async function loadData() {
     try {
         status(
@@ -713,6 +726,7 @@ async function loadData() {
         render();
 
         await loadSavedTemplates();
+        await loadElectionScopes();
 
         setEditorLocked(electionLocked());
 
@@ -729,6 +743,56 @@ async function loadData() {
     }
 }
 
+async function loadElectionScopes() {
+    const select = el("ballotScope");
+
+    if (!select || !state.electionId) return;
+
+    const result =
+        await BallotAPI.getElectionScopes(
+            state.electionId
+        );
+
+    state.scopes = Array.isArray(result.scopes)
+        ? result.scopes
+        : [];
+
+    select.replaceChildren();
+
+    select.add(
+        new Option(
+            "Select department / grade",
+            ""
+        )
+    );
+
+    for (const scope of state.scopes) {
+        const alreadyGenerated =
+            Boolean(scope.existing_batch_id);
+
+        const option = new Option(
+            scope.scope_name +
+            (alreadyGenerated
+                ? " (Already generated)"
+                : ""),
+            String(scope.scope_id)
+        );
+
+        option.disabled = alreadyGenerated;
+        select.add(option);
+    }
+
+    const note = el("ballotScopeStatus");
+
+    if (note) {
+        note.textContent =
+            "One registered batch per " +
+            "department/grade. Existing batches " +
+            "can be reprinted.";
+    }
+
+    updateActionButtons();
+}
 
 
 // OMR COORDINATE PAYLOAD
@@ -943,6 +1007,7 @@ async function saveBallot() {
         render();
 
         await loadSavedTemplates();
+        await loadElectionScopes();
         updateSelectedTemplateLabel();
 
         status(
@@ -1105,7 +1170,7 @@ async function confirmPrintedBatch(
 
 // GENERATE AND PRINT REGISTERED QR BALLOTS
 
-async function generateAndPrintBallots(batchType = "ORIGINAL") {
+async function generateAndPrintBallots() {
     if (
         state.printing ||
         state.saving ||
@@ -1122,8 +1187,25 @@ async function generateAndPrintBallots(batchType = "ORIGINAL") {
         );
     }
 
+    const scopeId = Number(
+        el("ballotScope")?.value
+    );
+
+    const scope = state.scopes.find(
+        item => Number(item.scope_id) === scopeId
+    );
+
+    if (!scope || scope.existing_batch_id) {
+        return status(
+            "Select a department/grade without " +
+            "an existing ballot batch.",
+            true
+        );
+    }
+
+
     const quantity = Number(
-        el(batchType === "ADDITIONAL" ? "additionalQuantity" : "ballotQuantity").value
+        el("ballotQuantity").value
     );
 
     if (
@@ -1203,15 +1285,14 @@ async function generateAndPrintBallots(batchType = "ORIGINAL") {
         );
 
         // Same request ID ang gagamitin kapag nag-retry.
-        const pendingKey = batchType === "ADDITIONAL"
-            ? "campusvote_pending_additional_qr_batch"
-            : "campusvote_pending_qr_batch";
+        const pendingKey = "campusvote_pending_qr_batch";
 
         const details = {
             election_id: state.electionId,
             template_id: state.savedTemplateId,
+            scope_id: scopeId,
             quantity,
-            batch_type: batchType
+            batch_type: "ORIGINAL"
         };
 
         let pending = null;
@@ -1225,10 +1306,12 @@ async function generateAndPrintBallots(batchType = "ORIGINAL") {
         }
 
         // Bagong request ID kapag walang matching pending request.
+
         if (
             !pending ||
             Number(pending.election_id) !== Number(details.election_id) ||
             Number(pending.template_id) !== Number(details.template_id) ||
+            Number(pending.scope_id) !== scopeId ||
             Number(pending.quantity) !== Number(details.quantity) ||
             pending.batch_type !== details.batch_type ||
             !pending.request_id
@@ -1293,10 +1376,11 @@ async function generateAndPrintBallots(batchType = "ORIGINAL") {
             sessionStorage.removeItem(pendingKey);
 
             await loadPrintingSummary();
+            await loadElectionScopes();
 
             status(
                 `${result.quantity ?? quantity} ` +
-                `${batchType === "ADDITIONAL" ? "additional " : ""}unique ballots generated. ` +
+                `unique ballots generated. ` +
                 `Batch ID: ${batchId}`
             );
         } else {
@@ -1787,188 +1871,32 @@ async function deleteSavedTemplate(templateId) {
         updateActionButtons();
     }
 }
-
-
-// PRINT ADDITIONAL BALLOTS
-
-async function printAdditionalBallots() {
-    if (
-        state.printing ||
-        state.saving ||
-        state.deleting ||
-        state.loadingTemplate
-    ) {
-        return;
-    }
-
-    if (!state.electionId) {
-        return status(
-            "Election has not loaded.",
-            true
-        );
-    }
-
-    if (!state.savedTemplateId) {
-        return status(
-            "Select a saved ballot template first.",
-            true
-        );
-    }
-
-    const quantityInput = el("additionalQuantity");
-
-    if (!quantityInput) {
-        return status(
-            "Additional ballot quantity input is missing from ballot.html.",
-            true
-        );
-    }
-
-    const quantity = Number(quantityInput.value);
-
-    if (
-        !Number.isSafeInteger(quantity) ||
-        quantity < 1 ||
-        quantity > 500
-    ) {
-        return status(
-            "Enter 1 to 500 additional ballots.",
-            true
-        );
-    }
-
-    // Gagamitin ang existing saved template.
-    // Backend ang gagawa ng bagong unique QR IDs.
-    await generateAndPrintBallots("ADDITIONAL");
-}
-
-// RETRY PROTECTION FOR QR GENERATION
-
-const ADDITIONAL_PENDING_KEY =
-    "campusvote_pending_additional_qr_batch";
-
-function getPendingAdditionalBatch() {
-    try {
-        const raw = sessionStorage.getItem(
-            ADDITIONAL_PENDING_KEY
-        );
-
-        if (!raw) return null;
-
-        const pending = JSON.parse(raw);
-
-        if (
-            !pending ||
-            !pending.request_id ||
-            !Number.isSafeInteger(Number(pending.election_id)) ||
-            !Number.isSafeInteger(Number(pending.template_id)) ||
-            !Number.isSafeInteger(Number(pending.quantity))
-        ) {
-            return null;
-        }
-
-        return pending;
-
-    } catch (error) {
-        console.warn(
-            "Invalid pending additional batch:",
-            error
-        );
-
-        return null;
-    }
-}
-
-function clearPendingAdditionalBatch() {
-    sessionStorage.removeItem(
-        ADDITIONAL_PENDING_KEY
-    );
-}
-
-// Pinapakita kung may unfinished additional request.
-function checkPendingAdditionalBatch() {
-    const pending = getPendingAdditionalBatch();
-
-    if (!pending) return;
-
-    if (
-        Number(pending.election_id) !==
-        Number(state.electionId)
-    ) {
-        return;
-    }
-
-    const info = el("batchInfo");
-
-    if (info) {
-        info.textContent =
-            `Unfinished additional ballot request detected: ` +
-            `${pending.quantity} ballots for Template #${pending.template_id}. ` +
-            `Retrying the same request ID will not create duplicate ballots.`;
-    }
-}
-
-// PREPARE ADDITIONAL BALLOT CONTROLS
-
-function initializeAdditionalBallotControls() {
-    const generateButton = el(
-        "generateAdditionalButton"
-    );
-
-    const quantityInput = el(
-        "additionalQuantity"
-    );
-
-    if (quantityInput) {
-        quantityInput.min = "1";
-        quantityInput.max = "500";
-
-        if (!quantityInput.value) {
-            quantityInput.value = "20";
-        }
-    }
-
-    if (generateButton) {
-        generateButton.addEventListener(
-            "click",
-            printAdditionalBallots
-        );
-    }
-}
-
 // PRINTING SUMMARY
 
 async function loadPrintingSummary() {
     if (!state.electionId) return;
 
     try {
-        const result =
-            await BallotAPI.getPrintSummary(
-                state.electionId
-            );
+        const result = await BallotAPI.getPrintSummary(
+            state.electionId
+        );
 
-        const summary =
-            result.summary || result;
+        const summary = result.summary || result;
 
         const original = Number(
             summary.initial_printed || 0
         );
 
-        const additional = Number(
-            summary.additional_printed || 0
+        const registered = Number(
+            summary.registered_unique || 0
         );
 
-        const total = original + additional;
-
-        const summaryElement = el(
-            "printingSummary"
-        );
+        const summaryElement = el("printingSummary");
 
         if (summaryElement) {
             summaryElement.textContent =
-                `Original: ${original} | ` +
-                `Additional: ${additional} | ` +
-                `Total: ${total}`;
+                `Original printing confirmations: ${original} | ` +
+                `Registered unique ballots: ${registered}`;
         }
 
     } catch (error) {
@@ -2136,7 +2064,7 @@ document.addEventListener(
         if (generatePrintButton) {
             generatePrintButton.addEventListener(
                 "click",
-                () => generateAndPrintBallots("ORIGINAL")
+                () => generateAndPrintBallots()
             );
         }
 
@@ -2146,15 +2074,12 @@ document.addEventListener(
                 updateBallotCopies
             );
         }
-
-        initializeAdditionalBallotControls();
-
+        el("ballotScope")?.addEventListener(
+            "change",
+            updateActionButtons
+        );
         await loadData();
-
-        checkPendingAdditionalBatch();
-
         await loadPrintingSummary();
-
         updateActionButtons();
     }
 );
