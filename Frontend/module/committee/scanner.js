@@ -39,7 +39,9 @@
         ready: false,
         capturing: false,
         startAbort: null,
-        observer: null
+        observer: null,
+        torchOn: false,
+        torchBusy: false
     };
 
     let activeScan = null;
@@ -116,6 +118,7 @@
             !camera.stream;
 
         $("stopCameraBtn").disabled = !cameraActive;
+        updateFlashButton();
         $("cameraGuide").hidden = !camera.ready;
 
         // Prevent counting an old photo while a new live ballot is shown.
@@ -148,6 +151,102 @@
 
     /* LIVE CAMERA LIFECYCLE */
 
+    function supportsFlash() {
+        const track =
+            camera.stream?.getVideoTracks()[0];
+
+        if (!track) return false;
+
+        try {
+            const torch =
+                track.getCapabilities?.()?.torch;
+
+            return torch === true ||
+                (Array.isArray(torch) && torch.includes(true));
+
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function updateFlashButton() {
+        const button = $("flashBtn");
+
+        if (!button) return;
+
+        const supported = supportsFlash();
+
+        button.disabled =
+            !camera.ready ||
+            !supported ||
+            camera.capturing ||
+            camera.torchBusy;
+
+        button.textContent = !supported
+            ? "⚡ Flash Unavailable"
+            : camera.torchOn
+                ? "⚡ Flash ON"
+                : "⚡ Flash OFF";
+
+        button.classList.toggle(
+            "active",
+            camera.torchOn
+        );
+
+        button.setAttribute(
+            "aria-pressed",
+            String(camera.torchOn)
+        );
+    }
+
+    async function toggleFlash() {
+        const track =
+            camera.stream?.getVideoTracks()[0];
+
+        if (
+            !track ||
+            !supportsFlash() ||
+            !camera.ready ||
+            camera.capturing ||
+            camera.torchBusy
+        ) return;
+
+        const ticket = camera.ticket;
+        const enabled = !camera.torchOn;
+
+        camera.torchBusy = true;
+        updateFlashButton();
+
+        try {
+            await track.applyConstraints({
+                ...track.getConstraints(),
+                advanced: [
+                    { torch: enabled }
+                ]
+            });
+
+            if (ticket !== camera.ticket) return;
+
+            camera.torchOn =
+                track.getSettings().torch ?? enabled;
+
+        } catch (error) {
+            console.error("Flash error:", error);
+
+            status(
+                "cameraStatus",
+                "Flash is unavailable on this camera.",
+                true
+            );
+
+        } finally {
+            if (ticket === camera.ticket) {
+                camera.torchBusy = false;
+                updateFlashButton();
+            }
+        }
+    }
+
     function stopTracks(stream) {
         stream?.getTracks().forEach(track => {
             track.stop();
@@ -169,6 +268,8 @@
         camera.opening = false;
         camera.ready = false;
         camera.capturing = false;
+        camera.torchOn = false;
+        camera.torchBusy = false;
 
         camera.observer?.disconnect();
         stopTracks(stream);
@@ -208,6 +309,8 @@
         ) {
             return;
         }
+        stage.style.aspectRatio =
+            `${video.videoWidth} / ${video.videoHeight}`;
 
         const scale = Math.min(
             stage.clientWidth / video.videoWidth,
@@ -223,8 +326,8 @@
         const a5Ratio = 148.5 / 210;
 
         const width = Math.min(
-            contentWidth * 0.86,
-            contentHeight * 0.86 * a5Ratio
+            contentWidth * 0.94,
+            contentHeight * 0.94 * a5Ratio
         );
 
         const height = width / a5Ratio;
@@ -1603,7 +1706,8 @@
                 ) {
                     state.counted = true;
                     window.confirmedOMRCounting = true;
-                } else if (error.status === 409) {
+                } else if (error.status === 409 ||
+                    error.data?.scope_denied === true) {
                     state.unavailable = true;
                 }
 
@@ -1722,7 +1826,10 @@
 
             status(
                 "qrStatus",
-                `Ballot ${parsed.ballotId}: ${data.status}.`
+                `Ballot: ${data.serial_number || parsed.ballotId}\n` +
+                `Status: ${data.status}\n` +
+                `Department authorization: Verified`
+
             );
 
 
@@ -1761,7 +1868,8 @@
                     "Ballot already recorded. Load the next ballot."
                 );
             } else {
-                if (error.status === 409) {
+                if (error.status === 409 ||
+                    error.data?.scope_denied === true) {
                     state.unavailable = true;
                 }
 
@@ -2127,7 +2235,10 @@ self.onmessage = function (event) {
             "click",
             startCamera
         );
-
+        $("flashBtn").addEventListener(
+            "click",
+            toggleFlash
+        );
         $("captureBtn").addEventListener(
             "click",
             capturePhoto
