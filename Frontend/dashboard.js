@@ -524,9 +524,15 @@ function renderLiveResults() {
                         selectedScope === "all" &&
                         winnerIds.has(candidate.id);
 
+
+                    const stableIndex = [...position.candidates]
+                        .sort((a, b) => a.id - b.id)
+                        .findIndex(item => item.id === candidate.id);
+
                     const displayName = revealed
                         ? candidate.name
-                        : `Candidate ${String.fromCharCode(65 + index)}`;
+                        : `Candidate ${String.fromCharCode(65 + stableIndex)}`;
+
 
                     const winnerBadge = isWinner
                         ? `
@@ -599,8 +605,8 @@ function renderLiveResults() {
                         .toFixed(1)
                     : null;
 
-           const underVoteHtml =
-    finalized && showVoteCounts && positionStats
+            const underVoteHtml =
+                finalized && showVoteCounts && positionStats
                     ? `
             <div class="undervote-info">
                 No Recorded Vote:
