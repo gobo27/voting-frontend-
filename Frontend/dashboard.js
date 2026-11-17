@@ -32,9 +32,6 @@ async function loadDashboardData() {
     if (isLoading) return;
 
     isLoading = true;
-
-    isLoading = true;
-
     try {
         const response = await fetch(
             `${API_BASE}/dashboard/${encodeURIComponent(ELECTION_ID)}/overview`,
@@ -128,6 +125,44 @@ async function loadDashboardData() {
         isLoading = false;
         renderLiveResults();
     }
+}
+
+const DEPARTMENT_COLORS = {
+    BSCS: "#2563eb",
+    BSCOE: "#dc2626",
+    BSN: "#16a34a",
+    BSA: "#9333ea",
+    BSBA: "#ea580c",
+    BSED: "#0891b2",
+    BSTM: "#db2777",
+    BSHM: "#ca8a04",
+    BSPSYCH: "#4f46e5",
+    LEGACY: "#6b7280"
+};
+
+const GRADE_COLORS = [
+    "#2563eb",
+    "#dc2626",
+    "#16a34a",
+    "#9333ea",
+    "#ea580c",
+    "#0891b2"
+];
+
+function getScopeColor(scopeCode) {
+    const code = String(scopeCode).toUpperCase();
+
+    if (DEPARTMENT_COLORS[code]) {
+        return DEPARTMENT_COLORS[code];
+    }
+
+    const grade = Number(
+        code.match(/\d+/)?.[0] || 0
+    );
+
+    return GRADE_COLORS[
+        grade % GRADE_COLORS.length
+    ];
 }
 
 async function loadAnalytics() {
@@ -262,26 +297,49 @@ function renderAnalytics() {
         return;
     }
 
-    const chartLabels = timeline.map(item =>
-        new Date(item.timestamp).toLocaleString(
-            "en-PH",
-            {
+    const departments =
+        analyticsData.department_timelines || [];
+
+    const datasets = departments.map(scope => {
+        const color = getScopeColor(
+            scope.scope_code
+        );
+
+        return {
+            label: scope.scope_name,
+
+            data: scope.points.map(point => ({
+                x: point.timestamp,
+                y: point.counted_ballots
+            })),
+
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2.5,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            fill: false,
+            tension: 0,
+            borderDash:
+                scope.scope_id === "legacy"
+                    ? [6, 4]
+                    : []
+        };
+    });
+
+    function formatGraphTime(timestamp) {
+        return new Date(Number(timestamp))
+            .toLocaleString("en-PH", {
                 timeZone: "Asia/Manila",
                 month: "short",
                 day: "numeric",
                 hour: "numeric",
                 minute: "2-digit"
-            }
-        )
-    );
-
-    const chartValues = timeline.map(
-        item => item.counted_ballots
-    );
+            });
+    }
 
     if (votingChart) {
-        votingChart.data.labels = chartLabels;
-        votingChart.data.datasets[0].data = chartValues;
+        votingChart.data.datasets = datasets;
         votingChart.update("none");
         return;
     }
@@ -292,18 +350,7 @@ function renderAnalytics() {
             type: "line",
 
             data: {
-                labels: chartLabels,
-
-                datasets: [{
-                    label: "Counted Ballots",
-                    data: chartValues,
-                    borderColor: "#800000",
-                    backgroundColor: "rgba(128,0,0,0.08)",
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    fill: true,
-                    tension: 0
-                }]
+                datasets
             },
 
             options: {
@@ -311,9 +358,35 @@ function renderAnalytics() {
                 maintainAspectRatio: false,
                 animation: false,
 
+                interaction: {
+                    mode: "nearest",
+                    axis: "x",
+                    intersect: false
+                },
+
                 scales: {
+                    x: {
+                        type: "linear",
+
+                        title: {
+                            display: true,
+                            text: "Counting Time"
+                        },
+
+                        ticks: {
+                            maxTicksLimit: 7,
+                            callback: value =>
+                                formatGraphTime(value)
+                        }
+                    },
+
                     y: {
                         beginAtZero: true,
+
+                        title: {
+                            display: true,
+                            text: "Counted Ballots"
+                        },
 
                         ticks: {
                             precision: 0
@@ -323,7 +396,28 @@ function renderAnalytics() {
 
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: "bottom",
+
+                        labels: {
+                            usePointStyle: true,
+                            padding: 18
+                        }
+                    },
+
+                    tooltip: {
+                        callbacks: {
+                            title: items =>
+                                items.length
+                                    ? formatGraphTime(
+                                        items[0].parsed.x
+                                    )
+                                    : "",
+
+                            label: item =>
+                                `${item.dataset.label}: ` +
+                                `${item.parsed.y} ballots`
+                        }
                     }
                 }
             }
