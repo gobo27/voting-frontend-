@@ -11,7 +11,6 @@ const ELECTION_ID =
 const $ = id => document.getElementById(id);
 
 const POLL_INTERVAL = 3000;
-const MASK_CHAR = "••••••••";
 
 let currentPositions = [];
 let electionStatus = "UNKNOWN";
@@ -20,11 +19,19 @@ let scanningClosedAt = null;
 let votingClosedAt = null;
 let isLoading = false;
 let lastError = null;
+let selectedScope = "all";
+let analyticsData = null;
+let votingChart = null;
+let revealVotes = false;
+let analyticsLoading = false;
+
 
 // LOAD LIVE DASHBOARD DATA
 
 async function loadDashboardData() {
     if (isLoading) return;
+
+    isLoading = true;
 
     isLoading = true;
 
@@ -54,7 +61,7 @@ async function loadDashboardData() {
         }
 
         const election = data.election;
-
+        revealVotes = election.reveal_votes === true;
         const totalScannedBallots =
             Number(data.statistics?.scanned_ballots || 0);
 
@@ -83,6 +90,7 @@ async function loadDashboardData() {
 
         currentPositions = data.positions.map(
             position => ({
+                position_id: Number(position.position_id),
                 title: position.position_title,
                 max_choices:
                     Number(position.max_selection) || 1,
@@ -100,12 +108,20 @@ async function loadDashboardData() {
 
         lastError = null;
 
+        await loadAnalytics();
+        renderAnalytics();
+
     } catch (error) {
         console.error(
             "Dashboard error:",
             error
         );
-
+        revealVotes = false;
+        analyticsData = null;
+        namesMasked = true;
+        electionStatus = "UNKNOWN";
+        currentPositions = [];
+        renderAnalytics();
         lastError = error.message;
 
     } finally {
@@ -114,9 +130,207 @@ async function loadDashboardData() {
     }
 }
 
+async function loadAnalytics() {
+    if (analyticsLoading) return;
+
+    analyticsLoading = true;
+
+    const requestedScope = selectedScope;
+
+    try {
+        const response = await fetch(
+            `${API_BASE}/dashboard/` +
+            `${encodeURIComponent(ELECTION_ID)}/analytics` +
+            `?scope_id=${encodeURIComponent(requestedScope)}`,
+            { cache: "no-store" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Unable to load analytics."
+            );
+        }
+
+        if (requestedScope !== selectedScope) return;
+
+        analyticsData = data;
+
+        const filter = $("scopeFilter");
+
+        const isCollege =
+            data.school_level === "college";
+
+        $("scopeFilterLabel").textContent =
+            isCollege ? "Department" : "Grade Level";
+
+        const options = [
+            new Option(
+                isCollege
+                    ? "All Departments"
+                    : "All Grades",
+                "all"
+            )
+        ];
+
+        for (const scope of data.scopes || []) {
+            options.push(
+                new Option(
+                    scope.scope_name,
+                    String(scope.scope_id)
+                )
+            );
+        }
+
+        options.push(
+            new Option(
+                "Unassigned / Legacy Ballots",
+                "legacy"
+            )
+        );
+
+        filter.replaceChildren(...options);
+        filter.value = selectedScope;
+
+        renderAnalytics();
+
+    } catch (error) {
+        analyticsData = null;
+
+        console.error("Analytics error:", error);
+
+        renderAnalytics();
+
+        $("analyticsMessage").textContent =
+            "Unable to load analytics.";
+
+    } finally {
+        analyticsLoading = false;
+
+        if (requestedScope !== selectedScope) {
+            loadAnalytics().then(renderLiveResults);
+        }
+    }
+}
+
+function renderAnalytics() {
+    const hidden =
+        !revealVotes ||
+        !analyticsData ||
+        analyticsData.results_hidden;
+
+    if (hidden) {
+        $("analyticsRegistered").textContent = "—";
+        $("analyticsCounted").textContent = "—";
+        $("analyticsTurnout").textContent = "—";
+
+        $("analyticsMessage").textContent =
+            "Analytics unavailable until results are released.";
+
+        if (votingChart) {
+            votingChart.destroy();
+            votingChart = null;
+        }
+
+        return;
+    }
+
+    const stats = analyticsData.statistics;
+
+    $("analyticsRegistered").textContent =
+        Number(stats.registered_ballots).toLocaleString();
+
+    $("analyticsCounted").textContent =
+        Number(stats.counted_ballots).toLocaleString();
+
+    $("analyticsTurnout").textContent =
+        stats.counting_percentage === null
+            ? "N/A"
+            : `${stats.counting_percentage}%`;
+
+    const timeline = analyticsData.timeline || [];
+
+    $("analyticsMessage").textContent =
+        timeline.length
+            ? "Cumulative counted ballots • Philippine time"
+            : "No recorded counting activity.";
+
+    if (typeof Chart === "undefined") {
+        $("analyticsMessage").textContent =
+            "Chart library unavailable.";
+        return;
+    }
+
+    const chartLabels = timeline.map(item =>
+        new Date(item.timestamp).toLocaleString(
+            "en-PH",
+            {
+                timeZone: "Asia/Manila",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit"
+            }
+        )
+    );
+
+    const chartValues = timeline.map(
+        item => item.counted_ballots
+    );
+
+    if (votingChart) {
+        votingChart.data.labels = chartLabels;
+        votingChart.data.datasets[0].data = chartValues;
+        votingChart.update("none");
+        return;
+    }
+
+    votingChart = new Chart(
+        $("votingLineChart"),
+        {
+            type: "line",
+
+            data: {
+                labels: chartLabels,
+
+                datasets: [{
+                    label: "Counted Ballots",
+                    data: chartValues,
+                    borderColor: "#800000",
+                    backgroundColor: "rgba(128,0,0,0.08)",
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0
+                }]
+            },
+
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+
+                scales: {
+                    y: {
+                        beginAtZero: true,
+
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                },
+
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        }
+    );
+}
 // RESULTS RELEASE CHECK
-// Requires scanning_closed_at from backend.
-// Completed status alone is not sufficient.
 
 function isFinalized() {
     return (
@@ -199,10 +413,46 @@ function renderLiveResults() {
     container.innerHTML = currentPositions.map(
         position => {
 
-            // COPY ARRAY BEFORE SORTING
-            const candidates = [
-                ...position.candidates
-            ];
+
+            const filteredTallies = new Map(
+                (analyticsData?.candidate_tallies || []).map(
+                    candidate => [
+                        candidate.candidate_id,
+                        candidate.total_votes
+                    ]
+                )
+            );
+
+            const scopeReady =
+                revealVotes &&
+                analyticsData &&
+                !analyticsData.results_hidden &&
+                analyticsData.selected_scope === selectedScope;
+
+            const candidates = position.candidates.map(
+                candidate => ({
+                    ...candidate,
+
+                    votes: !revealVotes
+                        ? 0
+                        : selectedScope === "all"
+                            ? candidate.votes
+                            : scopeReady
+                                ? Number(
+                                    filteredTallies.get(candidate.id) || 0
+                                )
+                                : 0
+                })
+            );
+
+            const showVoteCounts =
+                revealVotes &&
+                (
+                    selectedScope === "all" ||
+                    scopeReady
+                );
+
+
 
             // AUTOMATIC HIGHEST TO LOWEST
             candidates.sort((a, b) =>
@@ -270,11 +520,13 @@ function renderLiveResults() {
                     // Winner lang kapag finalized ang election
                     const isWinner =
                         finalized &&
+                        revealVotes &&
+                        selectedScope === "all" &&
                         winnerIds.has(candidate.id);
 
                     const displayName = revealed
                         ? candidate.name
-                        : MASK_CHAR;
+                        : `Candidate ${String.fromCharCode(65 + index)}`;
 
                     const winnerBadge = isWinner
                         ? `
@@ -285,15 +537,16 @@ function renderLiveResults() {
                         : "";
 
 
-                    const displayVotes = beforeElection
-                        ? "Not started"
-                        : `
-                        ${percent.toFixed(1)}%
-                      (${candidate.votes.toLocaleString()} votes)`;
+                    const displayVotes =
+                        beforeElection
+                            ? "Not started"
+                            : !showVoteCounts
+                                ? "Results hidden / unavailable"
+                                : `${percent.toFixed(1)}% ` +
+                                `(${candidate.votes.toLocaleString()} votes)`;
 
-                    const displayBarWidth = beforeElection
-                        ? 0
-                        : safePercent;
+                    const displayBarWidth =
+                        showVoteCounts ? safePercent : 0;
 
 
                     return `
@@ -324,6 +577,50 @@ function renderLiveResults() {
                 }
             ).join("");
 
+            const positionStats = scopeReady
+                ? analyticsData.positions?.find(
+                    item =>
+                        Number(item.position_id) ===
+                        Number(position.position_id)
+                )
+                : null;
+
+            const noVoteCount = Number(
+                positionStats?.no_recorded_vote || 0
+            );
+
+            const applicableBallots = Number(
+                positionStats?.applicable_ballots || 0
+            );
+
+            const noVotePercent =
+                applicableBallots > 0
+                    ? ((noVoteCount / applicableBallots) * 100)
+                        .toFixed(1)
+                    : null;
+
+            const underVoteHtml =
+                showVoteCounts && positionStats
+                    ? `
+            <div class="undervote-info">
+                No Recorded Vote:
+                <strong>
+                    ${noVoteCount.toLocaleString()} ballots
+                    (${noVotePercent ?? "N/A"}${noVotePercent !== null ? "%" : ""})
+                </strong>
+
+                <br>
+
+                Partial Selections:
+                <strong>
+                    ${Number(
+                        positionStats.partial_selections || 0
+                    ).toLocaleString()} ballots
+                </strong>
+            </div>
+        `
+                    : "";
+
             return `
                 <section class="position-section">
                     <div class="position-header">
@@ -335,7 +632,7 @@ function renderLiveResults() {
                             Select up to ${position.max_choices}
                         </span>
                     </div>
-
+                    ${underVoteHtml}
                     <div class="candidates-list">
                         ${rows ||
                 '<p class="text-sm text-gray-500">No candidates registered.</p>'
@@ -428,9 +725,24 @@ function applyBannerState() {
 
 // INITIALIZE DASHBOARD
 
+
 document.addEventListener(
     "DOMContentLoaded",
     () => {
+        $("scopeFilter")?.addEventListener(
+            "change",
+            async event => {
+                selectedScope = event.target.value;
+                analyticsData = null;
+
+                renderAnalytics();
+                renderLiveResults();
+
+                await loadAnalytics();
+                renderLiveResults();
+            }
+        );
+
         loadDashboardData();
 
         setInterval(
@@ -439,3 +751,4 @@ document.addEventListener(
         );
     }
 );
+
