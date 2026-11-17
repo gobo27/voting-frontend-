@@ -329,7 +329,10 @@
         const contentHeight =
             video.videoHeight * scale;
 
-        const a5Ratio = 148.5 / 210;
+        const a5Ratio =
+            String(state.template?.paper_size).toUpperCase() === "A4"
+                ? 210 / 297
+                : 148.5 / 210;
 
         const width = Math.min(
             contentWidth * 0.94,
@@ -1060,7 +1063,8 @@
 
             for (const item of data.templates || []) {
                 if (
-                    String(item.paper_size).toUpperCase() !== "A5"
+                    !["A4", "A5"].includes(String(item.paper_size).toUpperCase()
+                    )
                 ) {
                     continue;
                 }
@@ -1146,7 +1150,8 @@
             }
 
             if (
-                String(data.template.paper_size).toUpperCase() !== "A5" ||
+                !["A4", "A5"].includes(
+                    String(data.template.paper_size).toUpperCase()) ||
                 Number(data.template.election_id) !== state.electionId ||
                 Number(data.template.template_id) !== id
             ) {

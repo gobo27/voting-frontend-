@@ -227,6 +227,60 @@ function renderSavedTemplateMenu() {
     updateActionButtons();
 }
 
+function fitsPaper(copies) {
+    const isA5 = copies === 2;
+
+    let y = 35;
+
+    const bottom = isA5 ? 195 : 283;
+    const rowHeight = isA5 ? 6 : 7;
+    const headingHeight = isA5 ? 6 : 8;
+    const sectionGap = isA5 ? 1 : 3;
+
+    for (const position of state.positions) {
+        if (!position.candidates.length) continue;
+
+        y += headingHeight;
+
+        for (const candidate of position.candidates) {
+            if (y + rowHeight > bottom) {
+                return false;
+            }
+
+            y += rowHeight;
+        }
+
+        y += sectionGap;
+    }
+
+    return true;
+}
+
+function chooseAutomaticPaper() {
+    const copies = fitsPaper(2)
+        ? 2
+        : fitsPaper(1)
+            ? 1
+            : null;
+
+    if (!copies) {
+        throw new Error(
+            "Too many candidates for one A4 ballot. " +
+            "Multiple-page ballot support is required."
+        );
+    }
+
+    const info = el("paperSizeInfo");
+
+    if (info) {
+        info.textContent = copies === 2
+            ? "Automatically selected: A5"
+            : "Automatically selected: A4";
+    }
+
+    return copies;
+}
+
 // Ballot layout: A4 portrait or 2 A5 portrait.
 function layoutBallot() {
     const rows = [];
@@ -543,8 +597,39 @@ function setPrintPageOrientation() {
 
 
 
-// CREATE BALLOT
+function candidateDetails(candidate) {
+    const level = String(
+        state.election?.school_level || ""
+    ).toLowerCase();
 
+    const details = [];
+
+    if (candidate.party_list) {
+        details.push(candidate.party_list);
+    }
+
+    if (level === "college") {
+        if (candidate.course) {
+            details.push(candidate.course);
+        }
+
+        if (candidate.grade_level) {
+            details.push(`Year ${candidate.grade_level}`);
+        }
+
+    } else if (
+        level === "elementary" ||
+        level === "highschool"
+    ) {
+        if (candidate.grade_level) {
+            details.push(`Grade ${candidate.grade_level}`);
+        }
+    }
+
+    return details.join(" • ");
+}
+
+// CREATE BALLOT
 function createHalf(ballot = null) {
     const half = document.createElement("section");
 
@@ -611,11 +696,19 @@ function createHalf(ballot = null) {
             line.className = "candidate-line";
             line.style.top = `${row.y}mm`;
 
-            line.innerHTML = `
-                <span class="omr-bubble"></span>
-                <span>${esc(row.candidate.name)}</span>
-            `;
 
+            // Keep the existing SSC election's ballot design.
+            const details = state.electionId === 11 ? "" : candidateDetails(row.candidate);
+            line.innerHTML = `
+            <span class="omr-bubble"></span>
+            <div class="candidate-information">
+            <span class="candidate-name">
+            ${esc(row.candidate.name)}
+            </span>
+            ${details ? `
+            <span class="candidate-details">${esc(details)}</span>
+            ` : ""}
+                </div>`;
             half.appendChild(line);
         }
     }
@@ -707,17 +800,28 @@ async function loadData() {
             ),
             candidates: (
                 position.candidates || []
+
             ).map(candidate => ({
                 id: Number(candidate.candidate_id),
-                name: candidate.name
+                name: candidate.name,
+                party_list: candidate.party_list || "",
+                course: candidate.course || "",
+                grade_level: candidate.grade_level || ""
             }))
+
         }));
 
         state.savedTemplateId = null;
         state.printBatchId = null;
-        state.copies = Number(
+
+        const requestedCopies = Number(
             el("copiesInput").value
         );
+
+        state.copies = requestedCopies === 0
+            ? chooseAutomaticPaper()
+            : requestedCopies;
+
 
         el("titleInput").value =
             election.title || "Official Election Ballot";
@@ -1909,62 +2013,62 @@ async function loadPrintingSummary() {
 
 // UPDATE BALLOT COPIES
 
+
 function updateBallotCopies() {
     if (
         state.printing ||
         state.saving ||
-        state.loadingTemplate
-    ) {
-        return;
-    }
+        state.loadingTemplate ||
+        electionLocked()
+    ) return;
 
     const input = el("copiesInput");
 
     if (!input) return;
 
-    const copies = Number(input.value);
-
-    if (![1, 2].includes(copies)) {
-        input.value = String(state.copies);
-
-        return status(
-            "Choose 1 A4 ballot or 2 A5 ballots per sheet.",
-            true
-        );
-    }
-
-    if (copies === state.copies) {
-        return;
-    }
+    const previousCopies = state.copies;
 
     if (state.savedTemplateId) {
-        input.value = String(state.copies);
+        input.value = String(previousCopies);
 
         return status(
-            "Saved ballot layout cannot be changed. " +
-            "Create a new template to change paper size.",
+            "Saved ballot layout cannot be changed.",
             true
         );
     }
 
-    state.copies = copies;
-
     try {
+        const requested = Number(input.value);
+
+        const copies = requested === 0
+            ? chooseAutomaticPaper()
+            : requested;
+
+        if (
+            ![1, 2].includes(copies) ||
+            !fitsPaper(copies)
+        ) {
+            throw new Error(
+                "Candidates do not fit the selected paper size."
+            );
+        }
+
+        state.copies = copies;
+
         render();
 
-        status(
-            copies === 2
-                ? "Layout changed to 2 A5 ballots per A4 sheet."
-                : "Layout changed to 1 A4 ballot per sheet.",
-            false,
-            false
-        );
+        if (el("paperSizeInfo")) {
+            el("paperSizeInfo").textContent =
+                copies === 2
+                    ? "Selected paper: A5"
+                    : "Selected paper: A4";
+        }
 
     } catch (error) {
-        status(
-            error.message,
-            true
-        );
+        state.copies = previousCopies;
+        input.value = String(previousCopies);
+
+        status(error.message, true);
     }
 }
 

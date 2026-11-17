@@ -856,6 +856,48 @@
         #campusToastContainer {
             display: none !important;
         }
+
+        .candidate-information {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+            flex: 1;
+            height: 5mm;
+            gap: 0.2mm;
+        }
+
+        .candidate-name {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .candidate-details {
+            display: block;
+            font-size: 8px;
+            font-weight: 400;
+            line-height: 1;
+            color: #444;
+            white-space: nowrap;
+        }
+
+        .candidate-line .omr-bubble {
+            flex: 0 0 5mm;
+            width: 5mm;
+            height: 5mm;
+            align-self: flex-start;
+        }
+
+        #ballotPage.layout-a4 .candidate-name {
+            font-size: 12px;
+        }
+
+        #ballotPage.layout-a4 .candidate-details {
+            font-size: 9px;
+        }
     </style>
 </head>
 
@@ -911,10 +953,26 @@
 
 
             <label for="copiesInput">Ballot Printing Layout</label>
+
             <select id="copiesInput">
-                <option value="1">1 Ballot — A4 Portrait (Full Page)</option>
-                <option value="2" selected>2 Ballots — A5 Portrait (A4 Landscape)</option>
+                <option value="0" selected>
+                    Auto — Best Paper Size
+                </option>
+
+                <option value="2">
+                    A5 — 2 Ballots per Sheet
+                </option>
+
+                <option value="1">
+                    A4 — 1 Ballot per Sheet
+                </option>
             </select>
+
+            <small id="paperSizeInfo" style="display:block;margin-top:8px;color:#667085;">
+                Paper size is automatically selected based on
+                the number of candidates and positions.
+            </small>
+
             <small style="display:block;margin-top:6px;color:#667085;font-size:12px;">
                 Each printed ballot has its own unique QR code.
             </small>
@@ -1059,7 +1117,7 @@
 
     <script src="../sheared/toast.js"></script>
     <script src="./ballot.js?v=20261117-scopes"></script>
-    <script src="./ballot_create.js?v=20261117-scopes"></script>
+    <script src="./ballot_create.js?v=20261118-candidate-details"></script>
 
 </body>
 
