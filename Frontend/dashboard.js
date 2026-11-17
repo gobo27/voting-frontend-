@@ -300,32 +300,41 @@ function renderAnalytics() {
     const departments =
         analyticsData.department_timelines || [];
 
-    const datasets = departments.map(scope => {
-        const color = getScopeColor(
-            scope.scope_code
-        );
+    const datasets = departments
+        .filter(scope =>
+            selectedScope !== "all" ||
+            scope.points.some(point =>
+                point.counted_ballots > 0
+            )
+        )
+        .map(scope => {
+            const color = getScopeColor(
+                scope.scope_code
+            );
 
-        return {
-            label: scope.scope_name,
+            return {
+                label: `${scope.scope_name} (${scope.points.at(-1)?.counted_ballots || 0
+                    })`,
 
-            data: scope.points.map(point => ({
-                x: point.timestamp,
-                y: point.counted_ballots
-            })),
+                data: scope.points.map(point => ({
+                    x: point.timestamp,
+                    y: point.counted_ballots
+                })),
 
-            borderColor: color,
-            backgroundColor: color,
-            borderWidth: 2.5,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            fill: false,
-            tension: 0,
-            borderDash:
-                scope.scope_id === "legacy"
-                    ? [6, 4]
-                    : []
-        };
-    });
+                borderColor: color,
+                backgroundColor: color,
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 5,
+                fill: false,
+                tension: 0,
+                stepped: "after",
+                borderDash:
+                    scope.scope_id === "legacy"
+                        ? [6, 4]
+                        : []
+            };
+        });
 
     function formatGraphTime(timestamp) {
         return new Date(Number(timestamp))
@@ -376,7 +385,14 @@ function renderAnalytics() {
                         ticks: {
                             maxTicksLimit: 7,
                             callback: value =>
-                                formatGraphTime(value)
+                                new Date(Number(value)).toLocaleDateString(
+                                    "en-PH",
+                                    {
+                                        timeZone: "Asia/Manila",
+                                        month: "short",
+                                        day: "numeric"
+                                    }
+                                )
                         }
                     },
 
