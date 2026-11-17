@@ -599,8 +599,8 @@ function renderLiveResults() {
                         .toFixed(1)
                     : null;
 
-            const underVoteHtml =
-                showVoteCounts && positionStats
+           const underVoteHtml =
+    finalized && showVoteCounts && positionStats
                     ? `
             <div class="undervote-info">
                 No Recorded Vote:
