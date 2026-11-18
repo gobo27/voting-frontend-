@@ -728,6 +728,54 @@
                 padding-bottom: 85px;
             }
         }
+
+        .assignment-status {
+            display: inline-block;
+            padding: 7px 11px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .assignment-status.assigned {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .assignment-status.unassigned {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .assignment-status.unrestricted {
+            background: #e8eafc;
+            color: #353c83;
+        }
+
+        .assignment-status.unknown {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .reassign-btn {
+            background: #fff0f1;
+            color: var(--primary);
+            border: 1px solid #e6c7cb;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .reassign-btn:hover {
+            background: #f8dfe2;
+        }
+
+        .table-panel table {
+            min-width: 1100px;
+        }
     </style>
 </head>
 
@@ -779,19 +827,21 @@
                 <span class="stat-icon">▣</span>
             </div>
 
+
             <div class="stat">
-                <span class="caption">Advisers</span>
-                <strong id="statAdvisers">00</strong>
-                <small>Candidate &amp; election management</small>
-                <span class="stat-icon">♧</span>
+                <span class="caption">Assigned Accounts</span>
+                <strong id="statAssigned">00</strong>
+                <small>With current election assignments</small>
+                <span class="stat-icon">✓</span>
             </div>
 
             <div class="stat">
-                <span class="caption">Committee members</span>
-                <strong id="statCommittee">00</strong>
-                <small>Election committee accounts</small>
-                <span class="stat-icon">♢</span>
+                <span class="caption">Unassigned Accounts</span>
+                <strong id="statUnassigned">00</strong>
+                <small>Available for reassignment</small>
+                <span class="stat-icon">♧</span>
             </div>
+
         </section>
 
         <div class="section-title">▣ &nbsp; Account management</div>
@@ -885,19 +935,33 @@
         </div>
 
         <!-- Filter accounts by current election school level -->
+
         <div class="account-filters">
+
+            <label for="assignmentFilter">
+                Assignment status:
+            </label>
+
+            <select id="assignmentFilter">
+                <option value="all">All Accounts</option>
+                <option value="assigned">Assigned</option>
+                <option value="unassigned">Unassigned</option>
+                <option value="unrestricted">Super Admin</option>
+            </select>
+
             <label for="schoolLevelFilter">
-                Filter by school level:
+                School level:
             </label>
 
             <select id="schoolLevelFilter">
                 <option value="all">All school levels</option>
                 <option value="elementary">Elementary</option>
-                <option value="highschool">SSG / High School</option>
+                <option value="highschool">High School</option>
                 <option value="college">College</option>
-                <option value="unassigned">No current assignment</option>
             </select>
+
         </div>
+
 
         <section class="panel table-panel">
             <table>
@@ -907,6 +971,7 @@
                         <th>Role</th>
                         <th>School level</th>
                         <th>Assigned grade / department</th>
+                        <th>Assignment status</th>
                         <th>Email address</th>
                         <th>Actions</th>
                     </tr>
@@ -914,7 +979,7 @@
 
                 <tbody id="accountsTableBody">
                     <tr>
-                        <td colspan="6">Loading accounts...</td>
+                        <td colspan="7">Loading accounts...</td>
                     </tr>
                 </tbody>
             </table>
@@ -1006,8 +1071,7 @@
 
     <script src="../sheared/toast.js"></script>
 
-    <script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="super_admin"></script>
-
+    <script src="./Manageacc.js?v=20261119-assignment-status"></script>
     <script src="./Manageacc.js"></script>
 
 </body>

@@ -645,21 +645,59 @@ function roleLabel(role) {
     return role || "Unknown";
 }
 
+function getAssignmentStatus(account) {
+    if (account.role === "super_admin") {
+        return "unrestricted";
+    }
+
+    if (account.role === "adviser") {
+        return account.assignedSchoolLevels.length > 0
+            ? "assigned"
+            : "unassigned";
+    }
+
+    if (account.role === "committee") {
+        return account.assignedScopes.length > 0
+            ? "assigned"
+            : "unassigned";
+    }
+
+    return "unknown";
+}
+
+function renderAssignmentStatus(account) {
+    const status = getAssignmentStatus(account);
+
+    const labels = {
+        assigned: "Assigned",
+        unassigned: "Unassigned",
+        unrestricted: "Unrestricted",
+        unknown: "Unknown"
+    };
+
+    return `
+        <span class="assignment-status ${status}">
+            ${labels[status]}
+        </span>
+    `;
+}
+
 // ACCOUNT STATISTICS
+
 
 function updateStats() {
     $("statTotal").textContent =
         formatCount(accounts.length);
 
-    $("statAdvisers").textContent = formatCount(
-        accounts.filter(
-            account => account.role === "adviser"
+    $("statAssigned").textContent = formatCount(
+        accounts.filter(account =>
+            getAssignmentStatus(account) === "assigned"
         ).length
     );
 
-    $("statCommittee").textContent = formatCount(
-        accounts.filter(
-            account => account.role === "committee"
+    $("statUnassigned").textContent = formatCount(
+        accounts.filter(account =>
+            getAssignmentStatus(account) === "unassigned"
         ).length
     );
 }
@@ -667,23 +705,28 @@ function updateStats() {
 // FILTER ACCOUNTS BY SCHOOL LEVEL
 
 function getFilteredAccounts() {
-    const filter = $("schoolLevelFilter")?.value || "all";
+    const schoolFilter =
+        $("schoolLevelFilter")?.value || "all";
 
-    if (filter === "all") {
-        return accounts;
-    }
+    const assignmentFilter =
+        $("assignmentFilter")?.value || "all";
 
-    if (filter === "unassigned") {
-        return accounts.filter(
-            account =>
-                !account.assignedSchoolLevels.length
-        );
-    }
+    return accounts.filter(account => {
+        const assignmentStatus =
+            getAssignmentStatus(account);
 
-    return accounts.filter(
-        account =>
-            account.assignedSchoolLevels.includes(filter)
-    );
+        const matchesAssignment =
+            assignmentFilter === "all" ||
+            assignmentStatus === assignmentFilter;
+
+        const matchesSchool =
+            schoolFilter === "all" ||
+            account.assignedSchoolLevels.includes(
+                schoolFilter
+            );
+
+        return matchesAssignment && matchesSchool;
+    });
 }
 
 // RENDER SCHOOL LEVEL BADGES
@@ -732,7 +775,7 @@ function renderAccounts() {
 
     if (!visibleAccounts.length) {
         const message = accounts.length
-            ? "No accounts match this school level."
+            ? "No accounts match the selected filters."
             : "No accounts found.";
 
         tbody.innerHTML = `
@@ -793,12 +836,29 @@ function renderAccounts() {
                     ${renderAssignedScopes(account)}
                 </td>
 
+                <td>
+                    ${renderAssignmentStatus(account)}
+                </td>
+
+                <td class="email">
+
                 <td class="email">
                     ${escapeHtml(account.email)}
                 </td>
 
                 <td>
                     <div class="actions">
+                    ${editable &&
+                getAssignmentStatus(account) === "unassigned" ? `
+                    <button
+                        type="button"
+                                 
+                        class="reassign-btn"
+                        data-edit="${escapeHtml(id)}" title="Assign to a new election">
+                        Reassign
+                    </button> `: ""
+            }
+
                         <button
                             type="button"
                             class="icon-btn edit"
@@ -1279,6 +1339,19 @@ document.addEventListener("DOMContentLoaded", () => {
     $("schoolLevelFilter").addEventListener(
         "change",
         renderAccounts
+    );
+
+
+    $("assignmentFilter").addEventListener(
+        "change",
+        () => {
+            if ($("assignmentFilter").value === "unassigned" ||
+                $("assignmentFilter").value === "unrestricted") {
+                $("schoolLevelFilter").value = "all";
+            }
+
+            renderAccounts();
+        }
     );
 
     // SELECT ALL / CLEAR ALL
