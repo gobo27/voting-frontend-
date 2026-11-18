@@ -10,6 +10,8 @@ const state = {
     election: null,
     positions: [],
     layout: [],
+    pages: [],
+    totalPages: 1,
     savedTemplateId: null,
     copies: 2,
     printBatchId: null,
@@ -88,7 +90,9 @@ function updateActionButtons() {
 
     if (saveButton) {
         saveButton.disabled =
-            electionLocked() || busy;
+            electionLocked() ||
+            busy ||
+            state.totalPages > 1;
     }
 
     if (generateButton) {
@@ -101,6 +105,7 @@ function updateActionButtons() {
         );
 
         generateButton.disabled =
+            state.totalPages > 1 ||
             !state.savedTemplateId ||
             !scope ||
             Boolean(scope.existing_batch_id) ||
@@ -256,30 +261,96 @@ function fitsPaper(copies) {
     return true;
 }
 
-function chooseAutomaticPaper() {
-    const copies = fitsPaper(2)
-        ? 2
-        : fitsPaper(1)
-            ? 1
-            : null;
 
-    if (!copies) {
-        throw new Error(
-            "Too many candidates for one A4 ballot. " +
-            "Multiple-page ballot support is required."
-        );
+function layoutMultiplePages() {
+    const pages = [];
+
+    const startY = 35;
+    const bottom = 283;
+    const rowHeight = 7;
+    const headingHeight = 8;
+    const sectionGap = 3;
+
+    let page = {
+        page_number: 1,
+        rows: []
+    };
+
+    let y = startY;
+
+    function nextPage() {
+        pages.push(page);
+
+        page = {
+            page_number: pages.length + 1,
+            rows: []
+        };
+
+        y = startY;
     }
 
-    const info = el("paperSizeInfo");
+    for (const position of state.positions) {
+        if (!position.candidates.length) continue;
 
-    if (info) {
-        info.textContent = copies === 2
-            ? "Automatically selected: A5"
-            : "Automatically selected: A4";
+        const sectionHeight =
+            headingHeight +
+            position.candidates.length * rowHeight;
+
+        // Keep the position together when possible.
+        if (
+            sectionHeight <= bottom - startY &&
+            y + sectionHeight > bottom
+        ) {
+            nextPage();
+        }
+
+        let headingY = null;
+
+        for (const candidate of position.candidates) {
+            const requiredHeight =
+                rowHeight +
+                (headingY === null ? headingHeight : 0);
+
+            if (y + requiredHeight > bottom) {
+                nextPage();
+                headingY = null;
+            }
+
+            if (headingY === null) {
+                headingY = y;
+                y += headingHeight;
+            }
+
+            page.rows.push({
+                candidate,
+                position,
+                page_number: page.page_number,
+                headingY,
+                x: 18,
+                y
+            });
+
+            y += rowHeight;
+        }
+
+        y += sectionGap;
     }
 
-    return copies;
+    if (page.rows.length) {
+        pages.push(page);
+    }
+
+    return pages;
 }
+
+function chooseAutomaticPaper() {
+    // Prefer A5 when all candidates fit.
+    if (fitsPaper(2)) return 2;
+
+    // Use A4, including multiple A4 pages if needed.
+    return 1;
+}
+
 
 // Ballot layout: A4 portrait or 2 A5 portrait.
 function layoutBallot() {
@@ -630,7 +701,7 @@ function candidateDetails(candidate) {
 }
 
 // CREATE BALLOT
-function createHalf(ballot = null) {
+function createHalf(ballot = null, pageData = null) {
     const half = document.createElement("section");
 
     half.className = "ballot-half" +
@@ -656,6 +727,18 @@ function createHalf(ballot = null) {
 
     half.appendChild(heading);
 
+    if (pageData) {
+        const pageLabel = document.createElement("div");
+
+        pageLabel.className = "ballot-page-number";
+
+        pageLabel.textContent =
+            `Page ${pageData.page_number} of ${state.totalPages}`;
+
+        half.appendChild(pageLabel);
+    }
+
+
     // Each registered ballot receives its own QR code.
     if (ballot) {
         const qrBox = document.createElement("div");
@@ -673,77 +756,140 @@ function createHalf(ballot = null) {
         half.appendChild(qrBox);
     }
 
-    // Display all election positions and candidates.
+
+    const visibleRows = pageData
+        ? pageData.rows
+        : state.layout;
+
     for (const position of state.positions) {
-        if (!position.candidates.length) continue;
-
-        const headingElement = document.createElement("div");
-        headingElement.className = "position-heading";
-        headingElement.style.top = `${position._headingY}mm`;
-
-        headingElement.textContent =
-            `${String(position.title).toUpperCase()} — ` +
-            `Select up to ${position.max_selection}`;
-
-        half.appendChild(headingElement);
-
-        const candidates = state.layout.filter(
+        const candidates = visibleRows.filter(
             row => row.position === position
         );
 
+        if (!candidates.length) continue;
+
+        const headingElement =
+            document.createElement("div");
+
+        headingElement.className = "position-heading";
+
+        headingElement.style.top = `${pageData
+            ? candidates[0].headingY
+            : position._headingY
+            }mm`;
+
+        const continued = pageData &&
+            state.pages.some(previous =>
+                previous.page_number < pageData.page_number &&
+                previous.rows.some(row =>
+                    row.position === position
+                )
+            );
+
+        headingElement.textContent =
+            `${String(position.title).toUpperCase()}` +
+            (continued ? " (Continued)" : "") +
+            ` — Select up to ${position.max_selection}`;
+
+        half.appendChild(headingElement);
+
         for (const row of candidates) {
             const line = document.createElement("div");
+
             line.className = "candidate-line";
             line.style.top = `${row.y}mm`;
 
+            const details = state.electionId === 11
+                ? ""
+                : candidateDetails(row.candidate);
 
-            // Keep the existing SSC election's ballot design.
-            const details = state.electionId === 11 ? "" : candidateDetails(row.candidate);
             line.innerHTML = `
-            <span class="omr-bubble"></span>
-            <div class="candidate-information">
-            <span class="candidate-name">
-            ${esc(row.candidate.name)}
-            </span>
-            ${details ? `
-            <span class="candidate-details">${esc(details)}</span>
-            ` : ""}
-                </div>`;
+                <span class="omr-bubble"></span>
+
+                <div class="candidate-information">
+                    <span class="candidate-name">
+                        ${esc(row.candidate.name)}
+                    </span>
+
+                    ${details ? `
+                        <span class="candidate-details">
+                            ${esc(details)}
+                        </span>
+                    ` : ""}
+                </div>
+            `;
+
             half.appendChild(line);
         }
     }
 
     return half;
+
 }
 
 
 
 // BALLOT PREVIEW
 
-function render() {
-    state.layout = layoutBallot();
 
+function render() {
     installBallotLayoutStyles();
 
     const page = el("ballotPage");
     const isA5 = state.copies === 2;
 
+    state.pages = [];
+    state.totalPages = 1;
+
     page.classList.remove(
         "batch-mode",
         "layout-a4",
-        "layout-a5"
+        "layout-a5",
+        "multi-page-preview"
     );
 
     page.classList.add(
         isA5 ? "layout-a5" : "layout-a4"
     );
 
-    page.replaceChildren(
-        ...Array.from(
-            { length: state.copies },
-            () => createHalf()
-        )
-    );
+    if (!isA5 && !fitsPaper(1)) {
+        state.pages = layoutMultiplePages();
+
+        state.totalPages = state.pages.length;
+
+        state.layout = state.pages.flatMap(
+            item => item.rows
+        );
+
+        page.classList.add("multi-page-preview");
+
+        page.replaceChildren(
+            ...state.pages.map(item =>
+                createHalf(null, item)
+            )
+        );
+
+    } else {
+        state.layout = layoutBallot();
+
+        page.replaceChildren(
+            ...Array.from(
+                { length: state.copies },
+                () => createHalf()
+            )
+        );
+    }
+
+    const info = el("paperSizeInfo");
+
+    if (info) {
+        info.textContent =
+            `Selected paper: ${isA5 ? "A5" : "A4"}` +
+            ` | ${state.totalPages} page(s) per ballot` +
+            (state.totalPages > 1
+                ? " — Preview only"
+                : "");
+    }
 
     el("loadedCandidates").textContent =
         state.positions.map(position =>
@@ -753,7 +899,6 @@ function render() {
 
     updateActionButtons();
 }
-
 
 
 // LOAD ELECTION DATA
@@ -1028,6 +1173,12 @@ async function savePositionLimits() {
 // SAVE BALLOT TEMPLATE
 
 async function saveBallot() {
+    if (state.totalPages > 1) {
+        return status(
+            "Multi-page ballots are currently preview only.",
+            true
+        );
+    }
     if (
         state.saving ||
         state.printing ||
@@ -1275,6 +1426,12 @@ async function confirmPrintedBatch(
 // GENERATE AND PRINT REGISTERED QR BALLOTS
 
 async function generateAndPrintBallots() {
+    if (state.totalPages > 1) {
+        return status(
+            "Multi-page ballots are currently preview only.",
+            true
+        );
+    }
     if (
         state.printing ||
         state.saving ||
@@ -2046,23 +2203,14 @@ function updateBallotCopies() {
 
         if (
             ![1, 2].includes(copies) ||
-            !fitsPaper(copies)
+            (copies === 2 && !fitsPaper(2))
         ) {
             throw new Error(
                 "Candidates do not fit the selected paper size."
             );
         }
-
         state.copies = copies;
-
         render();
-
-        if (el("paperSizeInfo")) {
-            el("paperSizeInfo").textContent =
-                copies === 2
-                    ? "Selected paper: A5"
-                    : "Selected paper: A4";
-        }
 
     } catch (error) {
         state.copies = previousCopies;
