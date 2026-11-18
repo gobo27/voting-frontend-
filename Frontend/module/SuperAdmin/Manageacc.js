@@ -780,7 +780,7 @@ function renderAccounts() {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align:center">
+                <td colspan="7" style="text-align:center">
                     ${escapeHtml(message)}
                 </td>
             </tr>
@@ -841,8 +841,6 @@ function renderAccounts() {
                 </td>
 
                 <td class="email">
-
-                <td class="email">
                     ${escapeHtml(account.email)}
                 </td>
 
@@ -850,13 +848,21 @@ function renderAccounts() {
                     <div class="actions">
                     ${editable &&
                 getAssignmentStatus(account) === "unassigned" ? `
-                <buttontype= "button" class="icon-btn reassign" data-edit="${escapeHtml(id)}" title="Reassign account" aria-label="Reassign account">
-                    <svg viewBox="0 0 24 24">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M19 8v6M16 11h6"/>
-                    </svg>
-                </button>
+                
+<button
+    type="button"
+    class="icon-btn reassign"
+    data-edit="${escapeHtml(id)}"
+    title="Reassign account"
+    aria-label="Reassign account"
+>
+    <svg viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M19 8v6M16 11h6"/>
+    </svg>
+</button>
+
                  `: ""
             }
                         <button
@@ -900,7 +906,7 @@ async function loadAccounts() {
 
     tbody.innerHTML = `
         <tr>
-            <td colspan="6" style="text-align:center">
+            <td colspan="7" style="text-align:center">
                 Loading accounts...
             </td>
         </tr>
@@ -929,7 +935,7 @@ async function loadAccounts() {
         tbody.innerHTML = `
             <tr>
                 <td
-                    colspan="6"
+                    colspan="7"
                     style="text-align:center;color:#dc2626"
                 >
                     Unable to load accounts.
