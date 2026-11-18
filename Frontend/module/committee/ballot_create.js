@@ -719,11 +719,9 @@ function createHalf(ballot = null, pageData = null) {
     heading.className = "ballot-heading";
 
     heading.innerHTML = `
-        <h1>${esc(title)}</h1>
-        <p>Academic Year: ${esc(year)}</p>
-        <p>${esc(instructions)}</p>
-        <p>Template ID: ${esc(state.savedTemplateId ?? "UNSAVED")}</p>
-    `;
+    <h1>${esc(title)}</h1>
+    <p>Academic Year: ${esc(year)}</p>
+    <p>${esc(instructions)}</p>`;
 
     half.appendChild(heading);
 
@@ -751,7 +749,9 @@ function createHalf(ballot = null, pageData = null) {
         const code = document.createElement("div");
         code.className = "ballot-qr-id";
         code.textContent =
-            ballot.serial_number || ballot.ballot_id;
+            ballot.ballot_number != null
+                ? `Ballot No. ${ballot.ballot_number}`
+                : ballot.serial_number || ballot.ballot_id;
         qrBox.append(image, code);
         half.appendChild(qrBox);
     }
