@@ -283,6 +283,445 @@ function updateCreateAvailability() {
     }
 }
 
+let archiveFlowOpen = false;
+
+async function openArchiveFlow(electionId) {
+
+    if (archiveFlowOpen) return;
+    archiveFlowOpen = true;
+
+    const base =
+        `/election_archive/${encodeURIComponent(electionId)}`;
+
+    const dialog = document.createElement("dialog");
+
+    dialog.className = "archive-flow";
+
+    dialog.setAttribute(
+        "aria-labelledby",
+        "archiveFlowTitle"
+    );
+
+    dialog.innerHTML = `
+        <div class="flow-step"></div>
+        <h3 id="archiveFlowTitle"></h3>
+        <p class="flow-description"></p>
+        <div class="flow-content"></div>
+        <div class="flow-actions"></div>
+    `;
+
+    const step = dialog.querySelector(".flow-step");
+    const title = dialog.querySelector("h3");
+
+    const description =
+        dialog.querySelector(".flow-description");
+
+    const content =
+        dialog.querySelector(".flow-content");
+
+    const actions =
+        dialog.querySelector(".flow-actions");
+
+    let busy = false;
+    let advisers = [];
+    let notice = null;
+
+    const selected = new Set();
+
+    // CHANGE POPUP CONTENT
+
+    function screen(number, heading, text) {
+
+        step.textContent = `STEP ${number} OF 4`;
+        title.textContent = heading;
+        description.textContent = text;
+
+        content.replaceChildren();
+        actions.replaceChildren();
+    }
+
+    // CREATE ACTION BUTTON
+
+    function button(text, primary, onClick) {
+
+        const btn = document.createElement("button");
+
+        btn.type = "button";
+
+        btn.className =
+            `btn ${primary ? "btn-primary" : "btn-light"}`;
+
+        btn.textContent = text;
+
+        btn.addEventListener("click", onClick);
+
+        actions.appendChild(btn);
+
+        return btn;
+    }
+
+    function close() {
+        if (!busy) dialog.close();
+    }
+
+    // ERROR OR WARNING SCREEN
+
+    function problem(text, type = "error") {
+
+        busy = false;
+
+        notice = { text, type };
+
+        screen(
+            3,
+            "Action requires attention",
+            text
+        );
+
+        button("Close", false, close);
+    }
+
+    // STEP 1 — SELECT ADVISERS
+
+    function selectRecipients() {
+
+        screen(
+            1,
+            "Select adviser recipients",
+            "Choose who will receive the PDF report download link."
+        );
+
+        button("Cancel", false, close);
+
+        const next = button(
+            "Continue",
+            true,
+            confirmSending
+        );
+
+        next.disabled = selected.size === 0;
+
+        advisers.forEach((adviser, index) => {
+
+            const row = document.createElement("label");
+            row.className = "flow-recipient";
+
+            const check = document.createElement("input");
+            check.type = "checkbox";
+            check.checked = selected.has(index);
+
+            const info = document.createElement("span");
+
+            const name = document.createElement("strong");
+            name.textContent = adviser.name;
+
+            const email = document.createElement("small");
+            email.textContent = adviser.email;
+
+            info.append(name, email);
+
+            row.append(check, info);
+
+            content.appendChild(row);
+
+            check.addEventListener("change", () => {
+
+                if (check.checked) {
+                    selected.add(index);
+                } else {
+                    selected.delete(index);
+                }
+
+                next.disabled = selected.size === 0;
+            });
+        });
+    }
+
+    // STEP 2 — CONFIRM EMAIL
+
+    function confirmSending() {
+
+        if (!selected.size) return;
+
+        screen(
+            2,
+            "Confirm sending report",
+            `Send the report link to ${selected.size} selected adviser(s)?`
+        );
+
+        for (const index of selected) {
+
+            const row = document.createElement("p");
+
+            row.className = "flow-recipient";
+
+            row.textContent =
+                `${advisers[index].name} — ${advisers[index].email}`;
+
+            content.appendChild(row);
+        }
+
+        button("Back", false, selectRecipients);
+        button("Send Email", true, sendReport);
+    }
+
+    // STEP 3 — SEND REPORT
+
+    async function sendReport() {
+
+        if (busy || !selected.size) return;
+
+        busy = true;
+
+        screen(
+            3,
+            "Sending email…",
+            "Please do not close this window."
+        );
+
+        try {
+
+            const result = await request(
+                `${base}/notify-advisers`,
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        adviser_ids: Array.from(
+                            selected,
+                            i => Number(advisers[i].id)
+                        )
+                    })
+                }
+            );
+
+            // Verify actual backend report status
+
+            const status = await request(
+                `${base}/report-status`
+            );
+
+            busy = false;
+
+            if (status.ready_to_archive !== true) {
+
+                problem(
+                    (result.message || "") +
+                    " Archive is not ready. Check email status before retrying.",
+                    "warning"
+                );
+
+                return;
+            }
+
+            notice = {
+                text: "Required report email requests accepted.",
+                type: "success"
+            };
+
+            screen(
+                3,
+                "Report ready",
+                "Required email requests are accepted. You can now proceed to archive."
+            );
+
+            button("Close", false, close);
+
+            button(
+                "Continue to Archive",
+                true,
+                confirmArchive
+            );
+
+        } catch (error) {
+
+            problem(
+                error.message +
+                " Verify email status before retrying."
+            );
+        }
+    }
+
+    // STEP 4 — CONFIRM ARCHIVE
+
+    function confirmArchive() {
+
+        screen(
+            4,
+            "Archive election?",
+            `Archive election #${electionId}? ` +
+            "Historical records will remain saved. " +
+            "Adviser and Committee assignments will be released."
+        );
+
+        button("Cancel", false, close);
+
+        button(
+            "Archive Election",
+            true,
+            archiveElection
+        );
+    }
+
+    // EXECUTE ARCHIVE
+
+    async function archiveElection() {
+
+        if (busy) return;
+
+        busy = true;
+
+        screen(
+            4,
+            "Archiving election…",
+            "Verifying report status and saving the archive."
+        );
+
+        try {
+
+            const status = await request(
+                `${base}/report-status`
+            );
+
+            if (status.ready_to_archive !== true) {
+
+                problem(
+                    "Archive is not ready. Resolve outstanding report emails first.",
+                    "warning"
+                );
+
+                return;
+            }
+
+            const result = await request(
+                `${base}/archive`,
+                {
+                    method: "POST"
+                }
+            );
+
+            notice = {
+                text: result.message ||
+                    "Election archived successfully.",
+
+                type: "success"
+            };
+
+            if ($("detailsCard")) {
+                $("detailsCard").hidden = true;
+            }
+
+            busy = false;
+
+            dialog.close();
+
+            await refresh();
+
+        } catch (error) {
+
+            problem(
+                error.message +
+                " Refresh election history before retrying."
+            );
+        }
+    }
+
+    // PREVENT CLOSING WHILE PROCESSING
+
+    dialog.addEventListener("cancel", event => {
+
+        if (busy) {
+            event.preventDefault();
+        }
+    });
+
+    // SHOW TOAST AFTER MODAL CLOSES
+
+    const closed = new Promise(resolve => {
+
+        dialog.addEventListener("close", () => {
+
+            dialog.remove();
+
+            if (notice) {
+
+                window.showToast(
+                    notice.text,
+                    notice.type
+                );
+            }
+
+            resolve();
+
+        }, { once: true });
+    });
+
+    // INITIALIZE POPUP FLOW
+
+    try {
+
+        document.body.appendChild(dialog);
+
+        busy = true;
+
+        screen(
+            1,
+            "Checking election…",
+            "Loading report status and recipients."
+        );
+
+        dialog.showModal();
+
+        try {
+
+            const status = await request(
+                `${base}/report-status`
+            );
+
+            if (status.ready_to_archive === true) {
+
+                busy = false;
+
+                confirmArchive();
+
+            } else {
+
+                const data = await request(
+                    `${base}/report-advisers`
+                );
+
+                advisers = Array.isArray(data.advisers)
+                    ? data.advisers
+                    : [];
+
+                busy = false;
+
+                if (!advisers.length) {
+
+                    problem(
+                        "No active Advisers assigned to this election."
+                    );
+
+                } else {
+
+                    selectRecipients();
+                }
+            }
+
+        } catch (error) {
+
+            problem(error.message);
+        }
+
+        await closed;
+
+    } finally {
+
+        dialog.remove();
+
+        archiveFlowOpen = false;
+    }
+}
 // Election history table
 function renderHistory() {
     const history = $("history");
@@ -351,160 +790,10 @@ function renderHistory() {
             emailBtn.type = "button";
             emailBtn.className = "view-btn";
             emailBtn.textContent = "Email Report Link";
-
-            emailBtn.addEventListener("click", async () => {
-                emailBtn.disabled = true;
-
-                try {
-                    const electionId = election.election_id;
-
-                    const data = await request(
-                        `/election_archive/${encodeURIComponent(electionId)}/report-advisers`
-                    );
-
-                    const advisers = Array.isArray(data.advisers)
-                        ? data.advisers
-                        : [];
-
-                    if (!advisers.length) {
-                        message(
-                            "No active Advisers assigned to this election.",
-                            true
-                        );
-                        return;
-                    }
-
-                    // Create a temporary Adviser selection dialog
-                    const dialog = document.createElement("dialog");
-                    dialog.style.cssText = [
-                        "border:1px solid #ddd",
-                        "border-radius:12px",
-                        "padding:25px",
-                        "max-width:480px",
-                        "width:90%",
-                        "box-shadow:0 12px 40px #0003"
-                    ].join(";");
-
-                    const title = document.createElement("h3");
-                    title.textContent = "Select Adviser Recipients";
-
-                    const description = document.createElement("p");
-                    description.textContent =
-                        "Choose one or more Advisers to receive the PDF download link.";
-
-                    dialog.append(title, description);
-
-                    const selections = [];
-
-                    advisers.forEach(adviser => {
-                        const label = document.createElement("label");
-
-                        label.style.cssText =
-                            "display:block;margin:14px 0;cursor:pointer";
-
-                        const check = document.createElement("input");
-                        check.type = "checkbox";
-                        check.value = String(adviser.id);
-
-                        const name = document.createElement("span");
-                        name.textContent =
-                            ` ${adviser.name} (${adviser.email})`;
-
-                        label.append(check, name);
-                        dialog.appendChild(label);
-
-                        selections.push(check);
-                    });
-
-                    const actions = document.createElement("div");
-                    actions.style.cssText =
-                        "display:flex;gap:10px;justify-content:flex-end;margin-top:20px";
-
-                    const cancel = document.createElement("button");
-                    cancel.type = "button";
-                    cancel.className = "btn btn-light";
-                    cancel.textContent = "Cancel";
-
-                    const send = document.createElement("button");
-                    send.type = "button";
-                    send.className = "btn btn-primary";
-                    send.textContent = "Send Email";
-
-                    actions.append(cancel, send);
-                    dialog.appendChild(actions);
-                    document.body.appendChild(dialog);
-
-                    const closeDialog = () => dialog.close();
-
-                    dialog.addEventListener(
-                        "close",
-                        () => dialog.remove(),
-                        { once: true }
-                    );
-
-                    cancel.addEventListener("click", closeDialog);
-
-                    send.addEventListener("click", async () => {
-                        const selectedIds = selections
-                            .filter(check => check.checked)
-                            .map(check => Number(check.value));
-
-                        if (!selectedIds.length) {
-                            alert("Please select at least one Adviser.");
-                            return;
-                        }
-
-                        const confirmed = confirm(
-                            `Send election report links to ` +
-                            `${selectedIds.length} Adviser(s)?`
-                        );
-
-                        if (!confirmed) return;
-
-                        send.disabled = true;
-                        cancel.disabled = true;
-
-                        try {
-                            const result = await request(
-                                `/election_archive/${encodeURIComponent(electionId)}/notify-advisers`,
-                                {
-                                    method: "POST",
-                                    body: JSON.stringify({
-                                        adviser_ids: selectedIds
-                                    })
-                                }
-                            );
-
-                            closeDialog();
-
-                            message(result.message);
-
-                            if (result.accepted_count !== result.total) {
-                                message(
-                                    "Some emails were not accepted. " +
-                                    "Check the backend logs before retrying.",
-                                    true
-                                );
-                            }
-
-                        } catch (error) {
-                            message(error.message, true);
-                            send.disabled = false;
-                            cancel.disabled = false;
-                        }
-                    });
-
-                    dialog.showModal();
-
-                } catch (error) {
-                    message(error.message, true);
-
-                } finally {
-                    emailBtn.disabled = false;
-                }
+            emailBtn.addEventListener("click", () => {
+                openArchiveFlow(election.election_id);
             });
 
-            buttons.appendChild(emailBtn);
         }
         const pdfBtn = document.createElement("button");
 
@@ -580,68 +869,9 @@ function renderHistory() {
             archiveBtn.type = "button";
             archiveBtn.className = "archive-btn";
             archiveBtn.textContent = "Archive";
-
-            archiveBtn.addEventListener("click", async () => {
-                try {
-                    const status = await request(
-                        `/election_archive/${encodeURIComponent(
-                            election.election_id
-                        )}/report-status`
-                    );
-
-                    if (!status.ready_to_archive) {
-                        message(
-                            "Cannot archive yet. Send the report to the " +
-                            "selected Advisers and resolve any unconfirmed emails first.",
-                            true
-                        );
-                        return;
-                    }
-                } catch (error) {
-                    message(
-                        "Unable to verify email status: " + error.message,
-                        true
-                    );
-                    return;
-                }
-                const confirmed = await window.showConfirmToast(
-                    `Archive election #${election.election_id}?\n\n` +
-                    "Historical records will remain saved.",
-                    {
-                        title: "Archive Election",
-                        confirmText: "Archive Election",
-                        cancelText: "Cancel"
-                    }
-                );
-
-                if (!confirmed) return;
-
-                archiveBtn.disabled = true;
-
-                try {
-                    const result = await request(
-                        `/election_archive/${encodeURIComponent(
-                            election.election_id
-                        )}/archive`,
-                        {
-                            method: "POST"
-                        }
-                    );
-
-                    message(result.message);
-
-                    if ($("detailsCard")) {
-                        $("detailsCard").hidden = true;
-                    }
-
-                    await refresh();
-
-                } catch (error) {
-                    message(error.message, true);
-                    archiveBtn.disabled = false;
-                }
+            archiveBtn.addEventListener("click", () => {
+                openArchiveFlow(election.election_id);
             });
-
             buttons.appendChild(archiveBtn);
         }
 
