@@ -899,42 +899,297 @@
             align-items: center;
             gap: 8px;
         }
+
+        /* UNIFIED SUPER ADMIN SIDEBAR */
+
+        :root {
+            --sidebar-width: 285px;
+            --maroon: #4a151b;
+            --maroon-light: #70272e;
+            --primary: #72242b;
+            --background: #f7f8fa;
+            --border: #e0e3e8;
+        }
+
+        .sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: var(--sidebar-width);
+            padding: 35px 18px;
+            background: var(--maroon);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar .brand {
+            display: block;
+            padding: 0 12px;
+        }
+
+        .sidebar .brand strong {
+            display: block;
+            font-size: 23px;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        .sidebar .brand small {
+            display: block;
+            margin-top: 9px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            line-height: 1.6;
+            color: #dfc8ca;
+            white-space: nowrap;
+        }
+
+        .sidebar .nav-heading {
+            display: block;
+            margin: 60px 15px 18px;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #c8aeb1;
+        }
+
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 13px;
+            margin: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: #ead6d8;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .sidebar .nav-link:hover {
+            background: #ffffff12;
+            color: white;
+        }
+
+        .sidebar .nav-link.active {
+            background: var(--maroon-light);
+            color: white;
+        }
+
+        .sidebar .nav-link svg,
+        .sidebar .logout svg {
+            width: 19px;
+            height: 19px;
+            flex-shrink: 0;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .sidebar .sidebar-bottom {
+            display: block;
+            margin-top: auto;
+            padding: 23px 12px 0;
+            border-top: 1px solid #ffffff26;
+        }
+
+        .sidebar .profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar .avatar {
+            width: 45px;
+            height: 45px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: #fff0f1;
+            color: var(--primary);
+            display: grid;
+            place-items: center;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .sidebar .profile strong {
+            display: block;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .sidebar .profile small {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #d7bfc1;
+            white-space: nowrap;
+        }
+
+        .sidebar .logout {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 25px 0 0 57px;
+            color: #e2c8cb;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .sidebar .logout:hover {
+            color: white;
+        }
+
+        .main {
+            margin-left: var(--sidebar-width);
+            padding: 32px 42px 60px;
+            max-width: 1800px;
+        }
+
+        .main h1,
+        .main .page-header h1 {
+            margin-top: 0;
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: -0.7px;
+        }
+
+        .mobile-logout {
+            display: none;
+        }
+
+        @media (max-width: 1100px) {
+            :root {
+                --sidebar-width: 250px;
+            }
+
+            .main {
+                padding: 25px;
+            }
+
+            .sidebar .brand small {
+                font-size: 9px;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .sidebar {
+                position: static;
+                width: 100%;
+                padding: 20px;
+            }
+
+            .sidebar .brand {
+                padding: 0;
+            }
+
+            .sidebar .nav-heading {
+                display: none;
+            }
+
+            .sidebar nav {
+                margin-top: 20px;
+            }
+
+            .sidebar .sidebar-bottom {
+                display: block;
+                margin-top: 20px;
+                padding: 15px 0 0;
+            }
+
+            .sidebar .profile {
+                display: none;
+            }
+
+            .sidebar .logout {
+                margin: 0;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 22px 15px 60px;
+            }
+
+            .main h1,
+            .main .page-header h1 {
+                font-size: 26px;
+            }
+        }
     </style>
 </head>
 
 <body>
 
+
     <aside class="sidebar">
+
         <div class="brand">
-            <div>
-                <strong>CampusVote.</strong>
-                <small>STUDENT ELECTION<br>SYSTEM</small>
-            </div>
+            <strong>CampusVote.</strong>
+            <small>STUDENT ELECTION SYSTEM</small>
         </div>
 
-        <div class="nav-heading">ADMINISTRATION</div>
+        <div class="nav-heading">
+            ADMINISTRATION
+        </div>
 
-        <a class="nav-link" href="./Manageacc.html">
-            Account management
-        </a>
+        <nav>
 
-        <a class="nav-link secondary" href="electionArchive.html">
-            Election Archive
-        </a>
+            <a href="./Manageacc.html" class="nav-link active" aria-current="page">
+
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M8 9h8M8 14h8" />
+                </svg>
+
+                Account management
+            </a>
+
+            <a href="./electionArchive.html" class="nav-link">
+
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="5" rx="1" />
+                    <path d="M5 8v13h14V8M10 12h4" />
+                </svg>
+
+                Election archive
+            </a>
+
+        </nav>
 
         <div class="sidebar-bottom">
+
             <div class="profile">
+
                 <span class="avatar">SA</span>
+
                 <div>
                     <strong>Super admin</strong>
                     <small>System administrator</small>
                 </div>
+
             </div>
 
-            <a class="logout" href="SuperAdminlog.html" id="logoutLink">
+            <a href="SuperAdminlog.html" class="logout" id="logoutLink">
+
+                <svg viewBox="0 0 24 24">
+                    <path d="M10 17l5-5-5-5M15 12H3" />
+                    <path d="M14 3h7v18h-7" />
+                </svg>
+
                 Log out
             </a>
+
         </div>
+
     </aside>
 
     <a href="SuperAdminlog.html" class="mobile-logout">Log out</a>
