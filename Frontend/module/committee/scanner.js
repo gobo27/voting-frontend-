@@ -2,6 +2,8 @@
 
 (() => {
     const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
+    const ENABLE_MULTIPAGE_PREVIEW_TEST = true ;
+    const ENABLE_MULTIPAGE_COUNT_TEST = true;
     const MAX_SIDE = 2600;
     const MAX_FILE_BYTES = 30 * 1024 * 1024;
     const SCAN_TIMEOUT_MS = 45000;
@@ -12,6 +14,7 @@
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     const state = {
+        pageCollection: null,
         electionId: 0,
         template: null,
         photo: null,
@@ -73,6 +76,31 @@
                 : JSON.stringify(value, null, 2);
     }
 
+    function reviewReady(review = state.review) {
+        if (
+            !review ||
+            review.revision !== state.revision ||
+            Date.now() >= review.expiresAt
+        ) return false;
+
+        if (Number(state.template?.total_pages ?? 1) === 1) {
+            return review.kind !== "CV2";
+        }
+
+        const collection = state.pageCollection;
+
+        return ENABLE_MULTIPAGE_PREVIEW_TEST &&
+            ENABLE_MULTIPAGE_COUNT_TEST &&
+            review.kind === "CV2" &&
+            Boolean(collection) &&
+            review.collection === collection &&
+            collection.completedRevision === state.revision &&
+            collection.electionId === state.electionId &&
+            collection.templateId === selectedTemplateId() &&
+            collection.pages.size === collection.totalPages;
+    }
+
+
     function controls() {
         const locked =
             state.busy ||
@@ -83,17 +111,27 @@
             camera.opening ||
             Boolean(camera.stream) ||
             camera.capturing;
+        const completeCollection = Boolean(
+            state.pageCollection &&
+            state.pageCollection.pages.size ===
+            state.pageCollection.totalPages
+        );
 
+        const reconcile = Boolean(
+            state.pageCollection && state.uncertain
+        );
         for (const id of [
             "loadBtn",
             "templateSelect",
             "fileInput"
         ]) {
             $(id).disabled =
-                locked || camera.capturing;
+                locked || camera.capturing || reconcile ||
+                (id === "fileInput" && completeCollection);
         }
 
         $("cameraBtn").disabled =
+            completeCollection || reconcile ||
             state.busy ||
             state.checking ||
             state.preparing ||
@@ -109,7 +147,8 @@
             String(!$("cameraPanel").hidden)
         );
 
-        $("retakeBtn").disabled = locked;
+        $("retakeBtn").disabled =
+            locked || completeCollection || reconcile;
 
         $("captureBtn").disabled =
             locked ||
@@ -124,6 +163,10 @@
 
         // Prevent counting an old photo while a new live ballot is shown.
         $("analyzeBtn").disabled =
+            (
+                Number(state.template?.total_pages ?? 1) > 1 &&
+                !ENABLE_MULTIPAGE_PREVIEW_TEST
+            ) ||
             locked ||
             state.preparing ||
             cameraActive ||
@@ -133,12 +176,18 @@
             state.counted ||
             state.unavailable ||
             state.uncertain;
-
+        $("analyzeBtn").textContent =
+            state.pageCollection &&
+                state.pageCollection.pages.size ===
+                state.pageCollection.totalPages
+                ? "Validate Collected Pages"
+                : "Scan & Validate Ballot";
         $("confirmCountBtn").disabled =
-            $("analyzeBtn").disabled ||
-            !state.review ||
-            state.review.revision !== state.revision ||
-            Date.now() >= state.review.expiresAt;
+            $("analyzeBtn").disabled || !reviewReady();
+
+        $("resetPagesBtn").disabled =
+            locked || state.preparing || cameraActive || reconcile;;
+
         $("checkStatusBtn").disabled =
             locked ||
             state.preparing ||
@@ -294,10 +343,8 @@
         if (!quiet) {
             status("cameraStatus", message);
         }
-
         controls();
     }
-
     /*
      * Fit an A5 guide inside the actual visible video content.
      * This accounts for letterboxing caused by object-fit: contain.
@@ -792,7 +839,7 @@
                 status(
                     "cameraStatus",
                     "Photo captured. Review the preview, then " +
-                    "press Scan & Count Ballot."
+                    "press Scan & Validate Ballot."
                 );
 
                 if (!$("analyzeBtn").disabled) {
@@ -995,7 +1042,7 @@
         ) {
             return;
         }
-
+        resetPageCollection();
         const ticket = ++state.listTicket;
 
         state.templateTicket++;
@@ -1106,7 +1153,7 @@
         ) {
             return;
         }
-
+        resetPageCollection();
         const ticket = ++state.templateTicket;
         const id = selectedTemplateId();
 
@@ -1421,6 +1468,259 @@
         }
     }
 
+    function renderPageCollection() {
+        const collection = state.pageCollection;
+
+        const panel = $("pageCollection");
+        if (!panel) return;
+
+        panel.hidden = !collection;
+
+        if (!collection) return;
+
+        $("pageProgress").textContent =
+            `${collection.pages.size} of ` +
+            `${collection.totalPages} pages analyzed`;
+
+        const lines = [
+            `Ballot ID: ${collection.ballotId}`
+        ];
+
+        for (
+            let page = 1;
+            page <= collection.totalPages;
+            page++
+        ) {
+            lines.push(
+                collection.pages.has(page)
+                    ? `Page ${page}: ${collection.counted ? "COUNTED" : "Analyzed"}`
+                    : `Page ${page}: Pending`
+            );
+        }
+
+        lines.push(
+            collection.counted
+                ? `Votes saved: ${collection.savedVotes ?? "See tally"}`
+                : state.uncertain
+                    ? "Counting status unknown. Check Ballot Status."
+                    : "Votes saved: 0"
+        );
+
+        $("collectedPages").style.whiteSpace = "pre-line";
+        $("collectedPages").textContent = lines.join("\n");
+    }
+
+    function resetPageCollection() {
+        state.pageCollection = null;
+        state.review = null;
+
+        renderPageCollection();
+    }
+
+    function collectPagePreview(data) {
+        const ballotId =
+            String(data.ballot_id || "").toLowerCase();
+
+        const pageId =
+            String(data.page_id || "").toLowerCase();
+
+        const pageNumber = Number(data.page_number);
+        const totalPages = Number(data.total_pages);
+
+        if (
+            data.qr_version !== "CV2" ||
+            !uuidPattern.test(ballotId) ||
+            !uuidPattern.test(pageId) ||
+            !Number.isInteger(totalPages) ||
+            totalPages < 2 ||
+            totalPages > 100 ||
+            totalPages !== Number(state.template.total_pages) ||
+            !Number.isInteger(pageNumber) ||
+            pageNumber < 1 ||
+            pageNumber > totalPages ||
+            data.counted !== false ||
+            data.can_confirm !== false ||
+            data.review_required !== false ||
+            data.saved_votes !== 0 ||
+            typeof data.page_review_token !== "string" ||
+            !data.page_review_token ||
+            data.page_review_token.length > 65536 ||
+            !Array.isArray(data.page_positions) ||
+            !data.page_positions.length
+        ) {
+            throw new Error(
+                "Invalid multi-page analysis response."
+            );
+        }
+
+        const collection = state.pageCollection || {
+            ballotId,
+            electionId: state.electionId,
+            templateId: selectedTemplateId(),
+            totalPages,
+            pages: new Map()
+        };
+
+        if (
+            collection.ballotId !== ballotId ||
+            collection.electionId !== state.electionId ||
+            collection.templateId !== selectedTemplateId() ||
+            collection.totalPages !== totalPages
+        ) {
+            throw new Error(
+                "This page belongs to another ballot. " +
+                "Complete the current ballot first."
+            );
+        }
+
+        if (
+            collection.pages.has(pageNumber) ||
+            [...collection.pages.values()].some(
+                page => page.page_id === pageId
+            )
+        ) {
+            throw new Error(
+                "This ballot page has already been analyzed."
+            );
+        }
+
+        collection.pages.set(pageNumber, {
+            page_id: pageId,
+            page_number: pageNumber,
+            positions: data.page_positions,
+            review_token: data.page_review_token
+        });
+        if (collection.pages.size === collection.totalPages) {
+            collection.completedRevision = state.revision;
+        }
+        state.pageCollection = collection;
+
+        renderPageCollection();
+
+        return collection;
+    }
+
+
+    async function validateCollectedPages(collection, snapshot) {
+        state.review = null;
+        window.confirmedOMRCounting = false;
+
+        $("results").textContent =
+            "Validating all collected pages...";
+
+        status(
+            "analysisStatus",
+            "Checking combined ballot selections..."
+        );
+
+        try {
+            if (
+                state.pageCollection !== collection ||
+                collection.pages.size !== collection.totalPages ||
+                collection.electionId !== snapshot.electionId ||
+                collection.templateId !== snapshot.templateId ||
+                collection.completedRevision !== snapshot.revision
+            ) {
+                throw new Error("Incomplete or mismatched ballot pages.");
+            }
+
+            const tokens = [];
+
+            for (let n = 1; n <= collection.totalPages; n++) {
+                const token =
+                    collection.pages.get(n)?.review_token;
+
+                if (typeof token !== "string" || !token) {
+                    throw new Error("Missing page review token.");
+                }
+
+                tokens.push(token);
+            }
+
+            const reviewStarted = Date.now();
+
+            const data = await api("/omr/validate-pages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    page_review_tokens: tokens
+                }),
+                timeoutMs: SCAN_TIMEOUT_MS,
+                signal: activeScan.signal
+            });
+
+            if (
+                state.revision !== snapshot.revision ||
+                state.pageCollection !== collection ||
+                data.success !== true ||
+                typeof data.valid !== "boolean" ||
+                data.preview_only !== true ||
+                data.counted !== false ||
+                typeof data.can_confirm !== "boolean" ||
+                (data.can_confirm && (
+                    data.valid !== true ||
+                    typeof data.confirmation_token !== "string" ||
+                    !data.confirmation_token
+                )) ||
+                !Number.isSafeInteger(data.valid_selections) ||
+                data.valid_selections < 0 ||
+                data.saved_votes !== 0 ||
+                data.qr_version !== "CV2" ||
+                Number(data.election_id) !== collection.electionId ||
+                Number(data.template_id) !== collection.templateId ||
+                String(data.ballot_id).toLowerCase() !== collection.ballotId ||
+                Number(data.total_pages) !== collection.totalPages ||
+                !Array.isArray(data.positions) ||
+                !data.positions.length
+            ) {
+                throw new Error("Invalid combined review response.");
+            }
+
+            displayResults(data);
+
+            if (
+                ENABLE_MULTIPAGE_COUNT_TEST &&
+                data.valid === true &&
+                data.can_confirm === true
+            ) {
+                state.review = {
+                    kind: "CV2",
+                    collection,
+                    ballotId: collection.ballotId,
+                    token: data.confirmation_token,
+                    pageTokens: tokens,
+                    validSelections: data.valid_selections,
+                    revision: snapshot.revision,
+                    expiresAt: reviewStarted + 4 * 60 * 1000
+                };
+            }
+
+            status(
+                "analysisStatus",
+                reviewReady()
+                    ? "Combined review complete. Review all selections before counting."
+                    : data.message || "Combined review complete. No votes saved.",
+                !data.valid
+            );
+
+        } catch (error) {
+            $("results").textContent =
+                "Combined review not completed. No votes saved.";
+
+            status(
+                "analysisStatus",
+                error.message + (
+                    [400, 401, 403, 409, 413, 422].includes(error.status)
+                        ? " Start New Ballot and scan all pages again."
+                        : " Press Validate Collected Pages to retry."
+                ),
+                true
+            );
+        }
+    }
+
     /* RESULTS AND TIMINGS */
 
     function displayResults(data) {
@@ -1538,6 +1838,23 @@
 
 
     async function scan(counting = false) {
+        const multiPage =
+            Number(state.template?.total_pages ?? 1) > 1;
+
+        if (
+            multiPage &&
+            (
+                !ENABLE_MULTIPAGE_PREVIEW_TEST ||
+                (counting && !ENABLE_MULTIPAGE_COUNT_TEST)
+            )
+        ) {
+            return status(
+                "analysisStatus",
+                "Multi-page scanning is not yet enabled. Use Check Ballot Status.",
+                true
+            );
+        }
+
         if (
             state.busy ||
             state.checking ||
@@ -1556,14 +1873,7 @@
 
         const review = state.review;
 
-        if (
-            counting &&
-            (
-                !review ||
-                review.revision !== state.revision ||
-                Date.now() >= review.expiresAt
-            )
-        ) {
+        if (counting && !reviewReady(review)) {
             state.review = null;
 
             status(
@@ -1616,6 +1926,88 @@
                     ? "Confirming and counting ballot..."
                     : "Scanning and validating ballot..."
             );
+
+            if (multiPage && counting) {
+                const collection = review.collection;
+
+                state.qrRaw =
+                    `CV2|${snapshot.electionId}|${collection.ballotId}|` +
+                    `${snapshot.templateId}|${collection.pages.get(1).page_id}`;
+
+                sent = true;
+
+                const data = await api("/omr/count-pages", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        page_review_tokens: review.pageTokens,
+                        confirmation_token: review.token
+                    }),
+                    timeoutMs: SCAN_TIMEOUT_MS,
+                    signal: activeScan.signal
+                });
+
+                if (
+                    state.revision !== snapshot.revision ||
+                    state.pageCollection !== collection ||
+                    data.success !== true ||
+                    data.valid !== true ||
+                    data.preview_only !== false ||
+                    data.counted !== true ||
+                    data.can_confirm !== false ||
+                    data.status !== "COUNTED" ||
+                    data.qr_version !== "CV2" ||
+                    Number(data.election_id) !== snapshot.electionId ||
+                    Number(data.template_id) !== snapshot.templateId ||
+                    String(data.ballot_id).toLowerCase() !== collection.ballotId ||
+                    Number(data.total_pages) !== collection.totalPages ||
+                    data.saved_votes !== review.validSelections ||
+                    !Array.isArray(data.positions) ||
+                    !data.positions.length
+                ) {
+                    throw new Error("Unable to verify counting response.");
+                }
+
+                state.counted = true;
+                state.uncertain = false;
+
+                collection.counted = true;
+                collection.savedVotes = data.saved_votes;
+
+                window.campusVoteQRVerified = true;
+                window.confirmedOMRCounting = true;
+
+                renderPageCollection();
+                displayResults(data);
+
+                status(
+                    "analysisStatus",
+                    "Ballot counted. Start New Ballot for the next ballot."
+                );
+
+                status("qrStatus", "Ballot status: COUNTED");
+
+                window.showToast?.(
+                    "Ballot counted successfully.",
+                    "success"
+                );
+
+                return;
+            }
+
+            if (
+                multiPage &&
+                state.pageCollection &&
+                state.pageCollection.pages.size ===
+                state.pageCollection.totalPages
+            ) {
+                await validateCollectedPages(
+                    state.pageCollection, snapshot
+                );
+                return;
+            }
 
             const form = new FormData();
 
@@ -1680,7 +2072,45 @@
                     "Unable to verify the scanning response."
                 );
             }
+            if (multiPage) {
+                const collection = collectPagePreview(data);
 
+                state.qrRaw =
+                    `CV2|${snapshot.electionId}|` +
+                    `${collection.ballotId}|` +
+                    `${snapshot.templateId}|${data.page_id}`;
+
+                state.review = null;
+
+                window.campusVoteQRVerified = true;
+                window.confirmedOMRCounting = false;
+
+                const complete =
+                    collection.pages.size === collection.totalPages;
+
+                status(
+                    "qrStatus",
+                    `CV2 — Page ${data.page_number} of ${data.total_pages}`
+                );
+
+                if (complete) {
+                    await validateCollectedPages(
+                        collection, snapshot
+                    );
+                } else {
+                    $("results").textContent =
+                        "Page analyzed. Capture the remaining pages.";
+
+                    status(
+                        "analysisStatus",
+                        `Page ${data.page_number} analyzed. Capture the next page.`
+                    );
+                }
+
+                return;
+
+
+            }
             state.qrRaw =
                 `CV1|${snapshot.electionId}|` +
                 `${String(data.ballot_id).toLowerCase()}|` +
@@ -1785,7 +2215,12 @@
                 !error.requestNotSent
             ) {
                 state.uncertain = true;
+                if (multiPage) {
+                    $("results").textContent =
+                        "Counting status unknown. Check Ballot Status.";
 
+                    renderPageCollection();
+                }
                 status(
                     "analysisStatus",
                     "Counting status is unknown. Use Check Ballot " +
@@ -1799,6 +2234,21 @@
                     data?.status === "COUNTED"
                 ) {
                     state.counted = true;
+
+                    if (
+                        multiPage &&
+                        counting &&
+                        state.pageCollection === review.collection
+                    ) {
+                        state.pageCollection.counted = true;
+                        window.confirmedOMRCounting = true;
+
+                        $("results").textContent =
+                            "Ballot already counted. No additional votes saved.";
+
+                        renderPageCollection();
+                    }
+
                 } else if (
                     error.status === 409 ||
                     data?.scope_denied === true
@@ -1829,12 +2279,16 @@
             .trim()
             .split("|");
 
+        const version = parts[0];
+        const multi = version === "CV2";
+
         if (
-            parts.length !== 4 ||
-            parts[0] !== "CV1" ||
+            !["CV1", "CV2"].includes(version) ||
+            parts.length !== (multi ? 5 : 4) ||
             !validId(parts[1]) ||
             !uuidPattern.test(parts[2]) ||
-            !validId(parts[3])
+            !validId(parts[3]) ||
+            (multi && !uuidPattern.test(parts[4]))
         ) {
             throw new Error(
                 "This is not a valid CampusVote ballot QR."
@@ -1842,11 +2296,16 @@
         }
 
         return {
+            version,
             electionId: Number(parts[1]),
             ballotId: parts[2].toLowerCase(),
-            templateId: Number(parts[3])
+            templateId: Number(parts[3]),
+            pageId: multi
+                ? parts[4].toLowerCase()
+                : null
         };
     }
+
 
     async function checkBallotStatus() {
         if (
@@ -1917,17 +2376,56 @@
                 );
             }
 
+
+            const totalPages = Number(data.total_pages);
+            const pageNumber = Number(data.page_number);
+
+            if (
+                data.qr_version !== parsed.version ||
+                totalPages !== Number(state.template.total_pages ?? 1) ||
+                !Number.isInteger(pageNumber) ||
+                pageNumber < 1 ||
+                pageNumber > totalPages ||
+                (
+                    parsed.version === "CV2" &&
+                    (
+                        String(data.page_id).toLowerCase() !== parsed.pageId ||
+                        totalPages < 2
+                    )
+                ) ||
+                (
+                    parsed.version === "CV1" &&
+                    totalPages !== 1
+                )
+            ) {
+                throw new Error(
+                    "Ballot page identity does not match."
+                );
+            }
+
             window.campusVoteQRVerified = true;
+
+            const ballotLabel =
+                data.ballot_number != null
+                    ? `Ballot No. ${data.ballot_number}`
+                    : data.serial_number || parsed.ballotId;
 
             status(
                 "qrStatus",
-                `Ballot: ${data.serial_number || parsed.ballotId}\n` +
+                `${ballotLabel}\n` +
+                `Page: ${pageNumber} of ${totalPages}\n` +
+                `QR Version: ${parsed.version}\n` +
                 `Status: ${data.status}\n` +
-                `Department authorization: Verified`
-
+                "Department authorization: Verified"
             );
 
-
+            if (parsed.version === "CV2") {
+                status(
+                    "analysisStatus",
+                    `Page ${pageNumber} of ${totalPages} verified. ` +
+                    "QR verification only. No votes saved."
+                );
+            }
             if (state.uncertain) {
                 status(
                     "analysisStatus",
@@ -1947,8 +2445,18 @@
                 error.data?.status === "COUNTED" ||
                 error.data?.duplicate === true
             ) {
+                if (state.uncertain && state.pageCollection) {
+                    state.pageCollection.counted = true;
+
+                    $("results").textContent =
+                        "Ballot already counted. See tally for saved votes.";
+                }
+
                 state.counted = true;
                 state.uncertain = false;
+                state.review = null;
+
+                renderPageCollection();
 
                 window.campusVoteQRVerified = true;
                 window.confirmedOMRCounting = true;
@@ -2396,6 +2904,24 @@ self.onmessage = function (event) {
             }
         );
 
+        $("resetPagesBtn")?.addEventListener(
+            "click",
+            () => {
+                if (
+                    state.busy ||
+                    state.checking ||
+                    state.loading ||
+                    state.preparing ||
+                    camera.opening ||
+                    camera.stream ||
+                    camera.capturing
+                ) return;
+
+                resetPageCollection();
+                clearPhoto();
+            }
+        );
+
         $("analyzeBtn").addEventListener(
             "click",
             () => scan(false)
@@ -2427,6 +2953,7 @@ self.onmessage = function (event) {
 
         clearPhoto();
         loadTemplates();
+
     }
 
     if (document.readyState === "loading") {

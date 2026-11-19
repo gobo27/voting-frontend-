@@ -1,6 +1,7 @@
 
 "use strict";
-
+const ENABLE_MULTIPAGE_TEMPLATE_TEST = true;
+const ENABLE_MULTIPAGE_PRINT_TEST = true;
 const DPI = 300;
 const mmToPx = mm => Math.round(mm * DPI / 25.4);
 const el = id => document.getElementById(id);
@@ -76,8 +77,11 @@ function canDeleteTemplates() {
         String(election.status || "").toLowerCase() !== "completed"
     );
 }
-
-
+function multiPagePrintAllowed() {
+    return state.totalPages === 1 ||
+        (ENABLE_MULTIPAGE_TEMPLATE_TEST &&
+            ENABLE_MULTIPAGE_PRINT_TEST);
+}
 function updateActionButtons() {
     const saveButton = el("saveButton");
     const generateButton = el("generatePrintButton");
@@ -92,7 +96,10 @@ function updateActionButtons() {
         saveButton.disabled =
             electionLocked() ||
             busy ||
-            state.totalPages > 1;
+            (
+                state.totalPages > 1 &&
+                !ENABLE_MULTIPAGE_TEMPLATE_TEST
+            );
     }
 
     if (generateButton) {
@@ -105,7 +112,7 @@ function updateActionButtons() {
         );
 
         generateButton.disabled =
-            state.totalPages > 1 ||
+            !multiPagePrintAllowed() ||
             !state.savedTemplateId ||
             !scope ||
             Boolean(scope.existing_batch_id) ||
@@ -143,7 +150,10 @@ function setEditorLocked(locked) {
 }
 
 function templateText(template) {
-    return `#${template.template_id} - ${template.template_name} (${template.paper_size})`;
+    return `#${template.template_id} - ` +
+        `${template.template_name} ` +
+        `(${template.paper_size}, ` +
+        `${template.total_pages ?? 1} page/s)`;
 }
 
 function closeSavedDropdown() {
@@ -498,6 +508,8 @@ function verifySavedCoordinates(coordinates, expectedLayout) {
 
         if (
             !saved ||
+            Number(saved.page_number ?? 1) !==
+            Number(row.page_number ?? 1) ||
             Number(saved.x_pos) !== mmToPx(row.x) ||
             Number(saved.y_pos) !== mmToPx(row.y) ||
             Number(saved.width) !== mmToPx(5) ||
@@ -633,6 +645,9 @@ function installBallotLayoutStyles() {
 
             #ballotPage.batch-mode {
                 display: block !important;
+                position: static !important;
+                height: auto !important;
+                min-height: 0 !important;
             }
 
             #ballotPage.batch-mode .print-sheet {
@@ -1043,25 +1058,25 @@ async function loadElectionScopes() {
     updateActionButtons();
 }
 
-
 // OMR COORDINATE PAYLOAD
+
 
 function coordinatePayload() {
     return state.layout.map(({
         candidate,
         x,
-        y
+        y,
+        page_number
     }) => ({
         candidate_id: candidate.id,
         bubble_code: `C${candidate.id}`,
+        page_number: page_number ?? 1,
         x_pos: mmToPx(x),
         y_pos: mmToPx(y),
         width: mmToPx(5),
         height: mmToPx(5)
     }));
 }
-
-
 
 // INVALIDATE SAVED TEMPLATE AFTER CHANGES
 
@@ -1172,34 +1187,37 @@ async function savePositionLimits() {
 
 // SAVE BALLOT TEMPLATE
 
+
 async function saveBallot() {
-    if (state.totalPages > 1) {
+    if (
+        state.totalPages > 1 &&
+        !ENABLE_MULTIPAGE_TEMPLATE_TEST
+    ) {
         return status(
             "Multi-page ballots are currently preview only.",
             true
         );
     }
+
     if (
         state.saving ||
         state.printing ||
-        state.deleting
+        state.deleting ||
+        state.loadingTemplate
     ) {
         return;
     }
 
     if (electionLocked()) {
         return status(
-            "Cannot save a new ballot while " +
-            "voting/scanning is active or the " +
-            "election is completed.",
+            "Cannot save a new ballot while voting/scanning is active or the election is completed.",
             true
         );
     }
 
     if (state.savedTemplateId) {
         return status(
-            `Ballot template #${state.savedTemplateId} ` +
-            `is already saved.`,
+            `Ballot template #${state.savedTemplateId} is already saved.`,
             true
         );
     }
@@ -1209,27 +1227,28 @@ async function saveBallot() {
 
     try {
         if (!state.electionId) {
+            throw new Error("Election has not loaded.");
+        }
+
+        render();
+
+        if (
+            state.totalPages > 1 &&
+            !ENABLE_MULTIPAGE_TEMPLATE_TEST
+        ) {
             throw new Error(
-                "Election has not loaded."
+                "Multi-page template saving is disabled."
             );
         }
 
-        // Recalculate before saving to ensure that
-        // coordinates match the current print layout.
-        state.layout = layoutBallot();
-
         if (!state.layout.length) {
-            throw new Error(
-                "No candidates to save."
-            );
+            throw new Error("No candidates to save.");
         }
 
         const title = el("titleInput").value.trim();
 
         if (!title) {
-            throw new Error(
-                "Ballot title is required."
-            );
+            throw new Error("Ballot title is required.");
         }
 
         await savePositionLimits();
@@ -1240,6 +1259,7 @@ async function saveBallot() {
                 template_name: title,
                 paper_size:
                     state.copies === 2 ? "A5" : "A4",
+                total_pages: state.totalPages,
                 coordinates: coordinatePayload()
             });
 
@@ -1252,8 +1272,7 @@ async function saveBallot() {
             templateId < 1
         ) {
             throw new Error(
-                "Backend did not return " +
-                "a valid template ID."
+                "Backend did not return a valid template ID."
             );
         }
 
@@ -1267,10 +1286,8 @@ async function saveBallot() {
 
         status(
             result.duplicate
-                ? `Identical ballot already exists ` +
-                `as template #${templateId}.`
-                : `Ballot template #${templateId} ` +
-                `saved successfully!`
+                ? `Identical ballot already exists as template #${templateId}.`
+                : `Ballot template #${templateId} saved successfully!`
         );
 
     } catch (error) {
@@ -1287,17 +1304,135 @@ async function saveBallot() {
     }
 }
 
+
+function buildRegisteredPrintSheets(ballots) {
+    if (!Array.isArray(ballots) || !ballots.length) {
+        throw new Error("No registered ballots to print.");
+    }
+
+    const sheets = [];
+
+    function makeSheet(isA5 = false) {
+        const sheet = document.createElement("div");
+
+        sheet.className = "print-sheet" +
+            (isA5 ? "" : " layout-a4");
+
+        return sheet;
+    }
+
+    function validQR(code) {
+        return typeof code === "string" &&
+            code.startsWith("data:image/png;base64,") &&
+            code.length > "data:image/png;base64,".length;
+    }
+
+    // MULTI-PAGE A4 BALLOTS
+
+    if (state.totalPages > 1) {
+
+        if (
+            state.copies !== 1 ||
+            state.pages.length !== state.totalPages
+        ) {
+            throw new Error("Invalid multi-page layout.");
+        }
+
+        const ballotIds = new Set();
+        const pageIds = new Set();
+        const qrCodes = new Set();
+        for (const ballot of ballots) {
+
+            if (
+                !ballot.ballot_id ||
+                ballotIds.has(ballot.ballot_id) ||
+                Number(ballot.total_pages) !== state.totalPages ||
+                !Array.isArray(ballot.pages) ||
+                ballot.pages.length !== state.totalPages
+            ) {
+                throw new Error("Incomplete registered ballot.");
+            }
+
+            ballotIds.add(ballot.ballot_id);
+
+            for (const layoutPage of state.pages) {
+
+                const matches = ballot.pages.filter(
+                    item => Number(item.page_number) ===
+                        layoutPage.page_number
+                );
+
+                const registeredPage = matches[0];
+
+                if (
+                    matches.length !== 1 ||
+                    !registeredPage.page_id ||
+                    pageIds.has(registeredPage.page_id) ||
+                    !validQR(registeredPage.qr_code) ||
+                    qrCodes.has(registeredPage.qr_code)
+                ) {
+                    throw new Error(
+                        "Missing or duplicate QR ballot page."
+                    );
+                }
+
+                pageIds.add(registeredPage.page_id);
+                qrCodes.add(registeredPage.qr_code);
+                const sheet = makeSheet();
+
+                sheet.appendChild(
+                    createHalf({
+                        ...ballot,
+                        qr_code: registeredPage.qr_code
+                    }, layoutPage)
+                );
+
+                sheets.push(sheet);
+            }
+        }
+
+        return sheets;
+    }
+    // EXISTING SINGLE-PAGE A4 AND A5 BALLOTS
+    const isA5 = state.copies === 2;
+    for (
+        let i = 0;
+        i < ballots.length;
+        i += state.copies
+    ) {
+        const sheet = makeSheet(isA5);
+        for (let j = 0; j < state.copies; j++) {
+            const ballot = ballots[i + j];
+            if (!ballot) break;
+
+            if (
+                !validQR(ballot.qr_code) ||
+                Number(ballot.total_pages ?? 1) !== 1
+            ) {
+                throw new Error(
+                    "Invalid single-page QR ballot."
+                );
+            }
+            sheet.appendChild(createHalf(ballot));
+        }
+        sheets.push(sheet);
+    }
+    return sheets;
+}
+
 // PRINT REGISTERED QR BALLOTS
 
+
 async function printRegisteredBallots(ballots) {
-    if (
-        !Array.isArray(ballots) ||
-        !ballots.length
-    ) {
+
+    if (!multiPagePrintAllowed()) {
         throw new Error(
-            "No registered ballots to print."
+            "Multi-page printing is not yet enabled."
         );
     }
+
+    const sheets =
+        buildRegisteredPrintSheets(ballots);
 
     installBallotLayoutStyles();
     setPrintPageOrientation();
@@ -1305,11 +1440,10 @@ async function printRegisteredBallots(ballots) {
     const page = el("ballotPage");
     const isA5 = state.copies === 2;
 
-    page.replaceChildren();
-
     page.classList.remove(
         "layout-a4",
-        "layout-a5"
+        "layout-a5",
+        "multi-page-preview"
     );
 
     page.classList.add(
@@ -1317,36 +1451,7 @@ async function printRegisteredBallots(ballots) {
         isA5 ? "layout-a5" : "layout-a4"
     );
 
-    // A4 portrait: one ballot per sheet.
-    // A4 landscape: two A5 portrait ballots per sheet.
-    for (
-        let i = 0;
-        i < ballots.length;
-        i += state.copies
-    ) {
-        const sheet = document.createElement("div");
-
-        sheet.className =
-            "print-sheet" +
-            (isA5 ? "" : " layout-a4");
-
-        for (
-            let j = 0;
-            j < state.copies;
-            j++
-        ) {
-            const ballot = ballots[i + j];
-
-            if (!ballot) break;
-
-            sheet.appendChild(
-                createHalf(ballot)
-            );
-        }
-
-        page.appendChild(sheet);
-    }
-
+    page.replaceChildren(...sheets);
     const images = [
         ...page.querySelectorAll(
             ".ballot-qr img"
@@ -1391,10 +1496,15 @@ async function confirmPrintedBatch(
     const ballotSize =
         state.copies === 2 ? "A5" : "A4";
 
+    const sheets = state.totalPages > 1
+        ? quantity * state.totalPages
+        : Math.ceil(quantity / state.copies);
+
     const confirmed = await window.showConfirmToast(
         `Did the printer successfully produce all ${quantity} ` +
-        `individual ${ballotSize} ballots for batch #${batchId}?\n\n` +
-        `Choose Confirm Printed only after checking the printed pages.`,
+        `${ballotSize} ballots (${sheets} A4 sheets) for batch #${batchId}?\n\n` +
+        `Each ballot has ${state.totalPages} page(s). ` +
+        `Confirm only after checking all pages and QR codes.`,
         {
             title: "Confirm Ballot Printing",
             confirmText: "Confirm Printed",
@@ -1416,7 +1526,7 @@ async function confirmPrintedBatch(
     );
 
     status(
-        `${quantity} physical ${ballotSize} ballots ` +
+        `${quantity} ${ballotSize} ballots (${sheets} A4 sheets) ` +
         `confirmed (${printType.toLowerCase()}).`
     );
 
@@ -1426,9 +1536,9 @@ async function confirmPrintedBatch(
 // GENERATE AND PRINT REGISTERED QR BALLOTS
 
 async function generateAndPrintBallots() {
-    if (state.totalPages > 1) {
+    if (!multiPagePrintAllowed() || electionLocked()) {
         return status(
-            "Multi-page ballots are currently preview only.",
+            "Ballot printing is disabled or the election is locked.",
             true
         );
     }
@@ -1532,12 +1642,33 @@ async function generateAndPrintBallots() {
             );
         }
 
-        state.layout = layoutBallot();
+
+        render();
+
+        if (
+            Number(template.template_id) !== state.savedTemplateId ||
+            Number(template.total_pages ?? 1) !== state.totalPages ||
+            !multiPagePrintAllowed()
+        ) {
+            throw new Error(
+                "Saved template or page count does not match."
+            );
+        }
 
         verifySavedCoordinates(
             coordinates,
             state.layout
         );
+
+        if (
+            state.totalPages > 1 &&
+            quantity * state.totalPages > 100
+        ) {
+            throw new Error(
+                "Test batches are limited to 100 printed pages."
+            );
+        }
+
 
         status(
             "Generating registered QR ballots...",
@@ -1838,8 +1969,29 @@ async function selectSavedTemplate(templateId) {
 
         state.copies = copies;
 
+
+        const multiplePages =
+            state.copies === 1 && !fitsPaper(1)
+                ? layoutMultiplePages()
+                : [];
+
         const expectedLayout =
-            layoutBallot();
+            multiplePages.length
+                ? multiplePages.flatMap(page => page.rows)
+                : layoutBallot();
+
+        const expectedPageCount =
+            multiplePages.length || 1;
+
+        if (
+            Number(template.total_pages ?? 1) !==
+            expectedPageCount
+        ) {
+            throw new Error(
+                "Saved template page count does not match the current layout."
+            );
+        }
+
 
         verifySavedCoordinates(
             coordinates,
@@ -2312,6 +2464,34 @@ document.addEventListener(
                 saveBallot
             );
         }
+        for (const id of [
+            "reloadButton",
+            "ballotScope",
+            "ballotQuantity",
+            "savedTemplateToggle",
+            "refreshTemplatesButton"
+        ]) {
+            const input = el(id);
+            if (input) input.disabled = busy;
+        }
+
+        for (const id of [
+            "titleInput",
+            "yearInput",
+            "instructionsInput",
+            "copiesInput"
+        ]) {
+            const input = el(id);
+            if (input) input.disabled =
+                busy || electionLocked();
+        }
+
+        el("positionSettings")
+            ?.querySelectorAll("input")
+            .forEach(input => {
+                input.disabled = busy || electionLocked();
+            });
+
 
         if (generatePrintButton) {
             generatePrintButton.addEventListener(

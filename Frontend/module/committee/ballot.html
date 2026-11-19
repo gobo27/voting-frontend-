@@ -854,12 +854,6 @@
                 flex: 0 0 210mm !important;
             }
         }
-
-        #toastContainer,
-        #campusToastContainer {
-            display: none !important;
-        }
-
         .candidate-information {
             display: flex;
             flex-direction: column;
@@ -927,6 +921,12 @@
 
         @media print {
             #ballotPage.multi-page-preview {
+                display: none !important;
+            }
+        }
+
+        @media print {
+            .layout>.controls {
                 display: none !important;
             }
         }
@@ -1138,13 +1138,10 @@
 
     </main>
 
-
     <div id="toastContainer" aria-live="polite"></div>
-
-
     <script src="../sheared/toast.js"></script>
     <script src="./ballot.js?v=20261117-scopes"></script>
-   <script src="./ballot_create.js?v=20261118-ballot-number"></script>
+    <script src="./ballot_create.js?v=20261119-multipage-print"></script>
 
 </body>
 
