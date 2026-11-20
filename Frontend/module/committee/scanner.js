@@ -2,7 +2,7 @@
 
 (() => {
     const API_BASE = "https://voting-backend-cdrj.onrender.com/api";
-    const ENABLE_MULTIPAGE_PREVIEW_TEST = true ;
+    const ENABLE_MULTIPAGE_PREVIEW_TEST = true;
     const ENABLE_MULTIPAGE_COUNT_TEST = true;
     const MAX_SIDE = 2600;
     const MAX_FILE_BYTES = 30 * 1024 * 1024;
@@ -1767,6 +1767,22 @@
                         : "";
 
                 section.appendChild(text);
+                if (candidate.unclear) {
+                    const diagnostic = document.createElement("p");
+
+                    diagnostic.style.fontSize = "11px";
+                    diagnostic.style.color = "#a00000";
+
+                    diagnostic.textContent =
+                        "Reason: " +
+                        (candidate.quality_reasons || []).join(", ") +
+                        " | Fill: " + candidate.fill_intensity + "%" +
+                        " | Contrast: " + candidate.contrast +
+                        " | Adaptive: " +
+                        candidate.adaptive_dark_percent + "%";
+
+                    section.appendChild(diagnostic);
+                }
             }
 
             const note = document.createElement("p");
