@@ -138,7 +138,6 @@ function updateButtons() {
 }
 
 
-
 function renderStatus() {
   const totals = getTotals();
 
@@ -154,9 +153,8 @@ function renderStatus() {
     voidVoided: "VOID"
   };
 
-  // BALLOT STATUS COUNTERS
-
-  for (const [elementId, ballotStatus] of Object.entries(fields)) {
+  for (const [elementId, ballotStatus]
+      of Object.entries(fields)) {
     const element = $(elementId);
 
     if (element) {
@@ -166,66 +164,68 @@ function renderStatus() {
     }
   }
 
-  // ORIGINAL / REGISTERED BALLOTS
+  const summary = printSummary?.summary ?? printSummary;
 
+  const validPrintNumber = value => {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return null;
+    }
 
-  // Kunin ang total registered QR ballots para sa scan denominator.
+    const number = Number(value);
+
+    return Number.isFinite(number) && number >= 0
+      ? number
+      : null;
+  };
+
   const registeredFromStatus = totals
     ? ["ISSUED", "CAST", "COUNTED", "VOID"].reduce(
-      (sum, status) =>
-        sum + safeNumber(totals[status]),
-      0
-    )
+        (sum, ballotStatus) =>
+          sum + safeNumber(totals[ballotStatus]),
+        0
+      )
     : null;
 
-  const registered = printSummary
-    ? safeNumber(printSummary.registered_unique)
-    : registeredFromStatus;
+  const registeredFromSummary = validPrintNumber(
+    summary?.registered_unique
+  );
 
-  // Original printed ballots lang.
-  if ($("monitorOriginal")) {
-    $("monitorOriginal").textContent = printSummary
-      ? safeNumber(printSummary.initial_printed)
-      : "—";
-  }
+  const registered =
+    registeredFromSummary ?? registeredFromStatus;
 
-  // Additional printed ballots, hindi reprints.
-  if ($("monitorReprints")) {
-    $("monitorReprints").textContent = printSummary
-      ? safeNumber(printSummary.additional_printed)
-      : "—";
-  }
+  const original = validPrintNumber(
+    summary?.initial_printed
+  );
 
-  // Overall confirmed printed ballots.
-  if ($("monitorTotal")) {
-    $("monitorTotal").textContent = printSummary
-      ? safeNumber(printSummary.overall)
-      : "—";
-  }
+  const overall = validPrintNumber(
+    summary?.overall
+  );
 
-  // Successfully counted unique ballots / registered QR ballots.
+  $("monitorOriginal").textContent = original ?? "—";
+  $("monitorTotal").textContent = overall ?? "—";
+
   const counted = totals
     ? safeNumber(totals.COUNTED)
     : null;
 
-  if ($("monitorPhysical")) {
-    $("monitorPhysical").textContent =
-      counted !== null && registered !== null
-        ? `${counted} / ${registered}`
-        : "— / —";
-  }
+  $("monitorPhysical").textContent =
+    counted !== null && registered !== null
+      ? `${counted} / ${registered}`
+      : "— / —";
 
-  // Tamang description ng printing monitor.
   if ($("monitorNote")) {
-    $("monitorNote").textContent =
-      "Original = confirmed original ballot prints. " +
-      "Added Ballot = confirmed additional ballot prints. " +
-      "Overall Printed = total confirmed prints. " +
-      "Total Scan Ballot = successfully counted unique ballots.";
+    $("monitorNote").textContent = !printSummary
+      ? "Print summary unavailable. Check the backend API."
+      : original === null || overall === null
+        ? "Printing totals are missing from the API response."
+        : "Original Printed = confirmed original prints. " +
+          "Overall Printed = total confirmed prints. " +
+          "Total Scan Ballot = counted ballots / registered QR ballots.";
   }
-
-
-  // ELECTION STATUS
 
   if ($("voidElectionState")) {
     if (!counting) {
@@ -249,8 +249,6 @@ function renderStatus() {
 
   updateButtons();
 }
-
-
 
 function renderBallots() {
   const container = $("voidBallotList");
