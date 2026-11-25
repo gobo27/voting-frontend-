@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CampusVote | Election Management</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --maroon: #801224;
+            --border: #e0e3e8;
+            --muted: #747b87;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Inter, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f6f7f9;
+            color: #252a34;
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        /* SIDEBAR */
+
+        .sidebar {
+            width: 280px;
+            background: var(--maroon);
+            color: white;
+            position: fixed;
+            inset: 0 auto 0 0;
+            display: flex;
+            flex-direction: column;
+            padding: 30px 20px;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 60px;
+        }
+
+        .brand-icon {
+            padding: 12px;
+            border: 1px solid #ffffff66;
+            border-radius: 12px;
+        }
+
+        .brand h2 {
+            margin: 0;
+            font-size: 23px;
+            font-weight: 800;
+        }
+
+        .brand p {
+            font-size: 11px;
+            color: #dfc6c8;
+            line-height: 1.7;
+        }
+
+        .nav-label {
+            color: #cdaeb3;
+            letter-spacing: 3px;
+            font-size: 11px;
+            margin: 0 15px 18px;
+        }
+
+        .nav-link {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 14px;
+            border-radius: 9px;
+            text-decoration: none;
+            color: #e8d7d9;
+            margin-bottom: 7px;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            background: #713039;
+            color: white;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            border-top: 1px solid #ffffff30;
+            padding-top: 22px;
+        }
+
+        /* MAIN */
+
+        .main {
+            margin-left: 280px;
+            padding: 28px 35px 45px;
+        }
+
+        .page-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .page-head h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            box-shadow: 0 3px 9px #00000004;
+            padding: 27px;
+        }
+
+        .election-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 365px;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .election-content {
+            min-width: 0;
+        }
+
+        /* CONTROL PANEL */
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .election-title {
+            font-size: 21px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .status-pill {
+            padding: 11px 15px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: #fafafa;
+            font-size: 12px;
+            color: #606875;
+        }
+
+        .status-pill strong {
+            color: var(--maroon);
+        }
+
+        /* ELECTION LIFECYCLE */
+
+        .lifecycle-panel {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 22px;
+        }
+
+        .lifecycle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .lifecycle-header h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: #343945;
+        }
+
+        .lifecycle-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .lifecycle-step {
+            min-height: 51px;
+            padding: 12px 10px;
+            border: 1px solid #dce0e6;
+            border-radius: 10px;
+            background: #f8f8fa;
+            color: #667085;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background .2s, border-color .2s;
+        }
+
+        .lifecycle-step.active {
+            background: #fff0f2;
+            color: #801224;
+            border-color: #801224;
+        }
+
+        .lifecycle-step.completed {
+            background: #f0fdf4;
+            color: #166534;
+            border-color: #bbf7d0;
+        }
+
+        .lifecycle-step.pending {
+            background: #f8f8fa;
+            color: #667085;
+            border-color: #dce0e6;
+        }
+
+        .lifecycle-note {
+            margin: 12px 0 0;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #747b87;
+        }
+
+        /* VOTING SCHEDULE */
+
+        .time-form {
+            background: #f8f8fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 24px;
+            display: grid;
+            gap: 20px;
+        }
+
+        .schedule-heading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #343945;
+        }
+
+        .schedule-heading svg {
+            color: var(--maroon);
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .schedule-field {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            min-width: 0;
+        }
+
+        .schedule-field label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .time-input {
+            width: 100%;
+            min-width: 0;
+            padding: 13px 14px;
+            border: 1px solid #dce0e6;
+            border-radius: 8px;
+            background: white;
+            color: #252a34;
+        }
+
+        .time-input:focus {
+            outline: none;
+            border-color: var(--maroon);
+            box-shadow: 0 0 0 3px #80122416;
+        }
+
+        .time-input:disabled {
+            background: #f1f2f4;
+            cursor: not-allowed;
+        }
+
+        .schedule-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding-top: 4px;
+        }
+
+        .schedule-footer .muted {
+            flex: 1;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .primary {
+            border: none;
+            border-radius: 8px;
+            background: var(--maroon);
+            color: white;
+            font-weight: 600;
+            padding: 13px 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .primary:hover:not(:disabled) {
+            background: #640d1b;
+        }
+
+        .primary:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        /* FOUR ACTION CARDS */
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .action-card {
+            border: none;
+            border-radius: 11px;
+            padding: 22px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: center;
+            gap: 12px;
+            min-height: 190px;
+            width: 100%;
+            color: white;
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .action-card:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 18px #00000026;
+        }
+
+        .action-card:disabled {
+            opacity: .48;
+            cursor: not-allowed;
+        }
+
+        .action-start {
+            background: #2563eb;
+        }
+
+        .action-start:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+
+        .action-stop {
+            background: #bf797b;
+        }
+
+        .action-stop:hover:not(:disabled) {
+            background: #a95f62;
+        }
+
+        .action-mask {
+            background: #047857;
+        }
+
+        .action-mask:hover:not(:disabled) {
+            background: #065f46;
+        }
+
+        .action-finish {
+            background: #374151;
+        }
+
+        .action-finish:hover:not(:disabled) {
+            background: #1f2937;
+        }
+
+        .action-icon {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            border: 2px solid white;
+            border-radius: 50%;
+            background: transparent;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .action-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0;
+            color: white;
+            line-height: 1.4;
+        }
+
+        .action-desc {
+            font-size: 11px;
+            color: #ffffffeb;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* LIVE RESULTS */
+
+        .live-panel {
+            padding: 28px;
+        }
+
+        .live-panel h2 {
+            margin: 0 0 10px;
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        .live-positions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 24px;
+        }
+
+        .overview {
+            margin-top: 35px;
+            border-top: 1px solid #ddd;
+            padding-top: 25px;
+        }
+
+        .overview h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 12px;
+        }
+
+        .overview-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 13px;
+            margin: 22px 0;
+        }
+
+        .overview-row strong {
+            color: var(--muted);
+            text-align: right;
+        }
+
+        .position-section {
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .position-section:last-child {
+            border-bottom: none;
+        }
+
+        /* RESPONSIVE */
+
+        @media (max-width: 1450px) {
+            .action-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 1250px) {
+            .election-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: static;
+                width: 100%;
+                padding: 20px;
+            }
+
+            .brand {
+                margin-bottom: 15px;
+            }
+
+            .sidebar-bottom {
+                display: none;
+            }
+
+            .main {
+                margin: 0;
+                padding: 20px;
+            }
+
+            .action-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 750px) {
+            .action-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .schedule-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .schedule-footer {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .schedule-footer .primary {
+                width: 100%;
+            }
+
+            .page-head h1 {
+                font-size: 26px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-icon">
+                <i data-lucide="graduation-cap"></i>
+            </div>
+
+            <div>
+                <h2>CampusVote.</h2>
+                <p>STUDENT ELECTION<br>SYSTEM</p>
+            </div>
+        </div>
+
+        <div class="nav-label">WORKSPACE</div>
+
+        <a class="nav-link" href="Adviser.html">
+            <i data-lucide="users"></i>
+            Candidate management
+        </a>
+
+        <a class="nav-link active" href="elecmanagement.html">
+            <i data-lucide="vote"></i>
+            Election management
+        </a>
+
+        <div class="sidebar-bottom">
+            <p>Election adviser</p>
+            <p class="muted">Administrator</p>
+
+            <a href="Adviserlogin.html" class="nav-link" id="logoutLink">
+                <i data-lucide="log-out"></i>
+                Log out
+            </a>
+        </div>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+
+    <main class="main">
+
+        <div class="page-head">
+            <h1>Adviser dashboard</h1>
+        </div>
+
+        <div class="election-layout">
+
+            <div class="election-content">
+
+                <section class="panel">
+
+                    <div class="control-header">
+
+                        <h2 class="election-title">
+                            Election Control Panel
+                        </h2>
+
+                        <div id="statusPill" class="status-pill">
+                            Status:
+                            <strong id="statusText">LOADING</strong>
+
+                            &nbsp; | &nbsp;
+
+                            Names:
+                            <strong id="maskedText">Masked</strong>
+                        </div>
+
+                    </div>
+
+                    <!-- ELECTION LIFECYCLE -->
+
+                    <div class="lifecycle-panel">
+
+                        <div class="lifecycle-header">
+                            <h3>Election Lifecycle</h3>
+                        </div>
+
+                        <div class="lifecycle-grid">
+
+                            <div id="lifecycleSchedule" class="lifecycle-step active">
+                                1. Set Schedule
+                            </div>
+
+                            <div id="lifecycleVoting" class="lifecycle-step pending">
+                                2. Voting
+                            </div>
+
+                            <div id="lifecycleClosed" class="lifecycle-step pending">
+                                3. Closed
+                            </div>
+
+                            <div id="lifecycleArchive" class="lifecycle-step pending">
+                                4. Archive
+                            </div>
+
+                        </div>
+
+                        <p id="lifecycleDescription" class="lifecycle-note">
+                            Set and save the voting schedule
+                            to begin the election process.
+                        </p>
+
+                    </div>
+
+                    <!-- VOTING SCHEDULE -->
+
+                    <form id="electionTimeForm" class="time-form" onsubmit="handleStartElection(event)">
+
+                        <div class="schedule-heading">
+                            <i data-lucide="calendar-clock"></i>
+                            Voting Schedule
+                        </div>
+
+                        <div class="schedule-grid">
+
+                            <div class="schedule-field">
+
+                                <label for="startDate">
+                                    Starting Date
+                                </label>
+
+                                <input type="date" id="startDate" name="startDate" class="time-input" required>
+
+                            </div>
+
+                            <div class="schedule-field">
+
+                                <label for="startTime">
+                                    Starting Time
+                                </label>
+
+                                <input type="time" id="startTime" name="startTime" value="07:00" class="time-input"
+                                    required>
+
+                            </div>
+
+                            <div class="schedule-field">
+
+                                <label for="endDate">
+                                    Closing Date
+                                </label>
+
+                                <input type="date" id="endDate" name="endDate" class="time-input" required>
+
+                            </div>
+
+                            <div class="schedule-field">
+
+                                <label for="closingTime">
+                                    Closing Time
+                                </label>
+                                <input type="time" id="closingTime" name="closingTime" value="19:00" class="time-input"
+                                    required>
+                            </div>
+                        </div>
+                        <div class="schedule-footer">
+                            <p id="scheduleInfo" class="muted" role="status">
+                                Set the voting dates and times,
+                                then save the schedule.
+                            </p>
+                            <button type="submit" id="saveScheduleBtn" class="primary">
+                                <i data-lucide="save" style="width:17px;height:17px"></i>
+                                Save Voting Schedule
+                            </button>
+                        </div>
+                    </form>
+                    <!-- FOUR ELECTION ACTION CARDS -->
+                    <div class="action-grid">
+                        <!-- START ELECTION -->
+                        <button type="button" id="startElectionBtn" onclick="handleStartElectionClick()"
+                            class="action-card action-start" disabled>
+                            <div class="action-icon">
+                                <i data-lucide="play"></i>
+                            </div>
+                            <h3 class="action-title">
+                                Start Election
+                            </h3>
+                            <p class="action-desc">
+                                Start voting after saving
+                                the schedule
+                            </p>
+                        </button>
+                        <!-- STOP VOTING -->
+                        <button type="button" id="stopVotingBtn" onclick="handleStopVoting()"
+                            class="action-card action-stop" disabled>
+                            <div class="action-icon">
+                                <i data-lucide="square"></i>
+                            </div>
+
+                            <h3 class="action-title">
+                                Stop Voting
+                            </h3>
+                            <p class="action-desc">
+                                Close voting; archive separately
+                            </p>
+                        </button>
+                        <!-- MASK NAMES -->
+                        <button type="button" id="maskToggleBtn" onclick="handleMaskToggle()"
+                            class="action-card action-mask" disabled>
+                            <div id="maskIconContainer" class="action-icon">
+                                <i data-lucide="eye-off"></i>
+                            </div>
+                            <h3 id="maskBtnTitle" class="action-title">
+                                Mask Names
+                            </h3>
+                            <p id="maskBtnDesc" class="action-desc">
+                                Hide candidate real names
+                            </p>
+                        </button>
+                        <!-- FINISH SCANNING -->
+                        <button type="button" id="finishScanningBtn" onclick="handleFinishScanning()"
+                            class="action-card action-finish" disabled>
+                            <div class="action-icon">
+                                <i data-lucide="check-check"></i>
+                            </div>
+                            <h3 class="action-title">
+                                Finish Scanning
+                            </h3>
+                            <p class="action-desc">
+                                Finalize ballot counting
+                                and lock scanning
+                            </p>
+                        </button>
+                    </div>
+                </section>
+            </div>
+            <!-- LIVE RESULTS -->
+            <aside class="panel live-panel">
+                <h2>Live results</h2>
+                <p class="muted">Every voice. Every vote.</p>
+                <div id="dynamicSidebarPositions"></div>
+                <div class="overview">
+                    <h3>Election overview</h3>
+                    <div class="overview-row">
+                        <span>Votes cast</span>
+                        <strong id="Voted">—</strong>
+                    </div>
+                    <div class="overview-row">
+                        <span>Candidates</span>
+                        <strong id="No.candidates">0</strong>
+                    </div>
+                    <p class="muted">Results update automatically every 5 seconds.</p>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script src="../sheared/toast.js"></script>
+    <script src="./elecmanagement.js"></script>
+    <script src="../sheared/auth.js?v=20261002-2" data-mode="guard" data-role="adviser"></script>
+
+</body>
+
+</html>

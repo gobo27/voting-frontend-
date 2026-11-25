@@ -695,13 +695,12 @@ async function openArchiveFlow(electionId) {
                     : [];
 
                 busy = false;
-
                 if (!advisers.length) {
-
                     problem(
-                        "No active Advisers assigned to this election."
+                        "No active Adviser assigned. " +
+                        "Go to Account Management and assign an Adviser " +
+                        "to the current election before sending the report."
                     );
-
                 } else {
 
                     selectRecipients();

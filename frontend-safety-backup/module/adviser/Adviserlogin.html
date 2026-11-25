@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Adviser Access</title>
+
+  <link href="../../dist/output.css" rel="stylesheet">
+  <link href="../sheared/login.css" rel="stylesheet">
+</head>
+
+<body>
+  <header class="login-header">
+    <a href="../../signin.html" class="back-button" aria-label="Go back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <path d="m12 19-7-7 7-7"></path>
+        <path d="M19 12H5"></path>
+      </svg>
+    </a>
+
+    <div class="header-text">
+      <h1>Adviser Access</h1>
+      <p>Secure Role-Based Authentication</p>
+    </div>
+  </header>
+
+  <main class="login-main">
+    <section class="login-card">
+
+      <div class="login-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="m2 10 10-5 10 5-10 5-10-5Z"></path>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+          <path d="M22 10v6"></path>
+        </svg>
+      </div>
+
+      <h2 class="login-title">Log-in</h2>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="Enter your email" autocomplete="username"
+            required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+
+          <div class="password-wrapper">
+            <input type="password" id="password" class="form-input" placeholder="Enter your password"
+              autocomplete="current-password" required>
+
+            <button type="button" id="togglePassword" class="toggle-password" aria-label="Show password"
+              aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="login-button">
+          Log-in
+        </button>
+      </form>
+
+      <button type="button" id="forgotPasswordBtn" class="forgot-password-btn">
+        Forgot Password?
+      </button>
+    </section>
+  </main>
+
+  <script>
+    const togglePassword =
+      document.getElementById("togglePassword");
+
+    const passwordInput =
+      document.getElementById("password");
+
+    togglePassword.addEventListener("click", () => {
+      const hidden = passwordInput.type === "password";
+
+      passwordInput.type = hidden ? "text" : "password";
+
+      togglePassword.setAttribute(
+        "aria-label",
+        hidden ? "Hide password" : "Show password"
+      );
+
+      togglePassword.setAttribute(
+        "aria-pressed",
+        String(hidden)
+      );
+    });
+  </script>
+
+  <script src="../sheared/auth.js?v=20261025-1" data-mode="login" data-role="adviser"></script>
+
+  <script src="../sheared/toast.js"></script>
+  <script src="../sheared/forgot-password.js?v=1"></script>
+</body>
+
+</html>

@@ -1,0 +1,363 @@
+
+:root {
+    --maroon: #800000;
+    --maroon-dark: #650000;
+    --white: #ffffff;
+    --text: #303846;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+    background: #651b1b;
+}
+
+/* HEADER */
+
+.staff-header {
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+
+    background: var(--maroon);
+    color: var(--white);
+
+    box-shadow: 0 2px 9px rgba(0, 0, 0, .15);
+    position: relative;
+    z-index: 5;
+}
+
+.back-button {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: white;
+    text-decoration: none;
+}
+
+.back-button svg {
+    width: 26px;
+    height: 26px;
+}
+
+.back-button:hover {
+    opacity: .8;
+}
+
+.header-text h1 {
+    margin: 0 0 3px;
+    font-family: Georgia, serif;
+    font-size: 21px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.header-text p {
+    margin: 0;
+    font-family: Georgia, serif;
+    font-size: 11px;
+    color: rgba(255, 255, 255, .85);
+}
+
+/* BACKGROUND */
+
+.staff-main {
+    flex: 1;
+    min-height: calc(100vh - 64px);
+    min-height: calc(100dvh - 64px);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 45px 20px;
+
+    background-image:
+        linear-gradient(
+            rgba(128, 0, 0, .43),
+            rgba(70, 0, 0, .50)
+        ),
+        url("../../image/bg4.jpg");
+
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+/* SECTION */
+
+.role-section {
+    width: 100%;
+    max-width: 1190px;
+    margin: auto;
+}
+
+.section-heading {
+    text-align: center;
+    margin-bottom: 48px;
+    color: white;
+}
+
+.section-heading h2 {
+    margin: 0 0 12px;
+    font-family: Georgia, serif;
+    font-size: clamp(30px, 3.5vw, 45px);
+    font-weight: bold;
+    line-height: 1.15;
+}
+
+.section-heading p {
+    margin: 0;
+    font-family: Georgia, serif;
+    font-size: clamp(14px, 1.5vw, 18px);
+    color: rgba(255, 255, 255, .92);
+}
+
+/* ROLE CARDS */
+
+.role-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
+    align-items: stretch;
+}
+
+.role-card {
+    min-height: 225px;
+    padding: 26px 20px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+    text-decoration: none;
+
+    background: rgba(255, 255, 255, .95);
+    border: 1px solid rgba(255, 255, 255, .75);
+    border-left: 6px solid var(--maroon);
+    border-radius: 15px;
+
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .14);
+
+    transition:
+        transform .25s ease,
+        box-shadow .25s ease,
+        border-color .25s ease;
+}
+
+.role-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--maroon);
+    box-shadow: 0 16px 30px rgba(0, 0, 0, .22);
+}
+
+.role-card:focus-visible {
+    outline: 3px solid white;
+    outline-offset: 4px;
+}
+
+/* ICONS */
+
+.role-icon {
+    width: 65px;
+    height: 65px;
+    margin-bottom: 17px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid var(--maroon);
+    border-radius: 50%;
+
+    color: var(--maroon);
+    transition: background .25s, color .25s;
+}
+
+.role-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.role-card:hover .role-icon {
+    background: var(--maroon);
+    color: white;
+}
+
+/* CARD TEXT */
+
+.role-card h3 {
+    margin: 0 0 10px;
+    font-family: Georgia, serif;
+    font-size: 21px;
+    font-weight: bold;
+    color: var(--maroon);
+}
+
+.role-card p {
+    margin: 0;
+    max-width: 280px;
+
+    font-family: Georgia, serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+/* TABLET */
+
+@media (max-width: 900px) {
+    .role-section {
+        max-width: 720px;
+    }
+
+    .role-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .role-card:last-child {
+        grid-column: 1 / -1;
+        width: min(100%, 350px);
+        justify-self: center;
+    }
+
+    .section-heading {
+        margin-bottom: 32px;
+    }
+}
+
+/* CELLPHONE */
+
+@media (max-width: 600px) {
+    .staff-header {
+        min-height: 58px;
+        padding: 8px 14px;
+        gap: 12px;
+    }
+
+    .back-button {
+        width: 27px;
+        height: 30px;
+    }
+
+    .back-button svg {
+        width: 23px;
+        height: 23px;
+    }
+
+    .header-text h1 {
+        font-size: 18px;
+    }
+
+    .header-text p {
+        font-size: 10px;
+    }
+
+    .staff-main {
+        min-height: calc(100vh - 58px);
+        min-height: calc(100dvh - 58px);
+        padding: 35px 16px;
+
+        background-position: 58% center;
+    }
+
+    .role-section {
+        max-width: 400px;
+    }
+
+    .section-heading {
+        margin-bottom: 28px;
+    }
+
+    .section-heading h2 {
+        font-size: 30px;
+    }
+
+    .section-heading p {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .role-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .role-card,
+    .role-card:last-child {
+        width: 100%;
+        min-height: 160px;
+        padding: 18px 15px;
+        grid-column: auto;
+    }
+
+    .role-icon {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 11px;
+    }
+
+    .role-icon svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    .role-card h3 {
+        font-size: 18px;
+        margin-bottom: 6px;
+    }
+
+    .role-card p {
+        font-size: 12px;
+        line-height: 1.45;
+    }
+}
+
+/* SMALL CELLPHONES */
+
+@media (max-width: 360px) {
+    .section-heading h2 {
+        font-size: 27px;
+    }
+
+    .role-card {
+        padding: 16px 12px;
+    }
+}
+
+/* ACCESSIBILITY */
+
+@media (prefers-reduced-motion: reduce) {
+    .role-card,
+    .role-icon {
+        transition: none;
+    }
+
+    .role-card:hover {
+        transform: none;
+    }
+}

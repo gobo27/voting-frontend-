@@ -1057,8 +1057,80 @@ async function addAccount(event) {
     }
 }
 
-// OPEN EDIT MODAL
+let assigningAdviser = false;
 
+async function assignAdviserToElection(id) {
+
+    if (assigningAdviser) return;
+
+    const account = accounts.find(
+        item => String(item.id) === String(id)
+    );
+
+    if (!account || account.role !== "adviser") {
+        notify("Invalid Adviser account.", "error");
+        return;
+    }
+
+    assigningAdviser = true;
+
+    try {
+
+        const data = await scopeRequest("/scopes");
+
+        const election = data.election;
+
+        if (!election || !election.election_id) {
+            throw new Error(
+                "No current election available."
+            );
+        }
+
+        if (typeof window.showConfirmToast !== "function") {
+            throw new Error(
+                "Confirmation toast is unavailable."
+            );
+        }
+
+        const confirmed = await window.showConfirmToast(
+            `Assign ${account.name} to ${election.title}?`,
+            {
+                title: "Assign Adviser?",
+                confirmText: "Assign Adviser",
+                cancelText: "Cancel"
+            }
+        );
+
+        if (!confirmed) return;
+
+        const result = await apiRequest(
+            `/${encodeURIComponent(id)}/adviser-assignment`,
+            {
+                method: "PUT",
+                body: JSON.stringify({
+                    election_id: Number(election.election_id)
+                })
+            }
+        );
+
+        notify(
+            result.message || "Adviser assigned successfully.",
+            "success"
+        );
+
+        await loadAccounts();
+
+    } catch (error) {
+
+        notify(error.message, "error");
+
+    } finally {
+
+        assigningAdviser = false;
+    }
+}
+
+// OPEN EDIT MODAL
 function openEditModal(id) {
     const account = accounts.find(
         account => String(account.id) === String(id)
@@ -1507,7 +1579,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 event.target.closest("[data-delete]");
 
             if (edit && !edit.disabled) {
-                openEditModal(edit.dataset.edit);
+
+                const account = accounts.find(
+                    item =>
+                        String(item.id) === String(edit.dataset.edit)
+                );
+
+                if (
+                    edit.classList.contains("reassign") &&
+                    account?.role === "adviser"
+                ) {
+                    assignAdviserToElection(edit.dataset.edit);
+
+                } else {
+                    openEditModal(edit.dataset.edit);
+                }
             }
 
             if (remove && !remove.disabled) {
