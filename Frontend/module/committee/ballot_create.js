@@ -2,6 +2,7 @@
 "use strict";
 const ENABLE_MULTIPAGE_TEMPLATE_TEST = true;
 const ENABLE_MULTIPAGE_PRINT_TEST = true;
+const MAX_MULTIPAGE_BATCH_PAGES = 1500;
 const DPI = 300;
 const mmToPx = mm => Math.round(mm * DPI / 25.4);
 const el = id => document.getElementById(id);
@@ -938,7 +939,7 @@ function render() {
             `Selected paper: ${isA5 ? "A5" : "A4"}` +
             ` | ${state.totalPages} page(s) per ballot` +
             (state.totalPages > 1
-                ? " — Preview only"
+                ? " — Multi-page ballot"
                 : "");
     }
 
@@ -1698,13 +1699,14 @@ async function generateAndPrintBallots() {
 
         if (
             state.totalPages > 1 &&
-            quantity * state.totalPages > 100
+            quantity * state.totalPages >
+            MAX_MULTIPAGE_BATCH_PAGES
         ) {
             throw new Error(
-                "Test batches are limited to 100 printed pages."
+                `Maximum ${MAX_MULTIPAGE_BATCH_PAGES} ` +
+                "printed pages per batch."
             );
         }
-
 
         status(
             "Generating registered QR ballots...",
