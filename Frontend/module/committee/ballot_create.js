@@ -82,6 +82,8 @@ function multiPagePrintAllowed() {
         (ENABLE_MULTIPAGE_TEMPLATE_TEST &&
             ENABLE_MULTIPAGE_PRINT_TEST);
 }
+
+
 function updateActionButtons() {
     const saveButton = el("saveButton");
     const generateButton = el("generatePrintButton");
@@ -92,9 +94,11 @@ function updateActionButtons() {
         state.deleting ||
         state.loadingTemplate;
 
+    const locked = electionLocked();
+
     if (saveButton) {
         saveButton.disabled =
-            electionLocked() ||
+            locked ||
             busy ||
             (
                 state.totalPages > 1 &&
@@ -116,7 +120,7 @@ function updateActionButtons() {
             !state.savedTemplateId ||
             !scope ||
             Boolean(scope.existing_batch_id) ||
-            electionLocked() ||
+            locked ||
             busy;
     }
 
@@ -125,8 +129,40 @@ function updateActionButtons() {
     ).forEach(button => {
         button.disabled = busy;
     });
-}
 
+    for (const id of [
+        "reloadButton",
+        "ballotScope",
+        "ballotQuantity",
+        "savedTemplateToggle",
+        "refreshTemplatesButton"
+    ]) {
+        const input = el(id);
+
+        if (input) {
+            input.disabled = busy;
+        }
+    }
+
+    for (const id of [
+        "titleInput",
+        "yearInput",
+        "instructionsInput",
+        "copiesInput"
+    ]) {
+        const input = el(id);
+
+        if (input) {
+            input.disabled = busy || locked;
+        }
+    }
+
+    el("positionSettings")
+        ?.querySelectorAll("input")
+        .forEach(input => {
+            input.disabled = busy || locked;
+        });
+}
 
 function setEditorLocked(locked) {
     for (const id of [
@@ -2464,35 +2500,6 @@ document.addEventListener(
                 saveBallot
             );
         }
-        for (const id of [
-            "reloadButton",
-            "ballotScope",
-            "ballotQuantity",
-            "savedTemplateToggle",
-            "refreshTemplatesButton"
-        ]) {
-            const input = el(id);
-            if (input) input.disabled = busy;
-        }
-
-        for (const id of [
-            "titleInput",
-            "yearInput",
-            "instructionsInput",
-            "copiesInput"
-        ]) {
-            const input = el(id);
-            if (input) input.disabled =
-                busy || electionLocked();
-        }
-
-        el("positionSettings")
-            ?.querySelectorAll("input")
-            .forEach(input => {
-                input.disabled = busy || electionLocked();
-            });
-
-
         if (generatePrintButton) {
             generatePrintButton.addEventListener(
                 "click",
