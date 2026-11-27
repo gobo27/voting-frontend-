@@ -101,6 +101,10 @@
     }
 
 
+    function scrollToSection(id) {
+        $(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     function controls() {
         const locked =
             state.busy ||
@@ -194,6 +198,16 @@
             cameraActive ||
             !state.photo ||
             !state.template;
+
+        const nextPage = $("nextPageBtn");
+        nextPage.hidden = !state.pageCollection || completeCollection || state.counted || state.uncertain;
+        nextPage.disabled = locked || state.preparing || cameraActive || reconcile;
+        const nextBallot = $("nextBallotBtn");
+        nextBallot.hidden = !state.counted || state.uncertain;
+        nextBallot.disabled = locked || state.preparing || cameraActive || state.uncertain;
+        $("countOutcome").textContent = state.uncertain
+            ? "Counting status unknown. Check Ballot Status before continuing."
+            : state.counted ? "Ballot already counted. No further counting is needed." : "";
 
         $("cancelBtn").hidden = !state.busy;
         $("cancelBtn").disabled = !activeScan;
@@ -692,7 +706,7 @@
             status(
                 "cameraStatus",
                 `Camera ready: ${video.videoWidth} × ` +
-                `${video.videoHeight}. Fit one A5 ballot ` +
+                `${video.videoHeight}. Fit one ${String(state.template?.paper_size || "A4/A5").toUpperCase()} ballot ` +
                 "inside the guide, then capture."
             );
         } catch (error) {
@@ -1019,7 +1033,7 @@
         status("analysisStatus", "");
         status(
             "imageStatus",
-            "Upload or capture one complete A5 ballot."
+            "Upload or capture one complete ballot page."
         );
         status(
             "qrStatus",
@@ -1028,7 +1042,7 @@
         status("timingInfo", "");
 
         debug(
-            "Load an A5 template and one ballot photo."
+            "Load a ballot template and one ballot photo."
         );
 
         controls();
@@ -1103,7 +1117,7 @@
 
             select.replaceChildren(
                 new Option(
-                    "Select an A5 template",
+                    "Select a ballot template",
                     ""
                 )
             );
@@ -1127,7 +1141,7 @@
 
             status(
                 "scannerStatus",
-                `${select.options.length - 1} A5 templates loaded.`
+                `${select.options.length - 1} ballot templates loaded.`
             );
         } catch (error) {
             if (ticket === state.listTicket) {
@@ -1203,7 +1217,7 @@
                 Number(data.template.template_id) !== id
             ) {
                 throw new Error(
-                    "Select an A5 template belonging to the current election."
+                    "Select an A4 or A5 template belonging to the current election."
                 );
             }
 
@@ -1446,6 +1460,7 @@
             status("timingInfo", "");
 
             debug({ photo: state.photoInfo });
+            scrollToSection("previewSection");
         } catch (error) {
             if (ticket === state.photoTicket) {
                 status(
@@ -1679,6 +1694,7 @@
             }
 
             displayResults(data);
+            scrollToSection("reviewSection");
 
             if (
                 ENABLE_MULTIPAGE_COUNT_TEST &&
@@ -2005,6 +2021,7 @@
 
                 status("qrStatus", "Ballot status: COUNTED");
 
+                scrollToSection("reviewSection");
                 window.showToast?.(
                     "Ballot counted successfully.",
                     "success"
@@ -2121,6 +2138,7 @@
                         "analysisStatus",
                         `Page ${data.page_number} analyzed. Capture the next page.`
                     );
+                    scrollToSection("validationSection");
                 }
 
                 return;
@@ -2937,6 +2955,19 @@ self.onmessage = function (event) {
                 clearPhoto();
             }
         );
+
+        $("nextPageBtn").addEventListener("click", () => {
+            if ($("nextPageBtn").disabled || $("nextPageBtn").hidden) return;
+            $("fileInput").value = "";
+            scrollToSection("captureSection");
+        });
+
+        $("nextBallotBtn").addEventListener("click", () => {
+            if ($("nextBallotBtn").disabled || $("nextBallotBtn").hidden || !state.counted || state.uncertain) return;
+            resetPageCollection();
+            clearPhoto();
+            scrollToSection("captureSection");
+        });
 
         $("analyzeBtn").addEventListener(
             "click",

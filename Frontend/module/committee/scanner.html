@@ -670,6 +670,15 @@
             max-height: none;
             overflow: visible;
         }
+
+        /* Workflow order is identical on mobile and desktop. */
+        main.scanner-workflow { display: grid; grid-template-columns: minmax(0, 1fr); max-width: 850px; gap: 16px; }
+        .scanner-workflow > .panel { width: 100%; scroll-margin-top: 14px; }
+        .scanner-workflow .camera-panel { margin-top: 16px; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+        #nextPageBtn, #nextBallotBtn { width: 100%; margin-top: 10px; }
+        #countOutcome:empty { display: none; }
+        #diagnosticsSection .debug { margin-top: 0; }
+        @media (max-width: 600px) { main.scanner-workflow { gap: 12px; } }
     </style>
 </head>
 
@@ -683,10 +692,9 @@
         </div>
     </header>
 
-    <main>
-        <section class="panel scanner-controls">
-            <h2>Scanner Controls</h2>
-
+    <main class="scanner-workflow">
+        <section class="panel" id="setupSection">
+            <h2>1. Election &amp; Ballot Setup</h2>
             <label for="electionId">Election ID</label>
             <input id="electionId" type="number" readonly placeholder="Loading current election...">
 
@@ -702,90 +710,18 @@
             </select>
 
             <p id="scannerStatus" class="status" role="status"></p>
-
-            <hr class="divider">
-
-            <h3>Ballot Image</h3>
-
-            <label for="fileInput">Upload Ballot Image</label>
-            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp">
-
+        </section>
+        <section class="panel" id="captureSection">
+            <h2>2. Capture Ballot</h2>
             <div class="buttons">
                 <button id="cameraBtn" type="button" class="primary">
                     Open Live Camera
                 </button>
             </div>
-
+            <label for="fileInput">Upload Ballot Image</label>
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp">
             <p id="cameraStatus" class="status" role="status" aria-live="polite">Camera is off. Open the live camera or
                 upload a ballot image.</p>
-
-            <p id="imageStatus" class="status" role="status" aria-live="polite"></p>
-
-            <div class="buttons">
-                <button id="retakeBtn" type="button" class="outline">
-                    Clear Image / Retake
-                </button>
-            </div>
-
-            <hr class="divider">
-
-            <h3>Ballot Processing</h3>
-
-            <p class="note">Portrait ballot • One ballot per scan • Balanced shade detection</p>
-
-
-            <div class="counting-note">
-                <strong>Ballot Validation and Counting</strong>
-                <p>
-                    Scan the ballot first and review the detected
-                    selections. Votes will only be recorded after
-                    pressing Confirm &amp; Count Ballot.
-                </p>
-            </div>
-
-
-            <div class="buttons">
-                <button id="analyzeBtn" type="button" class="primary" disabled>Scan &amp; Validate Ballot</button>
-            </div>
-
-            <div class="buttons">
-                <button id="cancelBtn" type="button" class="secondary" hidden>Stop Waiting</button>
-
-                <button id="checkStatusBtn" type="button" class="outline" disabled>Check Ballot Status</button>
-            </div>
-
-            <p class="note">If the result is not confirmed, check the ballot status before retrying.</p>
-
-            <p id="analysisStatus" class="status" role="status" aria-live="polite"></p>
-            <div id="pageCollection" class="counting-note" hidden>
-                <strong id="pageProgress"></strong>
-
-                <p id="collectedPages"></p>
-
-                <button id="resetPagesBtn" type="button" class="outline">
-                    Start New Ballot
-                </button>
-            </div>
-            <p class="note">Keep the entire ballot and all four registration squares visible.</p>
-
-            <details class="debug">
-                <summary>Debug &amp; QR Diagnostics</summary>
-
-                <div class="debug-content">
-                    <strong>Debug Diagnostics</strong>
-                    <p id="timingInfo" class="status" role="status"></p>
-                    <div id="debugInfo">Load a template and image, then scan.</div>
-
-                    <hr class="divider">
-
-                    <strong>QR Diagnostics</strong>
-                    <p id="qrStatus">QR and markers are verified during scanning.</p>
-                </div>
-            </details>
-        </section>
-
-        <section class="panel preview-panel">
-            <!-- Live capture prepares a photo; counting remains an explicit action. -->
             <section id="cameraPanel" class="camera-panel" aria-labelledby="cameraHeading" hidden>
                 <h2 id="cameraHeading">Live Camera</h2>
 
@@ -820,15 +756,13 @@
 
                 <p class="note">
                     Capture Photo prepares the image below. Review it, then
-                    press Scan &amp; Validate Ballot.. Use Upload Ballot Image if
+                    press Scan &amp; Validate Ballot. Use Upload Ballot Image if
                     live camera access is unavailable.
                 </p>
             </section>
-
-            <div class="preview-heading">
-                <h2>Ballot Preview</h2>
-            </div>
-
+        </section>
+        <section class="panel" id="previewSection">
+            <h2>3. Ballot Preview</h2>
             <div class="canvas-wrap">
                 <canvas id="scanCanvas" width="1" height="1"></canvas>
 
@@ -837,14 +771,42 @@
                     <p>Upload or capture a ballot image to display it here.</p>
                 </div>
             </div>
+            <p id="imageStatus" class="status" role="status" aria-live="polite"></p>
 
-            <div class="results-area">
-                <h3>Detected Results</h3>
+            <div class="buttons">
+                <button id="retakeBtn" type="button" class="outline">
+                    Clear Image / Retake
+                </button>
+            </div>
+        </section>
+        <section class="panel" id="validationSection">
+            <h2>4. Scan &amp; Validate</h2>
+            <p class="note">Scan one complete page at a time. Keep the QR and all four registration marks visible.</p>
+            <div class="buttons">
+                <button id="analyzeBtn" type="button" class="primary" disabled>Scan &amp; Validate Ballot</button>
+            </div>
+
+            <div class="buttons">
+                <button id="cancelBtn" type="button" class="secondary" hidden>Stop Waiting</button>
+            </div>
+            <p id="analysisStatus" class="status" role="status" aria-live="polite"></p>
+            <div id="pageCollection" class="counting-note" hidden>
+                <strong id="pageProgress"></strong>
+
+                <p id="collectedPages"></p>
+
+                <button id="resetPagesBtn" type="button" class="outline">
+                    Start New Ballot
+                </button>
+            </div>
+            <button id="nextPageBtn" type="button" class="outline" hidden>Scan Next Page</button>
+        </section>
+        <section class="panel" id="reviewSection">
+            <h2>5. Detected Results</h2>
                 <div id="results">
                     <p>No ballot analyzed yet.</p>
                 </div>
-            </div>
-
+            <h3>6. Confirm Counting</h3>
             <div class="buttons">
                 <button id="confirmCountBtn" type="button" class="primary" disabled>
                     Confirm &amp; Count Ballot
@@ -854,11 +816,31 @@
             <p class="note">
                 Confirm only after checking all detected selections.
             </p>
+            <p id="countOutcome" class="status" role="status" aria-live="polite"></p>
+            <button id="nextBallotBtn" type="button" class="primary" hidden>Scan Next Ballot</button>
+            <div class="buttons">
+                <button id="checkStatusBtn" type="button" class="outline" disabled>Check Ballot Status</button>
+            </div>
+            <p class="note">If counting status is uncertain, check the ballot status before retrying.</p>
+        </section>
+        <section class="panel" id="diagnosticsSection">
+            <details class="debug">
+                <summary>Debug &amp; QR Diagnostics</summary>
 
+                <div class="debug-content">
+                    <strong>Debug Diagnostics</strong>
+                    <p id="timingInfo" class="status" role="status"></p>
+                    <div id="debugInfo">Load a template and image, then scan.</div>
+
+                    <hr class="divider">
+
+                    <strong>QR Diagnostics</strong>
+                    <p id="qrStatus">QR and markers are verified during scanning.</p>
+                </div>
+            </details>
         </section>
     </main>
-
-    <script src="./scanner.js?v=20261119-page-collection"></script>
+    <script src="./scanner.js?v=20261127-scanner-workflow"></script>
 </body>
 
 </html>
